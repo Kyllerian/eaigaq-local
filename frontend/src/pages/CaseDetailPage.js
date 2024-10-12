@@ -1,8 +1,8 @@
 // src/pages/CaseDetailPage.js
 
-import React, { useEffect, useState, useContext, useRef } from 'react';
-import axios from '../axiosConfig';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useEffect, useState, useContext, useRef } from "react";
+import axios from "../axiosConfig";
+import { useParams, useNavigate } from "react-router-dom";
 import {
   Typography,
   Container,
@@ -32,7 +32,7 @@ import {
   AccordionDetails,
   Grid,
   Tooltip,
-} from '@mui/material';
+} from "@mui/material";
 import {
   Add as AddIcon,
   ArrowBack as ArrowBackIcon,
@@ -40,10 +40,10 @@ import {
   Close as CloseIcon,
   CheckCircle as CheckCircleIcon,
   Print as PrintIcon,
-} from '@mui/icons-material';
-import { AuthContext } from '../contexts/AuthContext';
-import Barcode from 'react-barcode';
-import { useReactToPrint } from 'react-to-print';
+} from "@mui/icons-material";
+import { AuthContext } from "../contexts/AuthContext";
+import Barcode from "react-barcode";
+import { useReactToPrint } from "react-to-print";
 
 const CaseDetailPage = () => {
   const { id } = useParams(); // Получаем ID дела из URL
@@ -52,27 +52,27 @@ const CaseDetailPage = () => {
   const [caseItem, setCaseItem] = useState(null);
   const [groups, setGroups] = useState([]);
   const [selectedGroupId, setSelectedGroupId] = useState(null);
-  const [newGroup, setNewGroup] = useState({ name: '' });
+  const [newGroup, setNewGroup] = useState({ name: "" });
   const [newEvidence, setNewEvidence] = useState({
-    name: '',
-    description: '',
+    name: "",
+    description: "",
   });
   const [openGroupDialog, setOpenGroupDialog] = useState(false);
   const [openEvidenceDialog, setOpenEvidenceDialog] = useState(false);
   const [tabValue, setTabValue] = useState(0);
   const [snackbar, setSnackbar] = useState({
     open: false,
-    message: '',
-    severity: 'success',
+    message: "",
+    severity: "success",
   });
   // Состояния для диалогового окна и значения штрихкода
   const [openBarcodeDialog, setOpenBarcodeDialog] = useState(false);
-  const [barcodeValueToDisplay, setBarcodeValueToDisplay] = useState('');
+  const [barcodeValueToDisplay, setBarcodeValueToDisplay] = useState("");
   const componentRef = useRef(); // Реф для печати штрихкода
 
   // Функция для печати только штрихкода
   const handlePrint = useReactToPrint({
-    content: () => componentRef.current,
+    contentRef: componentRef,
     documentTitle: 'Штрихкод',
     pageStyle: `
       @page {
@@ -96,26 +96,26 @@ const CaseDetailPage = () => {
         setCaseItem(response.data);
       })
       .catch((error) => {
-        console.error('Ошибка при получении деталей дела:', error);
+        console.error("Ошибка при получении деталей дела:", error);
         setSnackbar({
           open: true,
-          message: 'Ошибка при загрузке дела.',
-          severity: 'error',
+          message: "Ошибка при загрузке дела.",
+          severity: "error",
         });
       });
 
     // Получаем группы и связанные с ними вещественные доказательства
     axios
-      .get(`/api/evidence-groups/?case=${id}`) // Изменено на 'case' вместо 'case_id'
+      .get(`/api/evidence-groups/?case=${id}`)
       .then((response) => {
         setGroups(response.data);
       })
       .catch((error) => {
-        console.error('Ошибка при получении групп:', error);
+        console.error("Ошибка при получении групп:", error);
         setSnackbar({
           open: true,
-          message: 'Ошибка при загрузке групп.',
-          severity: 'error',
+          message: "Ошибка при загрузке групп.",
+          severity: "error",
         });
       });
   }, [id]);
@@ -141,16 +141,16 @@ const CaseDetailPage = () => {
         setCaseItem(response.data);
         setSnackbar({
           open: true,
-          message: 'Дело успешно обновлено.',
-          severity: 'success',
+          message: "Дело успешно обновлено.",
+          severity: "success",
         });
       })
       .catch((error) => {
-        console.error('Ошибка при обновлении дела:', error);
+        console.error("Ошибка при обновлении дела:", error);
         setSnackbar({
           open: true,
-          message: 'Ошибка при обновлении дела.',
-          severity: 'error',
+          message: "Ошибка при обновлении дела.",
+          severity: "error",
         });
       });
   };
@@ -165,16 +165,16 @@ const CaseDetailPage = () => {
         setCaseItem(response.data);
         setSnackbar({
           open: true,
-          message: `Дело ${updatedStatus ? 'активировано' : 'закрыто'}.`,
-          severity: 'success',
+          message: `Дело ${updatedStatus ? "активировано" : "закрыто"}.`,
+          severity: "success",
         });
       })
       .catch((error) => {
-        console.error('Ошибка при изменении статуса дела:', error);
+        console.error("Ошибка при изменении статуса дела:", error);
         setSnackbar({
           open: true,
-          message: 'Ошибка при изменении статуса дела.',
-          severity: 'error',
+          message: "Ошибка при изменении статуса дела.",
+          severity: "error",
         });
       });
   };
@@ -186,7 +186,7 @@ const CaseDetailPage = () => {
 
   const handleCloseGroupDialog = () => {
     setOpenGroupDialog(false);
-    setNewGroup({ name: '' });
+    setNewGroup({ name: "" });
   };
 
   const handleGroupInputChange = (event) => {
@@ -198,7 +198,7 @@ const CaseDetailPage = () => {
     event.preventDefault();
 
     axios
-      .post('/api/evidence-groups/?case=${id}', {
+      .post('/api/evidence-groups/', {
         name: newGroup.name,
         case: id,
       })
@@ -207,19 +207,19 @@ const CaseDetailPage = () => {
         handleCloseGroupDialog();
         setSnackbar({
           open: true,
-          message: 'Группа успешно добавлена.',
-          severity: 'success',
+          message: "Группа успешно добавлена.",
+          severity: "success",
         });
       })
       .catch((error) => {
         console.error(
-          'Ошибка при добавлении группы:',
+          "Ошибка при добавлении группы:",
           error.response?.data || error
         );
         setSnackbar({
           open: true,
-          message: 'Ошибка при добавлении группы.',
-          severity: 'error',
+          message: "Ошибка при добавлении группы.",
+          severity: "error",
         });
       });
   };
@@ -234,7 +234,7 @@ const CaseDetailPage = () => {
 
   const handleCloseEvidenceDialog = () => {
     setOpenEvidenceDialog(false);
-    setNewEvidence({ name: '', description: '' });
+    setNewEvidence({ name: "", description: "" });
   };
 
   const handleEvidenceInputChange = (event) => {
@@ -246,7 +246,7 @@ const CaseDetailPage = () => {
     event.preventDefault();
 
     axios
-      .post('/api/material-evidences/', {
+      .post("/api/material-evidences/", {
         name: newEvidence.name,
         description: newEvidence.description,
         case_id: id,
@@ -270,19 +270,19 @@ const CaseDetailPage = () => {
         handleCloseEvidenceDialog();
         setSnackbar({
           open: true,
-          message: 'Вещественное доказательство добавлено.',
-          severity: 'success',
+          message: "Вещественное доказательство добавлено.",
+          severity: "success",
         });
       })
       .catch((error) => {
         console.error(
-          'Ошибка при добавлении вещественного доказательства:',
+          "Ошибка при добавлении вещественного доказательства:",
           error.response?.data || error
         );
         setSnackbar({
           open: true,
-          message: 'Ошибка при добавлении вещественного доказательства.',
-          severity: 'error',
+          message: "Ошибка при добавлении вещественного доказательства.",
+          severity: "error",
         });
       });
   };
@@ -296,12 +296,12 @@ const CaseDetailPage = () => {
     if (!barcodeValue) {
       setSnackbar({
         open: true,
-        message: 'Штрихкод недоступен.',
-        severity: 'error',
+        message: "Штрихкод недоступен.",
+        severity: "error",
       });
       return;
     }
-    console.log('Устанавливаем barcodeValueToDisplay:', barcodeValue);
+    console.log("Устанавливаем barcodeValueToDisplay:", barcodeValue);
     setBarcodeValueToDisplay(barcodeValue);
     setOpenBarcodeDialog(true);
   };
@@ -309,31 +309,31 @@ const CaseDetailPage = () => {
   const handlePrintGroupBarcode = (groupId) => {
     const group = groups.find((g) => g.id === groupId);
     if (group && group.barcode) {
-      console.log('Печать штрихкода группы:');
-      console.log('Название группы:', group.name);
-      console.log('Штрихкод группы:', group.barcode);
+      console.log("Печать штрихкода группы:");
+      console.log("Название группы:", group.name);
+      console.log("Штрихкод группы:", group.barcode);
       handlePrintBarcode(group.barcode);
     } else {
       setSnackbar({
         open: true,
-        message: 'Штрихкод группы недоступен.',
-        severity: 'error',
+        message: "Штрихкод группы недоступен.",
+        severity: "error",
       });
     }
   };
 
   const handlePrintEvidenceBarcode = (evidence) => {
-    console.log('Печать штрихкода вещественного доказательства:');
-    console.log('Название ВД:', evidence.name);
-    console.log('Штрихкод ВД:', evidence.barcode);
+    console.log("Печать штрихкода вещественного доказательства:");
+    console.log("Название ВД:", evidence.name);
+    console.log("Штрихкод ВД:", evidence.barcode);
 
     if (evidence.barcode) {
       handlePrintBarcode(evidence.barcode);
     } else {
       setSnackbar({
         open: true,
-        message: 'Штрихкод недоступен.',
-        severity: 'error',
+        message: "Штрихкод недоступен.",
+        severity: "error",
       });
     }
   };
@@ -352,14 +352,14 @@ const CaseDetailPage = () => {
   // Проверяем права просмотра
   const canView =
     isCreator ||
-    user.role === 'DEPARTMENT_HEAD' ||
-    user.role === 'REGION_HEAD';
+    user.role === "DEPARTMENT_HEAD" ||
+    user.role === "REGION_HEAD";
 
   // Определяем, может ли пользователь редактировать дело
-  const canEdit = isCreator && user.role !== 'REGION_HEAD';
+  const canEdit = isCreator && user.role !== "REGION_HEAD";
 
   // Определяем, может ли пользователь добавлять группы
-  const canAddGroup = isCreator && user.role !== 'REGION_HEAD';
+  const canAddGroup = isCreator && user.role !== "REGION_HEAD";
 
   if (!canView) {
     return (
@@ -389,17 +389,17 @@ const CaseDetailPage = () => {
           </Typography>
           {canEdit && (
             <Tooltip
-              title={caseItem.active ? 'Закрыть дело' : 'Активировать дело'}
+              title={caseItem.active ? "Закрыть дело" : "Активировать дело"}
             >
               <Button
                 variant="contained"
-                color={caseItem.active ? 'secondary' : 'primary'}
+                color={caseItem.active ? "secondary" : "primary"}
                 startIcon={
                   caseItem.active ? <CloseIcon /> : <CheckCircleIcon />
                 }
                 onClick={handleStatusToggle}
               >
-                {caseItem.active ? 'Закрыть' : 'Активировать'}
+                {caseItem.active ? "Закрыть" : "Активировать"}
               </Button>
             </Tooltip>
           )}
@@ -445,7 +445,7 @@ const CaseDetailPage = () => {
                 />
               </Grid>
               {canEdit && (
-                <Grid item xs={12} sx={{ textAlign: 'right' }}>
+                <Grid item xs={12} sx={{ textAlign: "right" }}>
                   <Button
                     variant="contained"
                     color="primary"
@@ -464,7 +464,7 @@ const CaseDetailPage = () => {
           <Box>
             {/* Кнопки над таблицей */}
             <Box
-              sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}
+              sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}
             >
               {canAddGroup && (
                 <Button
@@ -477,7 +477,7 @@ const CaseDetailPage = () => {
                 </Button>
               )}
               {selectedGroupId && (
-                <Box sx={{ display: 'flex', gap: 2 }}>
+                <Box sx={{ display: "flex", gap: 2 }}>
                   {canAddGroup && (
                     <Button
                       variant="contained"
@@ -509,7 +509,7 @@ const CaseDetailPage = () => {
                   onChange={() => handleGroupSelect(group.id)}
                 >
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                    <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                    <Box sx={{ display: "flex", flexDirection: "column" }}>
                       <Typography variant="h6">{group.name}</Typography>
                       {/* Не отображаем штрихкод на странице */}
                     </Box>
@@ -643,12 +643,12 @@ const CaseDetailPage = () => {
         <DialogTitle>Штрихкод</DialogTitle>
         <DialogContent
           sx={{
-            textAlign: 'center',
-            padding: '24px',
+            textAlign: "center",
+            padding: "24px",
           }}
         >
           {barcodeValueToDisplay && (
-            <>
+            <div ref={componentRef}>
               <Barcode
                 value={barcodeValueToDisplay}
                 format="EAN13" // Изменено на EAN13
@@ -657,44 +657,28 @@ const CaseDetailPage = () => {
                 displayValue={false}
                 margin={0}
               />
-            </>
+            </div>
           )}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenBarcodeDialog(false)}>Закрыть</Button>
-          <Button variant="contained" color="primary" onClick={handlePrint}>
+          <Button variant="contained" color="primary" onClick={() => handlePrint()}>
             Печать
           </Button>
         </DialogActions>
       </Dialog>
-
-      {/* Компонент для печати штрихкода */}
-      <div style={{ display: 'none' }}>
-        <div ref={componentRef}>
-          {barcodeValueToDisplay && (
-            <Barcode
-              value={barcodeValueToDisplay}
-              format="EAN13" // Изменено на EAN13
-              width={2}
-              height={100}
-              displayValue={false}
-              margin={0}
-            />
-          )}
-        </div>
-      </div>
 
       {/* Snackbar для уведомлений */}
       <Snackbar
         open={snackbar.open}
         autoHideDuration={6000}
         onClose={handleSnackbarClose}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
       >
         <Alert
           onClose={handleSnackbarClose}
           severity={snackbar.severity}
-          sx={{ width: '100%' }}
+          sx={{ width: "100%" }}
         >
           {snackbar.message}
         </Alert>
