@@ -1,0 +1,24 @@
+# docker/Dockerfile.backend
+
+# Используем базовый образ Python 3.11
+FROM python:3.11-slim
+
+# Устанавливаем рабочую директорию внутри контейнера
+WORKDIR /app
+
+# Устанавливаем системные зависимости
+RUN apt-get update && apt-get install -y \
+    libpq-dev gcc --no-install-recommends && rm -rf /var/lib/apt/lists/*
+
+# Копируем requirements.txt и устанавливаем зависимости Python
+COPY eaigaq_project/requirements.txt /app/
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Копируем проект в рабочую директорию
+COPY eaigaq_project/ /app/
+
+# Открываем порт для приложения
+EXPOSE 8000
+
+# Команда запуска приложения с использованием Gunicorn
+CMD ["gunicorn", "eaigaq_project.wsgi:application", "--bind", "0.0.0.0:8000"]

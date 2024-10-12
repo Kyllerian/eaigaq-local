@@ -1,0 +1,187 @@
+# eaigaq_project/eaigaq_project/settings.py
+
+import os
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Определяем базовую директорию
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Определяем, находимся ли мы в Docker-контейнере
+DOCKER = os.environ.get('DOCKER') == '1'
+
+if DOCKER:
+    # В Docker-контейнере путь к файлу окружения
+    dotenv_path = '/app/.env'
+else:
+    # В локальной среде путь к файлу env/.env.backend
+    dotenv_path = os.path.join(BASE_DIR.parent, 'env', '.env.backend')
+
+# Загрузка переменных окружения из файла .env
+load_dotenv(dotenv_path=dotenv_path)
+
+# Получаем SECRET_KEY из переменных окружения
+SECRET_KEY = os.environ.get('SECRET_KEY')
+
+# Проверяем, что SECRET_KEY загружен
+if not SECRET_KEY:
+    raise ValueError("Необходимо установить SECRET_KEY в переменных окружения")
+
+# Устанавливаем DEBUG на основе переменной окружения
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
+
+# Получаем ALLOWED_HOSTS из переменных окружения
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '').split(',')
+
+# Настройки CORS
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOWED_ORIGINS = os.environ.get('CORS_ALLOWED_ORIGINS', '').split(',')
+CSRF_TRUSTED_ORIGINS = os.environ.get('CSRF_TRUSTED_ORIGINS', '').split(',')
+
+CORS_ALLOW_ALL_ORIGINS = False
+
+# Определение приложений
+INSTALLED_APPS = [
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
+    'core',              # Ваше основное приложение
+    'corsheaders',       # Для обработки CORS
+    'rest_framework',    # Django REST Framework
+]
+
+# Настройки REST Framework
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.SessionAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+}
+
+# Middleware
+MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',           # Должен быть первым
+    'django.middleware.security.SecurityMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',       # Убедитесь, что этот middleware не дублируется
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+]
+
+# URL конфигурация
+ROOT_URLCONF = 'eaigaq_project.urls'
+
+# Настройки шаблонов
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [],  # Добавьте пути к вашим шаблонам, если необходимо
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.debug',
+                'django.template.context_processors.request',  # Требуется для аутентификации
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
+            ],
+        },
+    },
+]
+
+# WSGI приложение
+WSGI_APPLICATION = 'eaigaq_project.wsgi.application'
+
+# Настройки базы данных
+if DOCKER:
+    # Настройки для Docker
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.environ.get('DB_NAME', 'eaigaq_db'),
+            'USER': os.environ.get('DB_USER'),
+            'PASSWORD': os.environ.get('DB_PASSWORD'),
+            'HOST': os.environ.get('DB_HOST', 'db'),
+            'PORT': os.environ.get('DB_PORT', '5432'),
+        }
+    }
+else:
+    # Настройки для локальной разработки (SQLite)
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
+
+# Если используется PostgreSQL, проверяем, что параметры базы данных загружены
+if DATABASES['default']['ENGINE'] == 'django.db.backends.postgresql':
+    if not DATABASES['default']['USER']:
+        raise ValueError("Необходимо установить DB_USER в переменных окружения")
+    if not DATABASES['default']['PASSWORD']:
+        raise ValueError("Необходимо установить DB_PASSWORD в переменных окружения")
+
+# Валидация паролей
+AUTH_USER_MODEL = 'core.User'
+
+AUTH_PASSWORD_VALIDATORS = [
+    {
+        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        'OPTIONS': {
+            'min_length': 8,  # Рекомендуется установить минимальную длину пароля
+        },
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+    },
+]
+
+# Интернационализация
+LANGUAGE_CODE = 'ru-ru'  # Установите на 'ru-ru', если ваше приложение на русском
+
+TIME_ZONE = 'UTC'  # Установите на ваш часовой пояс, если необходимо
+
+USE_I18N = True
+
+USE_L10N = True  # Если вы используете Django версии ниже 4.0
+
+USE_TZ = True
+
+# Статические файлы (CSS, JavaScript, изображения)
+STATIC_URL = '/backend_static/'
+
+# Место для сбора статических файлов
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+# Тип первичного ключа по умолчанию
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Логирование (опционально, но полезно для отладки)
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+}
+
+# Дополнительные настройки (если необходимо)
+# Например, настройка разрешенных MIME-типов или дополнительных параметров безопасности
