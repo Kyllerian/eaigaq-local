@@ -72,21 +72,31 @@ const CaseDetailPage = () => {
 
   // Функция для печати только штрихкода
   const handlePrint = useReactToPrint({
-    contentRef: componentRef,
-    documentTitle: 'Штрихкод',
-    pageStyle: `
-      @page {
-        size: auto;
-        margin: 10mm;
+  contentRef: componentRef,
+  documentTitle: 'Штрихкод',
+  pageStyle: `
+    @page {
+      size: 58mm 40mm;
+      margin: 0;
+    }
+    @media print {
+      body {
+        margin: 0;
       }
-      @media print {
-        body {
-          -webkit-print-color-adjust: exact;
-          margin: 0;
-        }
+      div#barcode-container {
+        width: 58mm;
+        height: 40mm;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        transform: rotate(-90deg);
+        transform-origin: center;
+        padding: 5mm; /* Добавляем симметричные внутренние отступы */
+        box-sizing: border-box; /* Учитываем отступы в размере элемента */
       }
-    `,
-  });
+    }
+  `,
+});
 
   useEffect(() => {
     // Получаем детали дела
@@ -651,7 +661,7 @@ const CaseDetailPage = () => {
             <div ref={componentRef}>
               <Barcode
                 value={barcodeValueToDisplay}
-                format="EAN13" // Изменено на EAN13
+                format="EAN13"
                 width={2}
                 height={100}
                 displayValue={false}
