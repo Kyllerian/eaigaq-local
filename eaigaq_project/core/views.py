@@ -4,6 +4,8 @@ from django.contrib.auth import authenticate, login, logout
 from django.http import JsonResponse
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.db.models import Q
+from django.forms.models import model_to_dict
+import json
 
 from .permissions import IsCreator, IsRegionHead, IsDepartmentHead
 
@@ -247,6 +249,41 @@ class CaseViewSet(viewsets.ModelViewSet):
             creator=user, investigator=user, department=user.department
         )
 
+    def update(self, request, *args, **kwargs):
+        user = request.user
+        instance = self.get_object()
+        old_instance = model_to_dict(instance)
+
+        # Вызываем оригинальный метод update
+        response = super().update(request, *args, **kwargs)
+
+        # Получаем обновленный экземпляр
+        new_instance = self.get_object()
+        new_instance_dict = model_to_dict(new_instance)
+
+        # Определяем, какие поля были изменены
+        changes = {}
+        for field in new_instance_dict.keys():
+            old_value = old_instance.get(field)
+            new_value = new_instance_dict.get(field)
+            if old_value != new_value:
+                changes[field] = {'old': old_value, 'new': new_value}
+
+        if changes:
+            # Создаем запись в AuditEntry
+            AuditEntry.objects.create(
+                object_id=instance.id,
+                table_name='case',
+                class_name='Case',
+                action='update',
+                fields=', '.join(changes.keys()),
+                data=json.dumps(changes, ensure_ascii=False, default=str),
+                user=user,
+                case=instance  # Ссылка на дело
+            )
+
+        return response
+
     @action(detail=False, methods=["get"])
     def get_by_barcode(self, request):
         barcode = request.query_params.get("barcode")
@@ -310,45 +347,75 @@ class MaterialEvidenceViewSet(viewsets.ModelViewSet):
                 case__department=user.department
             ).select_related("case", "created_by")
         else:
-            return queryset.filter(created_by=user).select_related(
-                "case", "created_by"
-            )
+            # Пользователь видит вещественные доказательства дел, где он является создателем или следователем
+            return queryset.filter(
+                Q(case__creator=user) | Q(case__investigator=user)
+            ).select_related("case", "created_by")
 
     def perform_create(self, serializer):
         user = self.request.user
         case = serializer.validated_data["case"]
-        if case.creator != user:
+        if case.creator != user and case.investigator != user:
             self.permission_denied(
-                self.request, message="Вы не являетесь создателем этого дела."
+                self.request, message="Вы не являетесь создателем или следователем этого дела."
             )
         serializer.save(created_by=user)
+        # Логирование создания вещественного доказательства происходит в модели
 
     def update(self, request, *args, **kwargs):
         user = request.user
         instance = self.get_object()
         case = instance.case
 
-        # Проверяем, является ли пользователь создателем дела
-        if case.creator != user:
+        # Проверяем, является ли пользователь создателем или следователем дела
+        if case.creator != user and case.investigator != user:
             raise PermissionDenied(
-                "Вы не являетесь создателем этого дела и не можете изменять вещественные доказательства."
+                "Вы не являетесь создателем или следователем этого дела и не можете изменять вещественные доказательства."
             )
 
-        # Проверяем, что обновляется только поле 'status'
-        allowed_fields = {"status"}
+        # Проверяем, что обновляется только разрешенные поля
+        allowed_fields = {"status", "name", "description"}
         if not set(request.data.keys()).issubset(allowed_fields):
             raise PermissionDenied(
-                "Вы можете изменять только статус вещественного доказательства."
+                f"Вы можете изменять только поля: {', '.join(allowed_fields)}."
             )
 
         # Проверяем, является ли запрос частичным обновлением
         partial = kwargs.pop("partial", False)
+
+        old_instance = model_to_dict(instance)
 
         serializer = self.get_serializer(
             instance, data=request.data, partial=partial
         )
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
+
+        # Получаем обновленный экземпляр
+        new_instance = self.get_object()
+        new_instance_dict = model_to_dict(new_instance)
+
+        # Определяем, какие поля были изменены
+        changes = {}
+        for field in new_instance_dict.keys():
+            if field in allowed_fields:
+                old_value = old_instance.get(field)
+                new_value = new_instance_dict.get(field)
+                if old_value != new_value:
+                    changes[field] = {'old': old_value, 'new': new_value}
+
+        if changes:
+            # Создаем запись в AuditEntry
+            AuditEntry.objects.create(
+                object_id=instance.id,
+                table_name='materialevidence',
+                class_name='MaterialEvidence',
+                action='update',
+                fields=', '.join(changes.keys()),
+                data=json.dumps(changes, ensure_ascii=False, default=str),
+                user=user,
+                case=case  # Ссылка на дело
+            )
 
         return Response(serializer.data)
 
@@ -381,16 +448,18 @@ class MaterialEvidenceEventViewSet(viewsets.ModelViewSet):
                 material_evidence_id__in=material_evidence_ids
             ).select_related("material_evidence", "user")
         else:
-            # Обычный пользователь видит только события своих ВД
+            # Обычный пользователь видит только события ВД в делах, где он является создателем или следователем
             material_evidence_ids = MaterialEvidence.objects.filter(
-                created_by=user
+                Q(case__creator=user) | Q(case__investigator=user)
             ).values_list("id", flat=True)
             return MaterialEvidenceEvent.objects.filter(
                 material_evidence_id__in=material_evidence_ids
             ).select_related("material_evidence", "user")
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        user = self.request.user
+        serializer.save(user=user)
+        # Логирование происходит в модели MaterialEvidenceEvent
 
 
 class EvidenceGroupViewSet(viewsets.ModelViewSet):
@@ -411,19 +480,23 @@ class EvidenceGroupViewSet(viewsets.ModelViewSet):
         elif user.role == "DEPARTMENT_HEAD":
             return queryset.filter(case__department=user.department)
         else:
-            return queryset.filter(created_by=user)
+            # Пользователь видит группы в делах, где он является создателем или следователем
+            return queryset.filter(
+                Q(case__creator=user) | Q(case__investigator=user)
+            )
 
     def perform_create(self, serializer):
         user = self.request.user
         case = serializer.validated_data.get("case")
 
-        # Проверяем, является ли пользователь создателем дела
-        if case.creator != user:
+        # Проверяем, является ли пользователь создателем или следователем дела
+        if case.creator != user and case.investigator != user:
             raise PermissionDenied(
-                "Вы не являетесь создателем этого дела и не можете добавлять группы."
+                "Вы не являетесь создателем или следователем этого дела и не можете добавлять группы."
             )
 
         serializer.save(created_by=user)
+        # Можно добавить логирование создания группы, если необходимо
 
 
 class SessionViewSet(viewsets.ModelViewSet):
@@ -467,16 +540,39 @@ class AuditEntryViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if user.role == "REGION_HEAD":
-            return AuditEntry.objects.filter(user__region=user.region).select_related(
-                "user"
-            )
-        elif user.role == "DEPARTMENT_HEAD":
-            return AuditEntry.objects.filter(
-                user__department=user.department
-            ).select_related("user")
+        queryset = self.queryset
+
+        # Фильтрация по ID дела, если указан параметр 'case_id'
+        case_id = self.request.query_params.get('case_id')
+        if case_id:
+            queryset = queryset.filter(case_id=case_id)
         else:
-            return AuditEntry.objects.filter(user=user).select_related("user")
+            # Если 'case_id' не указан, запрещаем доступ
+            raise PermissionDenied("Требуется указать 'case_id' для доступа к записям аудита.")
+
+        # Получаем дело по 'case_id'
+        try:
+            case = Case.objects.get(id=case_id)
+        except Case.DoesNotExist:
+            raise PermissionDenied("Дело не найдено.")
+
+        # Проверка прав доступа на основе роли пользователя и принадлежности дела
+        if user.role == "REGION_HEAD":
+            # Главы регионов видят дела в своем регионе
+            if case.department.region != user.region:
+                raise PermissionDenied("У вас нет прав для доступа к истории изменений этого дела.")
+            return queryset.select_related("user")
+        elif user.role == "DEPARTMENT_HEAD":
+            # Главы отделений видят дела в своем отделении
+            if case.department != user.department:
+                raise PermissionDenied("У вас нет прав для доступа к истории изменений этого дела.")
+            return queryset.select_related("user")
+        else:
+            # Обычные пользователи могут видеть историю изменений своих дел
+            if case.creator == user or case.investigator == user:
+                return queryset.select_related("user")
+            else:
+                raise PermissionDenied("У вас нет прав для доступа к истории изменений этого дела.")
 
 
 # ---------------------------

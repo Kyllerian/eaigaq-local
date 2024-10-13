@@ -4,8 +4,12 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
+from django.forms.models import model_to_dict
 import uuid
 import random
+import json
+from django.db.models.signals import post_save, post_delete
+from django.dispatch import receiver
 
 
 class Region(models.TextChoices):
@@ -84,11 +88,10 @@ class User(AbstractUser):
         # TODO: Реализовать проверку лица
         return False
 
-    # Добавляем метод save для автоматического установления региона
+    # Автоматическое установление региона при сохранении
     def save(self, *args, **kwargs):
-        if not self.region:
-            if self.department and self.department.region:
-                self.region = self.department.region
+        if not self.region and self.department and self.department.region:
+            self.region = self.department.region
         super(User, self).save(*args, **kwargs)
 
 
@@ -115,6 +118,8 @@ class Case(models.Model):
 
     def __str__(self):
         return self.name
+
+    # Убираем метод save() для логирования
 
 
 class MaterialEvidenceStatus(models.TextChoices):
@@ -217,6 +222,8 @@ class MaterialEvidence(models.Model):
     def __str__(self):
         return self.name
 
+    # Убираем метод save() для логирования
+
 
 class MaterialEvidenceEvent(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name=_('Пользователь'))
@@ -232,6 +239,8 @@ class MaterialEvidenceEvent(models.Model):
 
     def __str__(self):
         return f"{self.action} - {self.user} - {self.created.strftime('%Y-%m-%d %H:%M:%S')}"
+
+    # Убираем метод save() для логирования
 
 
 class Session(models.Model):
@@ -276,6 +285,87 @@ class AuditEntry(models.Model):
     data = models.TextField(_('Данные'))
     created = models.DateTimeField(_('Создано'), default=timezone.now)
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, verbose_name=_('Пользователь'))
+    case = models.ForeignKey(Case, on_delete=models.CASCADE, null=True, blank=True, related_name='audit_entries', verbose_name=_('Дело'))
 
     def __str__(self):
         return f"Аудит {self.action} на {self.class_name} пользователем {self.user}"
+
+
+# Сигнал для логирования создания и обновления объектов
+@receiver(post_save, sender=Case)
+def log_case_changes(sender, instance, created, **kwargs):
+    action = 'create' if created else 'update'
+    user = instance.creator if instance.creator else None
+
+    # Получаем изменения
+    if not created:
+        old_instance = sender.objects.get(pk=instance.pk)
+        changes = {}
+        for field in instance._meta.fields:
+            field_name = field.name
+            old_value = getattr(old_instance, field_name)
+            new_value = getattr(instance, field_name)
+            if old_value != new_value:
+                changes[field_name] = {'old': str(old_value), 'new': str(new_value)}
+        if not changes:
+            return
+    else:
+        changes = model_to_dict(instance)
+        changes = {k: str(v) for k, v in changes.items()}
+
+    AuditEntry.objects.create(
+        object_id=instance.id,
+        table_name='case',
+        class_name='Case',
+        action=action,
+        fields=', '.join(changes.keys()),
+        data=json.dumps(changes, ensure_ascii=False, default=str),
+        user=user,
+        case=instance
+    )
+
+
+@receiver(post_save, sender=MaterialEvidence)
+def log_material_evidence_changes(sender, instance, created, **kwargs):
+    action = 'create' if created else 'update'
+    user = instance.created_by if instance.created_by else None
+
+    if not created:
+        old_instance = sender.objects.get(pk=instance.pk)
+        changes = {}
+        for field in instance._meta.fields:
+            field_name = field.name
+            old_value = getattr(old_instance, field_name)
+            new_value = getattr(instance, field_name)
+            if old_value != new_value:
+                changes[field_name] = {'old': str(old_value), 'new': str(new_value)}
+        if not changes:
+            return
+    else:
+        changes = model_to_dict(instance)
+        changes = {k: str(v) for k, v in changes.items()}
+
+    AuditEntry.objects.create(
+        object_id=instance.id,
+        table_name='materialevidence',
+        class_name='MaterialEvidence',
+        action=action,
+        fields=', '.join(changes.keys()),
+        data=json.dumps(changes, ensure_ascii=False, default=str),
+        user=user,
+        case=instance.case
+    )
+
+
+@receiver(post_delete, sender=MaterialEvidence)
+def log_material_evidence_deletion(sender, instance, **kwargs):
+    AuditEntry.objects.create(
+        object_id=instance.id,
+        table_name='materialevidence',
+        class_name='MaterialEvidence',
+        action='delete',
+        fields='',
+        data='',
+        user=instance.created_by,
+        case=instance.case
+    )

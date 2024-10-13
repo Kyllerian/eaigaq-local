@@ -83,13 +83,50 @@ class CaseSerializer(serializers.ModelSerializer):
         validated_data['department'] = user.department
         return super().create(validated_data)
 
+class NestedMaterialEvidenceSerializer(serializers.ModelSerializer):
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    group_id = serializers.PrimaryKeyRelatedField(
+        queryset=EvidenceGroup.objects.all(),
+        source='group',
+        write_only=True,
+        required=False,
+        allow_null=True
+    )
+    group_name = serializers.CharField(source='group.name', read_only=True)
+
+    class Meta:
+        model = MaterialEvidence
+        fields = [
+            'id', 'name', 'description', 'status', 'status_display',
+            'barcode', 'created', 'updated', 'active', 'group_id', 'group_name'
+        ]
+        read_only_fields = ['barcode', 'created', 'updated', 'active', 'group_name']
+
+class EvidenceGroupSerializer(serializers.ModelSerializer):
+    material_evidences = NestedMaterialEvidenceSerializer(many=True, read_only=True)
+    barcode = serializers.CharField(read_only=True)
+    case = serializers.PrimaryKeyRelatedField(queryset=Case.objects.all())
+    created_by = UserSerializer(read_only=True)
+
+    class Meta:
+        model = EvidenceGroup
+        fields = [
+            'id', 'name', 'case', 'created_by',
+            'created', 'updated', 'active', 'material_evidences', 'barcode'
+        ]
+        read_only_fields = ['created_by', 'created', 'updated', 'material_evidences', 'barcode']
+
+    def create(self, validated_data):
+        validated_data['created_by'] = self.context['request'].user
+        return super().create(validated_data)
+
 class MaterialEvidenceSerializer(serializers.ModelSerializer):
     case = CaseSerializer(read_only=True)
     case_id = serializers.PrimaryKeyRelatedField(
         queryset=Case.objects.all(),
         source='case',
         write_only=True,
-        required=False
+        required=True
     )
     created_by = UserSerializer(read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
@@ -101,10 +138,8 @@ class MaterialEvidenceSerializer(serializers.ModelSerializer):
         allow_null=True
     )
     group_name = serializers.CharField(source='group.name', read_only=True)
-
-    # Добавляем required=False для полей 'name' и 'description'
-    name = serializers.CharField(required=False)
-    description = serializers.CharField(required=False)
+    name = serializers.CharField(required=True)
+    description = serializers.CharField(required=False, allow_blank=True)
 
     class Meta:
         model = MaterialEvidence
@@ -113,7 +148,7 @@ class MaterialEvidenceSerializer(serializers.ModelSerializer):
             'status', 'status_display', 'barcode', 'created', 'updated', 'active',
             'group_id', 'group_name',
         ]
-        read_only_fields = ['created_by', 'created', 'updated', 'barcode']
+        read_only_fields = ['created_by', 'created', 'updated', 'barcode', 'case', 'group_name']
 
     def create(self, validated_data):
         validated_data['created_by'] = self.context['request'].user
@@ -153,29 +188,51 @@ class CameraSerializer(serializers.ModelSerializer):
 
 class AuditEntrySerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
+    case = serializers.PrimaryKeyRelatedField(read_only=True)
+    class_name_display = serializers.SerializerMethodField()
 
     class Meta:
         model = AuditEntry
         fields = [
-            'id', 'object_id', 'table_name', 'class_name', 'action',
-            'fields', 'data', 'created', 'user'
+            'id', 'object_id', 'table_name', 'class_name', 'class_name_display', 'action',
+            'fields', 'data', 'created', 'user', 'case'
         ]
-        read_only_fields = ['created', 'user']
+        read_only_fields = ['created', 'user', 'case']
 
-class EvidenceGroupSerializer(serializers.ModelSerializer):
-    material_evidences = MaterialEvidenceSerializer(many=True, read_only=True)
+    def get_class_name_display(self, obj):
+        class_name_map = {
+            'Case': 'Дело',
+            'MaterialEvidence': 'Вещественное доказательство',
+            'MaterialEvidenceEvent': 'Событие ВД',
+            'EvidenceGroup': 'Группа ВД',
+            # Добавьте другие классы при необходимости
+        }
+        return class_name_map.get(obj.class_name, obj.class_name)
+
+class NestedEvidenceGroupSerializer(serializers.ModelSerializer):
+    material_evidences = NestedMaterialEvidenceSerializer(many=True, read_only=True)
     barcode = serializers.CharField(read_only=True)
-    case = serializers.PrimaryKeyRelatedField(queryset=Case.objects.all())
-    created_by = UserSerializer(read_only=True)
 
     class Meta:
         model = EvidenceGroup
-        fields = [
-            'id', 'name', 'case', 'created_by',
-            'created', 'updated', 'active', 'material_evidences', 'barcode'
-        ]
-        read_only_fields = ['created_by', 'created', 'updated', 'material_evidences', 'barcode']
+        fields = ['id', 'name', 'barcode', 'material_evidences']
 
-    def create(self, validated_data):
-        validated_data['created_by'] = self.context['request'].user
-        return super().create(validated_data)
+class CaseDetailSerializer(serializers.ModelSerializer):
+    investigator = UserSerializer(read_only=True)
+    creator_name = serializers.CharField(source='creator.get_full_name', read_only=True)
+    department = DepartmentSerializer(read_only=True)
+    department_name = serializers.CharField(source='department.name', read_only=True)
+    evidence_groups = NestedEvidenceGroupSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Case
+        fields = [
+            'id', 'name', 'description', 'active',
+            'creator', 'creator_name', 'investigator',
+            'department', 'department_name', 'created', 'updated',
+            'evidence_groups'
+        ]
+        read_only_fields = [
+            'creator', 'creator_name', 'investigator', 'department',
+            'department_name', 'created', 'updated', 'evidence_groups'
+        ]

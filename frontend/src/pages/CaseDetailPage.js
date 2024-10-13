@@ -82,6 +82,12 @@ const CaseDetailPage = () => {
     { value: "ARCHIVED", label: "В архиве" },
   ];
 
+  // Состояние для хранения логов изменений
+  const [changeLogs, setChangeLogs] = useState([]);
+
+  // Состояние для предотвращения повторных запросов
+  const [isStatusUpdating, setIsStatusUpdating] = useState(false);
+
   // Функция для печати только штрихкода
   const handlePrint = useReactToPrint({
     contentRef: componentRef,
@@ -111,6 +117,28 @@ const CaseDetailPage = () => {
       }
     `,
   });
+
+  // Проверяем, является ли текущий пользователь создателем или следователем дела
+  const isCreatorOrInvestigator =
+    user && (user.id === caseItem?.creator || user.id === caseItem?.investigator);
+
+  // Проверяем права просмотра
+  const canView =
+    isCreatorOrInvestigator ||
+    user.role === "DEPARTMENT_HEAD" ||
+    user.role === "REGION_HEAD";
+
+  // Определяем, может ли пользователь редактировать дело
+  const canEdit = isCreatorOrInvestigator && user.role !== "REGION_HEAD";
+
+  // Определяем, может ли пользователь добавлять группы
+  const canAddGroup = isCreatorOrInvestigator && user.role !== "REGION_HEAD";
+
+  // Определяем, может ли пользователь видеть историю изменений
+  const canViewHistory =
+    (user.role === "DEPARTMENT_HEAD" ||
+      user.role === "REGION_HEAD" ||
+      isCreatorOrInvestigator) && canView;
 
   useEffect(() => {
     // Получаем детали дела
@@ -142,7 +170,24 @@ const CaseDetailPage = () => {
           severity: "error",
         });
       });
-  }, [id]);
+
+    // Получаем историю изменений дела, если пользователь имеет право ее видеть
+    if (canViewHistory) {
+      axios
+        .get(`/api/audit-entries/?case_id=${id}`)
+        .then((response) => {
+          setChangeLogs(response.data);
+        })
+        .catch((error) => {
+          console.error("Ошибка при получении истории изменений:", error);
+          setSnackbar({
+            open: true,
+            message: "Ошибка при загрузке истории изменений.",
+            severity: "error",
+          });
+        });
+    }
+  }, [id, canViewHistory]);
 
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
@@ -325,7 +370,6 @@ const CaseDetailPage = () => {
       });
       return;
     }
-    console.log("Устанавливаем barcodeValueToDisplay:", barcodeValue);
     setBarcodeValueToDisplay(barcodeValue);
     setOpenBarcodeDialog(true);
   };
@@ -333,9 +377,6 @@ const CaseDetailPage = () => {
   const handlePrintGroupBarcode = (groupId) => {
     const group = groups.find((g) => g.id === groupId);
     if (group && group.barcode) {
-      console.log("Печать штрихкода группы:");
-      console.log("Название группы:", group.name);
-      console.log("Штрихкод группы:", group.barcode);
       handlePrintBarcode(group.barcode);
     } else {
       setSnackbar({
@@ -347,10 +388,6 @@ const CaseDetailPage = () => {
   };
 
   const handlePrintEvidenceBarcode = (evidence) => {
-    console.log("Печать штрихкода вещественного доказательства:");
-    console.log("Название ВД:", evidence.name);
-    console.log("Штрихкод ВД:", evidence.barcode);
-
     if (evidence.barcode) {
       handlePrintBarcode(evidence.barcode);
     } else {
@@ -364,6 +401,9 @@ const CaseDetailPage = () => {
 
   // Функция для изменения статуса вещественного доказательства
   const handleEvidenceStatusChange = (evidenceId, newStatus) => {
+    if (isStatusUpdating) return; // Предотвращаем повторные запросы
+    setIsStatusUpdating(true);
+
     axios
       .patch(`/api/material-evidences/${evidenceId}/`, { status: newStatus })
       .then((response) => {
@@ -372,15 +412,7 @@ const CaseDetailPage = () => {
           prevGroups.map((group) => ({
             ...group,
             material_evidences: group.material_evidences.map((evidence) =>
-              evidence.id === evidenceId
-                ? {
-                    ...evidence,
-                    status: newStatus,
-                    status_display: evidenceStatuses.find(
-                      (status) => status.value === newStatus
-                    )?.label,
-                  }
-                : evidence
+              evidence.id === evidenceId ? response.data : evidence
             ),
           }))
         );
@@ -400,7 +432,57 @@ const CaseDetailPage = () => {
           message: "Ошибка при обновлении статуса вещественного доказательства.",
           severity: "error",
         });
+      })
+      .finally(() => {
+        setIsStatusUpdating(false);
       });
+  };
+
+  // Функции для форматирования и отображения данных
+
+  // Форматирование даты в "DD/MM/YYYY HH:MM:SS"
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    const day = String(date.getDate()).padStart(2,'0');
+    const month = String(date.getMonth() + 1).padStart(2,'0');
+    const year = date.getFullYear();
+    const hours = String(date.getHours()).padStart(2,'0');
+    const minutes = String(date.getMinutes()).padStart(2,'0');
+    const seconds = String(date.getSeconds()).padStart(2,'0');
+    return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
+  };
+
+  // Получение сообщения действия
+  const getActionMessage = (log) => {
+    if (log.class_name === "Case" && log.action === "create") {
+      return "Создание дела";
+    } else if (log.class_name === "Case" && log.action === "update") {
+      return "Изменение данных дела";
+    } else if (log.class_name === "MaterialEvidence" && log.action === "create") {
+      return "Добавлено вещественное доказательство";
+    } else if (log.class_name === "MaterialEvidence" && log.action === "update") {
+      return "Изменение статуса вещественного доказательства";
+    } else {
+      // Другие случаи
+      return `${log.class_name_display} - ${log.action}`;
+    }
+  };
+
+  // Получение отображаемого статуса
+  const getStatusLabel = (value) => {
+    const status = evidenceStatuses.find((status) => status.value === value);
+    return status ? status.label : value;
+  };
+
+  // Отображаемые названия полей
+  const fieldLabels = {
+    name: "Название",
+    description: "Описание",
+    status: "Статус",
+    updated: "Обновлено",
+    created: "Создано",
+    case: "Дело",
+    group: "Группа",
   };
 
   if (!caseItem) {
@@ -410,21 +492,6 @@ const CaseDetailPage = () => {
       </Container>
     );
   }
-
-  // Проверяем, является ли текущий пользователь создателем дела
-  const isCreator = user && user.id === caseItem.creator;
-
-  // Проверяем права просмотра
-  const canView =
-    isCreator ||
-    user.role === "DEPARTMENT_HEAD" ||
-    user.role === "REGION_HEAD";
-
-  // Определяем, может ли пользователь редактировать дело
-  const canEdit = isCreator && user.role !== "REGION_HEAD";
-
-  // Определяем, может ли пользователь добавлять группы
-  const canAddGroup = isCreator && user.role !== "REGION_HEAD";
 
   if (!canView) {
     return (
@@ -479,8 +546,9 @@ const CaseDetailPage = () => {
           onChange={handleTabChange}
           sx={{ marginBottom: 2 }}
         >
-          <Tab label="Информация" />
-          <Tab label="Вещдоки" />
+          <Tab label="Информация" value={0} />
+          <Tab label="Вещдоки" value={1} />
+          {canViewHistory && <Tab label="История изменений" value={2} />}
         </Tabs>
 
         {/* Вкладка "Информация" */}
@@ -598,16 +666,19 @@ const CaseDetailPage = () => {
                                 <TableCell>{evidence.name}</TableCell>
                                 <TableCell>{evidence.description}</TableCell>
                                 <TableCell>
-                                  {isCreator ? (
+                                  {canEdit ? (
                                     <FormControl fullWidth variant="standard">
                                       <Select
                                         value={evidence.status}
-                                        onChange={(event) =>
-                                          handleEvidenceStatusChange(
-                                            evidence.id,
-                                            event.target.value
-                                          )
-                                        }
+                                        onChange={(event) => {
+                                          const selectedStatus = event.target.value;
+                                          if (evidence.status !== selectedStatus) {
+                                            handleEvidenceStatusChange(
+                                              evidence.id,
+                                              selectedStatus
+                                            );
+                                          }
+                                        }}
                                       >
                                         {evidenceStatuses.map((status) => (
                                           <MenuItem
@@ -708,7 +779,6 @@ const CaseDetailPage = () => {
                   fullWidth
                   multiline
                   rows={4}
-                  required
                 />
               </DialogContent>
               <DialogActions>
@@ -723,6 +793,118 @@ const CaseDetailPage = () => {
               </DialogActions>
             </Dialog>
           </Box>
+        )}
+
+        {/* Вкладка "История изменений" */}
+        {canViewHistory && tabValue === 2 && (
+          <Paper elevation={3} sx={{ padding: 2 }}>
+            <Typography variant="h6" gutterBottom>
+              История изменений
+            </Typography>
+            <TableContainer component={Paper}>
+              <Table aria-label="Таблица истории изменений">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Дата и время</TableCell>
+                    <TableCell>Пользователь</TableCell>
+                    <TableCell>Действие</TableCell>
+                    <TableCell>Изменения</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {changeLogs.map((log) => (
+                    <TableRow key={log.id}>
+                      <TableCell>{formatDate(log.created)}</TableCell>
+                      <TableCell>
+                        {log.user ? log.user.full_name : "Система"}
+                      </TableCell>
+                      <TableCell>{getActionMessage(log)}</TableCell>
+                      <TableCell>
+                        {(() => {
+                          if (log.data && log.data.trim() !== "") {
+                            try {
+                              const data = JSON.parse(log.data);
+                              if (log.action === "update") {
+                                const displayFields = [
+                                  "name",
+                                  "description",
+                                  "status",
+                                ];
+                                return Object.entries(data).map(
+                                  ([field, values]) => {
+                                    if (displayFields.includes(field)) {
+                                      return (
+                                        <div key={field}>
+                                          <strong>
+                                            {fieldLabels[field] || field}
+                                          </strong>
+                                          :{" "}
+                                          {field === "status"
+                                            ? getStatusLabel(values.old)
+                                            : values.old}{" "}
+                                          →{" "}
+                                          {field === "status"
+                                            ? getStatusLabel(values.new)
+                                            : values.new}
+                                        </div>
+                                      );
+                                    } else {
+                                      return null;
+                                    }
+                                  }
+                                );
+                              } else if (log.action === "create") {
+                                const displayFields = [
+                                  "name",
+                                  "description",
+                                  "status",
+                                ];
+                                return (
+                                  <div>
+                                    {Object.entries(data).map(
+                                      ([field, value]) => {
+                                        if (displayFields.includes(field)) {
+                                          return (
+                                            <div key={field}>
+                                              <strong>
+                                                {fieldLabels[field] || field}
+                                              </strong>
+                                              :{" "}
+                                              {field === "status"
+                                                ? getStatusLabel(value)
+                                                : value}
+                                            </div>
+                                          );
+                                        } else {
+                                          return null;
+                                        }
+                                      }
+                                    )}
+                                  </div>
+                                );
+                              } else if (log.action === "delete") {
+                                return <div>Объект был удален.</div>;
+                              } else {
+                                return "Нет данных об изменениях.";
+                              }
+                            } catch (error) {
+                              console.error(
+                                "Ошибка парсинга данных лога:",
+                                error
+                              );
+                              return "Нет данных об изменениях.";
+                            }
+                          } else {
+                            return "Нет данных об изменениях.";
+                          }
+                        })()}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Paper>
         )}
       </Container>
 
@@ -755,11 +937,7 @@ const CaseDetailPage = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenBarcodeDialog(false)}>Закрыть</Button>
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={() => handlePrint()}
-          >
+          <Button variant="contained" color="primary" onClick={handlePrint}>
             Печать
           </Button>
         </DialogActions>
