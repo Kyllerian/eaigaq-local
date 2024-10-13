@@ -3,6 +3,7 @@
 from django.contrib.auth import authenticate, login, logout
 from django.http import JsonResponse
 from django.views.decorators.csrf import ensure_csrf_cookie
+from django.db.models import Q
 
 from .permissions import IsCreator, IsRegionHead, IsDepartmentHead
 
@@ -12,6 +13,8 @@ from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.filters import SearchFilter
+
 
 from .models import (
     User, Department, Case, MaterialEvidence, MaterialEvidenceEvent,
@@ -107,6 +110,8 @@ class DepartmentViewSet(viewsets.ModelViewSet):
 class CaseViewSet(viewsets.ModelViewSet):
     queryset = Case.objects.all()
     serializer_class = CaseSerializer
+    filter_backends = [SearchFilter]
+    search_fields = ['name', 'creator__username']
 
     def get_permissions(self):
         if self.action in ['update', 'partial_update', 'destroy']:
@@ -117,19 +122,71 @@ class CaseViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
+
+        # Получаем параметры поиска
+        search_query = self.request.query_params.get('search', '').strip()
+        department_id = self.request.query_params.get('department')
+
+        # Инициализируем базовый фильтр
+        base_q_filter = Q()
+
+        if department_id:
+            base_q_filter &= Q(department_id=department_id)
+
+        # Инициализируем объект Q для поиска
+        q_objects = Q()
+
+        # Инициализируем переменные для хранения case_ids
+        case_ids_from_evidences = []
+        case_ids_from_groups = []
+
+        if search_query:
+            # Проверяем, является ли поисковый запрос штрихкодом
+            if search_query.isdigit() and len(search_query) == 13:
+                # Ищем вещественные доказательства с данным штрихкодом
+                material_evidences = MaterialEvidence.objects.filter(barcode=search_query)
+
+                # Получаем ID дел, связанных с найденными вещественными доказательствами
+                case_ids_from_evidences = material_evidences.values_list('case_id', flat=True)
+
+                # Если есть совпадения, добавляем их в фильтр
+                if case_ids_from_evidences:
+                    q_objects |= Q(id__in=case_ids_from_evidences)
+
+                # Ищем группы вещественных доказательств с данным штрихкодом
+                evidence_groups = EvidenceGroup.objects.filter(barcode=search_query)
+                case_ids_from_groups = evidence_groups.values_list('case_id', flat=True)
+
+                if case_ids_from_groups:
+                    q_objects |= Q(id__in=case_ids_from_groups)
+            else:
+                # Поиск по названию дела и имени создателя
+                q_objects |= Q(name__icontains=search_query) | Q(creator__username__icontains=search_query)
+
+        # Применяем фильтр доступа на основе роли пользователя
         if user.role == 'REGION_HEAD':
-            # Главный по региону видит все дела в своем регионе
-            return Case.objects.filter(department__region=user.region).select_related('creator', 'investigator', 'department')
+            base_q_filter &= Q(department__region=user.region)
         elif user.role == 'DEPARTMENT_HEAD':
-            # Главный по отделению видит все дела своего отделения
-            return Case.objects.filter(department=user.department).select_related('creator', 'investigator', 'department')
+            base_q_filter &= Q(department=user.department)
         else:
-            # Обычный пользователь видит только свои созданные дела
-            return Case.objects.filter(creator=user).select_related('creator', 'investigator', 'department')
+            # Обычный пользователь может видеть дела, где он является создателем, следователем или связанные с найденными case_ids
+            base_q_filter &= Q(creator=user) | Q(investigator=user)
+
+            if search_query and (case_ids_from_evidences or case_ids_from_groups):
+                case_ids = set(case_ids_from_evidences) | set(case_ids_from_groups)
+                base_q_filter |= Q(id__in=case_ids)
+
+        # Применяем фильтры к queryset
+        queryset = Case.objects.filter(base_q_filter & q_objects).distinct()
+
+        return queryset.select_related('creator', 'investigator', 'department')
 
     def perform_create(self, serializer):
         user = self.request.user
         serializer.save(creator=user, investigator=user, department=user.department)
+
+
+
 
 class MaterialEvidenceViewSet(viewsets.ModelViewSet):
     queryset = MaterialEvidence.objects.all()

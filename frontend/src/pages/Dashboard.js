@@ -1,6 +1,6 @@
 // src/pages/Dashboard.js
 
-import React, { useEffect, useState, useContext, useCallback } from 'react';
+import React, { useEffect, useState, useContext } from 'react';
 import axios from '../axiosConfig';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -46,7 +46,6 @@ const Dashboard = () => {
   const { user, logout } = useContext(AuthContext);
   const theme = useTheme();
   const [cases, setCases] = useState([]);
-  const [filteredCases, setFilteredCases] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDepartment, setSelectedDepartment] = useState('');
   const [employees, setEmployees] = useState([]);
@@ -79,22 +78,35 @@ const Dashboard = () => {
   useEffect(() => {
     if (!user) return;
 
-    // Загрузка дел
-    const casesUrl = '/api/cases/';
-    axios
-      .get(casesUrl)
-      .then((response) => {
-        console.log('Полученные дела:', response.data);
-        setCases(response.data);
-        setFilteredCases(response.data);
-      })
-      .catch((error) => {
-        if (error.response && error.response.status === 401) {
-          navigate('/login');
-        } else {
-          setError('Ошибка при загрузке дел.');
-        }
-      });
+    // Функция для загрузки дел с учетом параметров поиска и фильтрации
+    const fetchCases = () => {
+      let casesUrl = '/api/cases/';
+      const params = {};
+
+      if (searchQuery) {
+        params.search = searchQuery;
+      }
+
+      if (selectedDepartment) {
+        params.department = selectedDepartment;
+      }
+
+      axios
+        .get(casesUrl, { params })
+        .then((response) => {
+          console.log('Полученные дела:', response.data);
+          setCases(response.data);
+        })
+        .catch((error) => {
+          if (error.response && error.response.status === 401) {
+            navigate('/login');
+          } else {
+            setError('Ошибка при загрузке дел.');
+          }
+        });
+    };
+
+    fetchCases();
 
     // Загрузка сотрудников
     if (user.role === 'DEPARTMENT_HEAD') {
@@ -126,40 +138,7 @@ const Dashboard = () => {
           setError('Ошибка при загрузке отделений.');
         });
     }
-  }, [navigate, user]);
-
-  // Фильтрация дел
-  const filterCases = useCallback(
-    (searchValue, departmentValue) => {
-      let filtered = [...cases];
-
-      if (departmentValue) {
-        filtered = filtered.filter((caseItem) => {
-          if (caseItem.department && caseItem.department.id) {
-            return caseItem.department.id === parseInt(departmentValue);
-          }
-          return false;
-        });
-      }
-
-      if (searchValue) {
-        const lowercasedValue = searchValue.toLowerCase();
-        filtered = filtered.filter(
-          (caseItem) =>
-            caseItem.name.toLowerCase().includes(lowercasedValue) ||
-            (caseItem.creator_name &&
-              caseItem.creator_name.toLowerCase().includes(lowercasedValue))
-        );
-      }
-
-      setFilteredCases(filtered);
-    },
-    [cases]
-  );
-
-  useEffect(() => {
-    filterCases(searchQuery, selectedDepartment);
-  }, [searchQuery, selectedDepartment, cases, filterCases]);
+  }, [navigate, user, searchQuery, selectedDepartment]);
 
   const handleLogout = async () => {
     await logout();
@@ -196,7 +175,6 @@ const Dashboard = () => {
       .then((response) => {
         const updatedCases = [...cases, response.data];
         setCases(updatedCases);
-        setFilteredCases(updatedCases);
         handleCloseCaseDialog();
         setSnackbar({
           open: true,
@@ -359,11 +337,6 @@ const Dashboard = () => {
     setSelectedDepartment(value);
   };
 
-  // Обработка клика на кнопку "Поиск"
-  const handleSearch = () => {
-    filterCases(searchQuery, selectedDepartment);
-  };
-
   // Обработка закрытия Snackbar
   const handleSnackbarClose = () => {
     setSnackbar({ ...snackbar, open: false });
@@ -427,28 +400,26 @@ const Dashboard = () => {
               <Box
                 sx={{
                   display: 'flex',
-                  alignItems: 'center', // Выравниваем по центру по вертикали
+                  alignItems: 'center',
                   mb: theme.spacing(2),
                   gap: theme.spacing(2),
                 }}
               >
                 <TextField
-                  label="Поиск по названию или имени создателя"
+                  label="Поиск по названию, имени создателя или штрихкоду ВД"
                   variant="outlined"
                   value={searchQuery}
                   onChange={handleSearchChange}
                   sx={{ flexGrow: 1 }}
-                  size="small" // Уменьшаем высоту на ~10%
+                  size="small"
                 />
                 {user.role === 'REGION_HEAD' && (
                   <FormControl
                     sx={{ minWidth: 200 }}
                     variant="outlined"
-                    size="small" // Уменьшаем высоту на ~10%
+                    size="small"
                   >
-                    <InputLabel id="department-filter-label">
-                      Отделение
-                    </InputLabel>
+                    <InputLabel id="department-filter-label">Отделение</InputLabel>
                     <Select
                       labelId="department-filter-label"
                       value={selectedDepartment}
@@ -466,15 +437,7 @@ const Dashboard = () => {
                     </Select>
                   </FormControl>
                 )}
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={handleSearch}
-                  sx={{ whiteSpace: 'nowrap', minWidth: 100 }}
-                  size="small" // Уменьшаем высоту на ~10%
-                >
-                  Поиск
-                </Button>
+                {/* Удаляем кнопку "Поиск", так как поиск происходит автоматически */}
               </Box>
               <Box
                 sx={{
@@ -564,7 +527,7 @@ const Dashboard = () => {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {filteredCases.map((caseItem) => (
+                    {cases.map((caseItem) => (
                       <TableRow
                         key={caseItem.id}
                         hover
@@ -832,7 +795,7 @@ const Dashboard = () => {
                         >
                           <MenuItem value="USER">Обычный пользователь</MenuItem>
                           <MenuItem value="DEPARTMENT_HEAD">
-                            Глава отделения
+                            Главный по отделению
                           </MenuItem>
                         </Select>
                       </FormControl>
