@@ -87,7 +87,7 @@ class MaterialEvidenceSerializer(serializers.ModelSerializer):
         queryset=Case.objects.all(),
         source='case',
         write_only=True,
-        required=True
+        required=False  # Обновлено
     )
     created_by = UserSerializer(read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
@@ -100,6 +100,10 @@ class MaterialEvidenceSerializer(serializers.ModelSerializer):
     )
     group_name = serializers.CharField(source='group.name', read_only=True)
 
+    # Добавляем required=False для полей
+    name = serializers.CharField(required=False)
+    description = serializers.CharField(required=False)
+
     class Meta:
         model = MaterialEvidence
         fields = [
@@ -108,6 +112,7 @@ class MaterialEvidenceSerializer(serializers.ModelSerializer):
             'group_id', 'group_name',
         ]
         read_only_fields = ['created_by', 'created', 'updated', 'barcode']
+
 
     def create(self, validated_data):
         validated_data['created_by'] = self.context['request'].user

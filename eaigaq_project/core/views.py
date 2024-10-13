@@ -160,6 +160,33 @@ class MaterialEvidenceViewSet(viewsets.ModelViewSet):
             self.permission_denied(self.request, message='Вы не являетесь создателем этого дела.')
         serializer.save(created_by=user)
 
+    def update(self, request, *args, **kwargs):
+        user = request.user
+        instance = self.get_object()
+        case = instance.case
+
+        # Проверяем, является ли пользователь создателем дела
+        if case.creator != user:
+            raise PermissionDenied('Вы не являетесь создателем этого дела и не можете изменять вещественные доказательства.')
+
+        # Проверяем, что обновляется только поле 'status'
+        allowed_fields = {'status'}
+        if not set(request.data.keys()).issubset(allowed_fields):
+            raise PermissionDenied('Вы можете изменять только статус вещественного доказательства.')
+
+        # Проверяем, является ли запрос частичным обновлением
+        partial = kwargs.pop('partial', False)
+
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+
+        return Response(serializer.data)
+
+    def partial_update(self, request, *args, **kwargs):
+        kwargs['partial'] = True
+        return self.update(request, *args, **kwargs)
+
 class MaterialEvidenceEventViewSet(viewsets.ModelViewSet):
     queryset = MaterialEvidenceEvent.objects.all()
     serializer_class = MaterialEvidenceEventSerializer

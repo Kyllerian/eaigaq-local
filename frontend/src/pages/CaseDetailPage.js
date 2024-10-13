@@ -32,6 +32,9 @@ import {
   AccordionDetails,
   Grid,
   Tooltip,
+  Select,
+  MenuItem,
+  FormControl,
 } from "@mui/material";
 import {
   Add as AddIcon,
@@ -70,37 +73,44 @@ const CaseDetailPage = () => {
   const [barcodeValueToDisplay, setBarcodeValueToDisplay] = useState("");
   const componentRef = useRef(); // Реф для печати штрихкода
 
+  // Массив возможных статусов вещественного доказательства
+  const evidenceStatuses = [
+    { value: "IN_STORAGE", label: "На хранении" },
+    { value: "DESTROYED", label: "Уничтожен" },
+    { value: "TAKEN", label: "Взят" },
+    { value: "ON_EXAMINATION", label: "На экспертизе" },
+    { value: "ARCHIVED", label: "В архиве" },
+  ];
+
   // Функция для печати только штрихкода
   const handlePrint = useReactToPrint({
-  contentRef: componentRef,
-  documentTitle: 'Штрихкод',
-  pageStyle: `
-    @page {
-      size: 58mm 40mm;
-      margin: 0;
-    }
-    @media print {
-      body {
+    contentRef: componentRef,
+    documentTitle: "Штрихкод",
+    pageStyle: `
+      @page {
+        size: 58mm 40mm;
         margin: 0;
       }
-      #barcode-container {
-        width: 58mm;
-        height: 40mm;
-        padding: 6.36mm;
-        box-sizing: border-box;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        
+      @media print {
+        body {
+          margin: 0;
+        }
+        #barcode-container {
+          width: 58mm;
+          height: 40mm;
+          padding: 6.36mm;
+          box-sizing: border-box;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+        }
+        #barcode svg {
+          width: auto;
+          height: 70%;
+        }
       }
-      #barcode svg {
-        width: auto;
-        height: 70%;
-      }
-    }
-  `,
-});
-
+    `,
+  });
 
   useEffect(() => {
     // Получаем детали дела
@@ -212,7 +222,7 @@ const CaseDetailPage = () => {
     event.preventDefault();
 
     axios
-      .post('/api/evidence-groups/', {
+      .post("/api/evidence-groups/", {
         name: newGroup.name,
         case: id,
       })
@@ -350,6 +360,47 @@ const CaseDetailPage = () => {
         severity: "error",
       });
     }
+  };
+
+  // Функция для изменения статуса вещественного доказательства
+  const handleEvidenceStatusChange = (evidenceId, newStatus) => {
+    axios
+      .patch(`/api/material-evidences/${evidenceId}/`, { status: newStatus })
+      .then((response) => {
+        // Обновляем состояние групп с обновленным статусом вещественного доказательства
+        setGroups((prevGroups) =>
+          prevGroups.map((group) => ({
+            ...group,
+            material_evidences: group.material_evidences.map((evidence) =>
+              evidence.id === evidenceId
+                ? {
+                    ...evidence,
+                    status: newStatus,
+                    status_display: evidenceStatuses.find(
+                      (status) => status.value === newStatus
+                    )?.label,
+                  }
+                : evidence
+            ),
+          }))
+        );
+        setSnackbar({
+          open: true,
+          message: "Статус вещественного доказательства обновлен.",
+          severity: "success",
+        });
+      })
+      .catch((error) => {
+        console.error(
+          "Ошибка при обновлении статуса вещественного доказательства:",
+          error.response?.data || error
+        );
+        setSnackbar({
+          open: true,
+          message: "Ошибка при обновлении статуса вещественного доказательства.",
+          severity: "error",
+        });
+      });
   };
 
   if (!caseItem) {
@@ -547,7 +598,35 @@ const CaseDetailPage = () => {
                                 <TableCell>{evidence.name}</TableCell>
                                 <TableCell>{evidence.description}</TableCell>
                                 <TableCell>
-                                  {evidence.status_display || evidence.status}
+                                  {isCreator ? (
+                                    <FormControl fullWidth variant="standard">
+                                      <Select
+                                        value={evidence.status}
+                                        onChange={(event) =>
+                                          handleEvidenceStatusChange(
+                                            evidence.id,
+                                            event.target.value
+                                          )
+                                        }
+                                      >
+                                        {evidenceStatuses.map((status) => (
+                                          <MenuItem
+                                            key={status.value}
+                                            value={status.value}
+                                          >
+                                            {status.label}
+                                          </MenuItem>
+                                        ))}
+                                      </Select>
+                                    </FormControl>
+                                  ) : (
+                                    evidence.status_display ||
+                                    evidenceStatuses.find(
+                                      (status) =>
+                                        status.value === evidence.status
+                                    )?.label ||
+                                    evidence.status
+                                  )}
                                 </TableCell>
                                 <TableCell>
                                   <IconButton
@@ -662,21 +741,25 @@ const CaseDetailPage = () => {
           }}
         >
           {barcodeValueToDisplay && (
-              <div id="barcode-container" ref={componentRef}>
-                <div id="barcode">
-                  <Barcode
-                      value={barcodeValueToDisplay}
-                      format="EAN13"
-                      displayValue={false}
-                      margin={0}
-                  />
-                </div>
+            <div id="barcode-container" ref={componentRef}>
+              <div id="barcode">
+                <Barcode
+                  value={barcodeValueToDisplay}
+                  format="EAN13"
+                  displayValue={false}
+                  margin={0}
+                />
               </div>
+            </div>
           )}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenBarcodeDialog(false)}>Закрыть</Button>
-          <Button variant="contained" color="primary" onClick={() => handlePrint()}>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={() => handlePrint()}
+          >
             Печать
           </Button>
         </DialogActions>
