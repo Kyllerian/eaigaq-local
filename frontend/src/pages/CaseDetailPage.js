@@ -83,20 +83,24 @@ const CaseDetailPage = () => {
       body {
         margin: 0;
       }
-      div#barcode-container {
+      #barcode-container {
         width: 58mm;
         height: 40mm;
+        padding: 6.36mm;
+        box-sizing: border-box;
         display: flex;
         justify-content: center;
         align-items: center;
-        transform: rotate(-90deg);
-        transform-origin: center;
-        padding: 5mm; /* Добавляем симметричные внутренние отступы */
-        box-sizing: border-box; /* Учитываем отступы в размере элемента */
+        
+      }
+      #barcode svg {
+        width: auto;
+        height: 70%;
       }
     }
   `,
 });
+
 
   useEffect(() => {
     // Получаем детали дела
@@ -654,20 +658,20 @@ const CaseDetailPage = () => {
         <DialogContent
           sx={{
             textAlign: "center",
-            padding: "24px",
+            padding: "12px",
           }}
         >
           {barcodeValueToDisplay && (
-            <div ref={componentRef}>
-              <Barcode
-                value={barcodeValueToDisplay}
-                format="EAN13"
-                width={2}
-                height={100}
-                displayValue={false}
-                margin={0}
-              />
-            </div>
+              <div id="barcode-container" ref={componentRef}>
+                <div id="barcode">
+                  <Barcode
+                      value={barcodeValueToDisplay}
+                      format="EAN13"
+                      displayValue={false}
+                      margin={0}
+                  />
+                </div>
+              </div>
           )}
         </DialogContent>
         <DialogActions>
