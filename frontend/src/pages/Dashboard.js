@@ -1,6 +1,6 @@
 // src/pages/Dashboard.js
 
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useEffect, useState, useContext, useRef } from 'react';
 import axios from '../axiosConfig';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -74,6 +74,11 @@ const Dashboard = () => {
     severity: 'success',
   });
   const navigate = useNavigate();
+
+  // Новые состояния и рефы для сканирования штрихкода
+  const [openBarcodeDialog, setOpenBarcodeDialog] = useState(false);
+  const [scannedBarcode, setScannedBarcode] = useState('');
+  const barcodeInputRef = useRef(null);
 
   useEffect(() => {
     if (!user) return;
@@ -252,6 +257,26 @@ const Dashboard = () => {
         return;
       }
       employeeData.department_id = employeeData.department;
+
+      // Проверяем, что выбранное отделение принадлежит региону пользователя
+      const selectedDepartment = departments.find(
+        (dept) => dept.id === employeeData.department_id
+      );
+      if (!selectedDepartment || selectedDepartment.region !== user.region) {
+        setSnackbar({
+          open: true,
+          message: 'Выбранное отделение не принадлежит вашему региону.',
+          severity: 'error',
+        });
+        return;
+      }
+    } else {
+      setSnackbar({
+        open: true,
+        message: 'У вас нет прав для создания пользователей.',
+        severity: 'error',
+      });
+      return;
     }
 
     delete employeeData.department;
@@ -342,6 +367,60 @@ const Dashboard = () => {
     setSnackbar({ ...snackbar, open: false });
   };
 
+  // Обработчики для сканирования штрихкода
+  const handleOpenBarcodeDialog = () => {
+    setOpenBarcodeDialog(true);
+    setScannedBarcode('');
+    setTimeout(() => {
+      if (barcodeInputRef.current) {
+        barcodeInputRef.current.focus();
+      }
+    }, 100);
+  };
+
+  const handleCloseBarcodeDialog = () => {
+    setOpenBarcodeDialog(false);
+  };
+
+  const handleBarcodeInputChange = (event) => {
+    setScannedBarcode(event.target.value);
+  };
+
+  const handleBarcodeSubmit = async (event) => {
+    event.preventDefault();
+    if (!scannedBarcode) {
+      setSnackbar({
+        open: true,
+        message: 'Пожалуйста, отсканируйте штрихкод.',
+        severity: 'error',
+      });
+      return;
+    }
+
+    try {
+      const response = await axios.get('/api/cases/get_by_barcode/', {
+        params: { barcode: scannedBarcode },
+      });
+      const caseData = response.data;
+      // Перенаправляем на страницу деталей дела
+      navigate(`/cases/${caseData.id}/`);
+    } catch (error) {
+      console.error(
+        'Ошибка при поиске дела по штрихкоду:',
+        error.response?.data || error
+      );
+      setSnackbar({
+        open: true,
+        message:
+          error.response?.data?.detail ||
+          'Ошибка при поиске дела по штрихкоду.',
+        severity: 'error',
+      });
+    } finally {
+      handleCloseBarcodeDialog();
+    }
+  };
+
   return (
     <Box>
       {/* Верхнее меню */}
@@ -406,7 +485,7 @@ const Dashboard = () => {
                 }}
               >
                 <TextField
-                  label="Поиск по названию, имени создателя или штрихкоду ВД"
+                  label="Поиск по названию или имени создателя"
                   variant="outlined"
                   value={searchQuery}
                   onChange={handleSearchChange}
@@ -419,7 +498,9 @@ const Dashboard = () => {
                     variant="outlined"
                     size="small"
                   >
-                    <InputLabel id="department-filter-label">Отделение</InputLabel>
+                    <InputLabel id="department-filter-label">
+                      Отделение
+                    </InputLabel>
                     <Select
                       labelId="department-filter-label"
                       value={selectedDepartment}
@@ -437,7 +518,14 @@ const Dashboard = () => {
                     </Select>
                   </FormControl>
                 )}
-                {/* Удаляем кнопку "Поиск", так как поиск происходит автоматически */}
+                {/* Добавляем кнопку "Сканировать штрихкод" */}
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={handleOpenBarcodeDialog}
+                >
+                  Сканировать штрихкод
+                </Button>
               </Box>
               <Box
                 sx={{
@@ -621,12 +709,47 @@ const Dashboard = () => {
                 </DialogActions>
               </Dialog>
             )}
+
+            {/* Диалоговое окно для сканирования штрихкода */}
+            <Dialog
+              open={openBarcodeDialog}
+              onClose={handleCloseBarcodeDialog}
+            >
+              <DialogTitle>Сканирование штрихкода</DialogTitle>
+              <DialogContent>
+                <TextField
+                  autoFocus
+                  inputRef={barcodeInputRef}
+                  margin="dense"
+                  label="Штрихкод"
+                  value={scannedBarcode}
+                  onChange={handleBarcodeInputChange}
+                  fullWidth
+                  onKeyPress={(event) => {
+                    if (event.key === 'Enter') {
+                      handleBarcodeSubmit(event);
+                    }
+                  }}
+                />
+              </DialogContent>
+              <DialogActions>
+                <Button onClick={handleCloseBarcodeDialog}>Отмена</Button>
+                <Button
+                  onClick={handleBarcodeSubmit}
+                  variant="contained"
+                  color="primary"
+                >
+                  Найти
+                </Button>
+              </DialogActions>
+            </Dialog>
           </>
         )}
 
         {/* Вкладка "Сотрудники" */}
         {tabValue === 1 &&
-          (user.role === 'DEPARTMENT_HEAD' || user.role === 'REGION_HEAD') && (
+          (user.role === 'DEPARTMENT_HEAD' ||
+            user.role === 'REGION_HEAD') && (
             <>
               {/* Кнопки над таблицей */}
               <Box
@@ -650,7 +773,9 @@ const Dashboard = () => {
                 {selectedEmployee && (
                   <Button
                     variant="contained"
-                    color={selectedEmployee.is_active ? 'secondary' : 'success'}
+                    color={
+                      selectedEmployee.is_active ? 'secondary' : 'success'
+                    }
                     onClick={handleToggleActive}
                     sx={{ whiteSpace: 'nowrap' }}
                   >
@@ -667,9 +792,13 @@ const Dashboard = () => {
                   <Table aria-label="Таблица сотрудников">
                     <TableHead>
                       <TableRow>
-                        <TableCell sx={{ fontWeight: 'bold' }}>Фамилия</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold' }}>
+                          Фамилия
+                        </TableCell>
                         <TableCell sx={{ fontWeight: 'bold' }}>Имя</TableCell>
-                        <TableCell sx={{ fontWeight: 'bold' }}>Звание</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold' }}>
+                          Звание
+                        </TableCell>
                         <TableCell sx={{ fontWeight: 'bold' }}>Роль</TableCell>
                         <TableCell sx={{ fontWeight: 'bold' }}>
                           Электронная почта
@@ -677,7 +806,9 @@ const Dashboard = () => {
                         <TableCell sx={{ fontWeight: 'bold' }}>
                           Отделение
                         </TableCell>
-                        <TableCell sx={{ fontWeight: 'bold' }}>Статус</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold' }}>
+                          Статус
+                        </TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>

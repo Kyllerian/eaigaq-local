@@ -7,6 +7,7 @@ from django.utils.translation import gettext_lazy as _
 import uuid
 import random
 
+
 class Region(models.TextChoices):
     AKMOLA = 'AKMOLA', _('Акмолинская область')
     AKTOBE = 'AKTOBE', _('Актюбинская область')
@@ -83,6 +84,13 @@ class User(AbstractUser):
         # TODO: Реализовать проверку лица
         return False
 
+    # Добавляем метод save для автоматического установления региона
+    def save(self, *args, **kwargs):
+        if not self.region:
+            if self.department and self.department.region:
+                self.region = self.department.region
+        super(User, self).save(*args, **kwargs)
+
 
 class Case(models.Model):
     name = models.CharField(_('Название дела'), max_length=255)
@@ -116,8 +124,6 @@ class MaterialEvidenceStatus(models.TextChoices):
     ON_EXAMINATION = 'ON_EXAMINATION', _('На экспертизе')
     ARCHIVED = 'ARCHIVED', _('В архиве')
 
-
-# core/models.py
 
 class EvidenceGroup(models.Model):
     name = models.CharField(_('Название группы'), max_length=255)
@@ -156,7 +162,6 @@ class EvidenceGroup(models.Model):
 
     def __str__(self):
         return self.name
-
 
 
 class MaterialEvidence(models.Model):
@@ -212,6 +217,7 @@ class MaterialEvidence(models.Model):
     def __str__(self):
         return self.name
 
+
 class MaterialEvidenceEvent(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name=_('Пользователь'))
     material_evidence = models.ForeignKey(
@@ -226,7 +232,6 @@ class MaterialEvidenceEvent(models.Model):
 
     def __str__(self):
         return f"{self.action} - {self.user} - {self.created.strftime('%Y-%m-%d %H:%M:%S')}"
-
 
 
 class Session(models.Model):

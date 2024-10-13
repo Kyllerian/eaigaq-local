@@ -23,6 +23,7 @@ class UserSerializer(serializers.ModelSerializer):
     region_display = serializers.CharField(source='get_region_display', read_only=True)
     role_display = serializers.CharField(source='get_role_display', read_only=True)
     full_name = serializers.CharField(source='get_full_name', read_only=True)
+    region = serializers.CharField(read_only=True)  # Делаем поле 'region' доступным только для чтения
 
     class Meta:
         model = User
@@ -33,6 +34,7 @@ class UserSerializer(serializers.ModelSerializer):
             'role', 'role_display', 'is_active'
         ]
         extra_kwargs = {'password': {'write_only': True}}
+        read_only_fields = ['region', 'region_display', 'is_active']
 
     def create(self, validated_data):
         password = validated_data.pop('password', None)
@@ -87,7 +89,7 @@ class MaterialEvidenceSerializer(serializers.ModelSerializer):
         queryset=Case.objects.all(),
         source='case',
         write_only=True,
-        required=False  # Обновлено
+        required=False
     )
     created_by = UserSerializer(read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
@@ -100,7 +102,7 @@ class MaterialEvidenceSerializer(serializers.ModelSerializer):
     )
     group_name = serializers.CharField(source='group.name', read_only=True)
 
-    # Добавляем required=False для полей
+    # Добавляем required=False для полей 'name' и 'description'
     name = serializers.CharField(required=False)
     description = serializers.CharField(required=False)
 
@@ -112,7 +114,6 @@ class MaterialEvidenceSerializer(serializers.ModelSerializer):
             'group_id', 'group_name',
         ]
         read_only_fields = ['created_by', 'created', 'updated', 'barcode']
-
 
     def create(self, validated_data):
         validated_data['created_by'] = self.context['request'].user
@@ -160,8 +161,6 @@ class AuditEntrySerializer(serializers.ModelSerializer):
             'fields', 'data', 'created', 'user'
         ]
         read_only_fields = ['created', 'user']
-
-# core/serializers.py
 
 class EvidenceGroupSerializer(serializers.ModelSerializer):
     material_evidences = MaterialEvidenceSerializer(many=True, read_only=True)
