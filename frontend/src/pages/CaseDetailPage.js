@@ -71,7 +71,10 @@ const CaseDetailPage = () => {
   // Состояния для диалогового окна и значения штрихкода
   const [openBarcodeDialog, setOpenBarcodeDialog] = useState(false);
   const [barcodeValueToDisplay, setBarcodeValueToDisplay] = useState("");
-  const componentRef = useRef(); // Реф для печати штрихкода
+  const barcodeRef = useRef(); // Реф для печати штрихкода
+
+  // Реф для печати отчета
+  const reportRef = useRef();
 
   // Массив возможных статусов вещественного доказательства
   const evidenceStatuses = [
@@ -89,8 +92,8 @@ const CaseDetailPage = () => {
   const [isStatusUpdating, setIsStatusUpdating] = useState(false);
 
   // Функция для печати только штрихкода
-  const handlePrint = useReactToPrint({
-    contentRef: componentRef,
+  const handlePrintBarcode = useReactToPrint({
+    contentRef:barcodeRef,
     documentTitle: "Штрихкод",
     pageStyle: `
       @page {
@@ -113,6 +116,19 @@ const CaseDetailPage = () => {
         #barcode svg {
           width: auto;
           height: 70%;
+        }
+      }
+    `,
+  });
+
+  // Функция для печати отчета
+  const handlePrintReport = useReactToPrint({
+    contentRef:reportRef,
+    documentTitle: `Отчет по делу ${caseItem?.name}`,
+    pageStyle: `
+      @media print {
+        body {
+          -webkit-print-color-adjust: exact;
         }
       }
     `,
@@ -361,7 +377,7 @@ const CaseDetailPage = () => {
   };
 
   // Функции для отображения и печати штрихкодов
-  const handlePrintBarcode = (barcodeValue) => {
+  const handleOpenBarcodeDialog = (barcodeValue) => {
     if (!barcodeValue) {
       setSnackbar({
         open: true,
@@ -377,7 +393,7 @@ const CaseDetailPage = () => {
   const handlePrintGroupBarcode = (groupId) => {
     const group = groups.find((g) => g.id === groupId);
     if (group && group.barcode) {
-      handlePrintBarcode(group.barcode);
+      handleOpenBarcodeDialog(group.barcode);
     } else {
       setSnackbar({
         open: true,
@@ -389,7 +405,7 @@ const CaseDetailPage = () => {
 
   const handlePrintEvidenceBarcode = (evidence) => {
     if (evidence.barcode) {
-      handlePrintBarcode(evidence.barcode);
+      handleOpenBarcodeDialog(evidence.barcode);
     } else {
       setSnackbar({
         open: true,
@@ -519,6 +535,18 @@ const CaseDetailPage = () => {
           <Typography variant="h6" sx={{ flexGrow: 1 }}>
             Детали дела
           </Typography>
+          {/* Кнопка Экспорт */}
+          {canView && (
+            <Button
+              variant="contained"
+              color="inherit"
+              startIcon={<PrintIcon />}
+              onClick={handlePrintReport}
+              sx={{ mr: 2 }}
+            >
+              Экспорт
+            </Button>
+          )}
           {canEdit && (
             <Tooltip
               title={caseItem.active ? "Закрыть дело" : "Активировать дело"}
@@ -908,6 +936,168 @@ const CaseDetailPage = () => {
         )}
       </Container>
 
+      {/* Компонент для печати отчета */}
+      <div style={{ display: "none" }}>
+        <div ref={reportRef}>
+          <Container>
+            <Typography variant="h4" gutterBottom>
+              Отчет по делу: {caseItem.name}
+            </Typography>
+            <Typography variant="subtitle1" gutterBottom>
+              Описание: {caseItem.description}
+            </Typography>
+            <Typography variant="subtitle1" gutterBottom>
+              Создатель: {caseItem.creator_full_name || "Неизвестно"}
+            </Typography>
+            <Typography variant="h5" gutterBottom>
+              Вещественные доказательства
+            </Typography>
+            {groups.map((group) => (
+              <Box key={group.id} mb={2}>
+                <Typography variant="h6">{group.name}</Typography>
+                <TableContainer component={Paper}>
+                  <Table aria-label={`Таблица ВД группы ${group.name}`}>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Название</TableCell>
+                        <TableCell>Описание</TableCell>
+                        <TableCell>Статус</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {group.material_evidences &&
+                      group.material_evidences.length > 0 ? (
+                        group.material_evidences.map((evidence) => (
+                          <TableRow key={evidence.id}>
+                            <TableCell>{evidence.name}</TableCell>
+                            <TableCell>{evidence.description}</TableCell>
+                            <TableCell>
+                              {getStatusLabel(evidence.status)}
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={3} align="center">
+                            Нет вещественных доказательств.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </Box>
+            ))}
+            <Typography variant="h5" gutterBottom>
+              История изменений
+            </Typography>
+            <TableContainer component={Paper}>
+              <Table aria-label="Таблица истории изменений">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Дата и время</TableCell>
+                    <TableCell>Пользователь</TableCell>
+                    <TableCell>Действие</TableCell>
+                    <TableCell>Изменения</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {changeLogs.map((log) => (
+                    <TableRow key={log.id}>
+                      <TableCell>{formatDate(log.created)}</TableCell>
+                      <TableCell>
+                        {log.user ? log.user.full_name : "Система"}
+                      </TableCell>
+                      <TableCell>{getActionMessage(log)}</TableCell>
+                      <TableCell>
+                        {(() => {
+                          if (log.data && log.data.trim() !== "") {
+                            try {
+                              const data = JSON.parse(log.data);
+                              if (log.action === "update") {
+                                const displayFields = [
+                                  "name",
+                                  "description",
+                                  "status",
+                                ];
+                                return Object.entries(data).map(
+                                  ([field, values]) => {
+                                    if (displayFields.includes(field)) {
+                                      return (
+                                        <div key={field}>
+                                          <strong>
+                                            {fieldLabels[field] || field}
+                                          </strong>
+                                          :{" "}
+                                          {field === "status"
+                                            ? getStatusLabel(values.old)
+                                            : values.old}{" "}
+                                          →{" "}
+                                          {field === "status"
+                                            ? getStatusLabel(values.new)
+                                            : values.new}
+                                        </div>
+                                      );
+                                    } else {
+                                      return null;
+                                    }
+                                  }
+                                );
+                              } else if (log.action === "create") {
+                                const displayFields = [
+                                  "name",
+                                  "description",
+                                  "status",
+                                ];
+                                return (
+                                  <div>
+                                    {Object.entries(data).map(
+                                      ([field, value]) => {
+                                        if (displayFields.includes(field)) {
+                                          return (
+                                            <div key={field}>
+                                              <strong>
+                                                {fieldLabels[field] || field}
+                                              </strong>
+                                              :{" "}
+                                              {field === "status"
+                                                ? getStatusLabel(value)
+                                                : value}
+                                            </div>
+                                          );
+                                        } else {
+                                          return null;
+                                        }
+                                      }
+                                    )}
+                                  </div>
+                                );
+                              } else if (log.action === "delete") {
+                                return <div>Объект был удален.</div>;
+                              } else {
+                                return "Нет данных об изменениях.";
+                              }
+                            } catch (error) {
+                              console.error(
+                                "Ошибка парсинга данных лога:",
+                                error
+                              );
+                              return "Нет данных об изменениях.";
+                            }
+                          } else {
+                            return "Нет данных об изменениях.";
+                          }
+                        })()}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Container>
+        </div>
+      </div>
+
       {/* Диалоговое окно для отображения штрихкода */}
       <Dialog
         open={openBarcodeDialog}
@@ -923,7 +1113,7 @@ const CaseDetailPage = () => {
           }}
         >
           {barcodeValueToDisplay && (
-            <div id="barcode-container" ref={componentRef}>
+            <div id="barcode-container" ref={barcodeRef}>
               <div id="barcode">
                 <Barcode
                   value={barcodeValueToDisplay}
@@ -937,7 +1127,7 @@ const CaseDetailPage = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenBarcodeDialog(false)}>Закрыть</Button>
-          <Button variant="contained" color="primary" onClick={handlePrint}>
+          <Button variant="contained" color="primary" onClick={handlePrintBarcode}>
             Печать
           </Button>
         </DialogActions>
