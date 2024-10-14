@@ -34,7 +34,7 @@ class UserSerializer(serializers.ModelSerializer):
             'role', 'role_display', 'is_active'
         ]
         extra_kwargs = {'password': {'write_only': True}}
-        read_only_fields = ['region', 'region_display', 'is_active']
+        read_only_fields = ['region', 'region_display']
 
     def create(self, validated_data):
         password = validated_data.pop('password', None)
