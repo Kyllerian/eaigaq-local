@@ -96,7 +96,7 @@ const CaseDetailPage = () => {
 
   // Функция для печати только штрихкода
   const handlePrintBarcode = useReactToPrint({
-    contentRef:barcodeRef,
+    contentRef: barcodeRef,
     documentTitle: "Штрихкод",
     pageStyle: `
       @page {
@@ -126,7 +126,7 @@ const CaseDetailPage = () => {
 
   // Функция для печати отчета
   const handlePrintReport = useReactToPrint({
-    contentRef:reportRef,
+    contentRef: reportRef,
     documentTitle: `Отчет по делу ${caseItem?.name}`,
     pageStyle: `
       @media print {
@@ -139,7 +139,8 @@ const CaseDetailPage = () => {
 
   // Проверяем, является ли текущий пользователь создателем или следователем дела
   const isCreatorOrInvestigator =
-    user && (user.id === caseItem?.creator || user.id === caseItem?.investigator);
+    user &&
+    (user.id === caseItem?.creator || user.id === caseItem?.investigator);
 
   // Проверяем права просмотра
   const canView =
@@ -157,7 +158,8 @@ const CaseDetailPage = () => {
   const canViewHistory =
     (user.role === "DEPARTMENT_HEAD" ||
       user.role === "REGION_HEAD" ||
-      isCreatorOrInvestigator) && canView;
+      isCreatorOrInvestigator) &&
+    canView;
 
   useEffect(() => {
     // Получаем детали дела
@@ -479,10 +481,18 @@ const CaseDetailPage = () => {
       return "Создание дела";
     } else if (log.class_name === "Case" && log.action === "update") {
       return "Изменение данных дела";
-    } else if (log.class_name === "MaterialEvidence" && log.action === "create") {
-      return "Добавлено вещественное доказательство";
-    } else if (log.class_name === "MaterialEvidence" && log.action === "update") {
-      return "Изменение статуса вещественного доказательства";
+    } else if (
+      log.class_name === "MaterialEvidence" &&
+      log.action === "create"
+    ) {
+      return `Добавлено вещественное доказательство: ${log.object_name || ""}`;
+    } else if (
+      log.class_name === "MaterialEvidence" &&
+      log.action === "update"
+    ) {
+      return `Изменение статуса вещественного доказательства: ${
+        log.object_name || ""
+      }`;
     } else {
       // Другие случаи
       return `${log.class_name_display} - ${log.action}`;
@@ -700,13 +710,18 @@ const CaseDetailPage = () => {
                                 <TableCell>{evidence.description}</TableCell>
                                 <TableCell>
                                   {canEdit ? (
-                                    <FormControl fullWidth variant="standard">
+                                    <FormControl
+                                      fullWidth
+                                      variant="standard"
+                                    >
                                       <Select
                                         value={evidence.status}
                                         onChange={(event) => {
                                           const selectedStatus =
                                             event.target.value;
-                                          if (evidence.status !== selectedStatus) {
+                                          if (
+                                            evidence.status !== selectedStatus
+                                          ) {
                                             handleEvidenceStatusChange(
                                               evidence.id,
                                               selectedStatus
@@ -950,6 +965,7 @@ const CaseDetailPage = () => {
             padding: "20px",
             fontFamily: "Arial, sans-serif",
             color: "#000",
+            fontSize: "12px", // Уменьшили шрифт
           }}
         >
           {/* Header */}
@@ -959,7 +975,7 @@ const CaseDetailPage = () => {
               alt="Логотип"
               style={{ maxWidth: "100px", marginBottom: "10px" }}
             />
-            <Typography variant="h3" gutterBottom>
+            <Typography variant="h5" gutterBottom>
               Отчет по делу
             </Typography>
             <Typography variant="subtitle1">
@@ -979,23 +995,35 @@ const CaseDetailPage = () => {
               <strong>Следователь:</strong>{" "}
               {caseItem.investigator.full_name || "Неизвестно"}
             </Typography>
+            <Typography variant="body1">
+              <strong>Регион:</strong>{" "}
+              {caseItem.department.region_display || "Неизвестно"}
+            </Typography>
+            <Typography variant="body1">
+              <strong>Отделение:</strong>{" "}
+              {caseItem.department.name || "Неизвестно"}
+            </Typography>
           </div>
 
           {/* Вещественные доказательства */}
           <div style={{ marginBottom: "20px" }}>
-            <Typography variant="h5" gutterBottom>
+            <Typography variant="h6" gutterBottom>
               Вещественные доказательства
             </Typography>
             {groups.map((group) => (
               <Box key={group.id} mb={2}>
-                <Typography variant="h6">{group.name}</Typography>
+                <Typography variant="subtitle1">{group.name}</Typography>
                 <TableContainer
                   component={Paper}
                   style={{ boxShadow: "none" }}
                 >
                   <Table
                     aria-label={`Таблица ВД группы ${group.name}`}
-                    style={{ tableLayout: "fixed", width: "100%" }}
+                    style={{
+                      tableLayout: "fixed",
+                      width: "100%",
+                      fontSize: "12px",
+                    }}
                   >
                     <TableHead>
                       <TableRow>
@@ -1066,7 +1094,7 @@ const CaseDetailPage = () => {
                 marginBottom: "20px",
               }}
             >
-              <Typography variant="h5" gutterBottom>
+              <Typography variant="h6" gutterBottom>
                 История изменений
               </Typography>
               <TableContainer
@@ -1075,7 +1103,11 @@ const CaseDetailPage = () => {
               >
                 <Table
                   aria-label="Таблица истории изменений"
-                  style={{ tableLayout: "fixed", width: "100%" }}
+                  style={{
+                    tableLayout: "fixed",
+                    width: "100%",
+                    fontSize: "12px",
+                  }}
                 >
                   <TableHead>
                     <TableRow>
@@ -1256,7 +1288,11 @@ const CaseDetailPage = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenBarcodeDialog(false)}>Закрыть</Button>
-          <Button variant="contained" color="primary" onClick={handlePrintBarcode}>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handlePrintBarcode}
+          >
             Печать
           </Button>
         </DialogActions>

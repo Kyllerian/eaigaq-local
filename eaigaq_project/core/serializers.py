@@ -7,10 +7,14 @@ from .models import (
     Session, Camera, AuditEntry, EvidenceGroup
 )
 
+
 class DepartmentSerializer(serializers.ModelSerializer):
+    region_display = serializers.CharField(source='get_region_display', read_only=True)
+
     class Meta:
         model = Department
-        fields = ['id', 'name', 'region']
+        fields = ['id', 'name', 'region', 'region_display']
+
 
 class UserSerializer(serializers.ModelSerializer):
     department = DepartmentSerializer(read_only=True)
@@ -63,13 +67,14 @@ class CaseSerializer(serializers.ModelSerializer):
         required=False
     )
     department_name = serializers.CharField(source='department.name', read_only=True)
+    region_name = serializers.CharField(source='department.region_display', read_only=True)
 
     class Meta:
         model = Case
         fields = [
             'id', 'name', 'description', 'active',
             'creator', 'creator_name', 'investigator',
-            'department', 'department_id', 'department_name', 'created', 'updated'
+            'department', 'department_id', 'department_name', 'created', 'updated', 'region_name'
         ]
         read_only_fields = [
             'creator', 'creator_name', 'investigator', 'department',
@@ -223,6 +228,7 @@ class CaseDetailSerializer(serializers.ModelSerializer):
     department = DepartmentSerializer(read_only=True)
     department_name = serializers.CharField(source='department.name', read_only=True)
     evidence_groups = NestedEvidenceGroupSerializer(many=True, read_only=True)
+    region_name = serializers.CharField(source='department.region_display', read_only=True)
 
     class Meta:
         model = Case
@@ -230,7 +236,7 @@ class CaseDetailSerializer(serializers.ModelSerializer):
             'id', 'name', 'description', 'active',
             'creator', 'creator_name', 'investigator',
             'department', 'department_name', 'created', 'updated',
-            'evidence_groups'
+            'evidence_groups', 'region_name'
         ]
         read_only_fields = [
             'creator', 'creator_name', 'investigator', 'department',
