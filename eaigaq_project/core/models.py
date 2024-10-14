@@ -90,9 +90,12 @@ class User(AbstractUser):
 
     # Автоматическое установление региона при сохранении
     def save(self, *args, **kwargs):
-        if not self.region and self.department and self.department.region:
+        if self.department and self.department.region:
             self.region = self.department.region
+        else:
+            self.region = None  # Если отделение не указано, регион тоже не установлен
         super(User, self).save(*args, **kwargs)
+
 
 
 class Case(models.Model):

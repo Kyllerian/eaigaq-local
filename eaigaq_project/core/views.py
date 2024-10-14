@@ -47,7 +47,6 @@ from .serializers import (
 # ViewSets for models
 # ---------------------------
 
-
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
@@ -70,22 +69,31 @@ class UserViewSet(viewsets.ModelViewSet):
         user = self.request.user
 
         if user.role == "REGION_HEAD":
-            region = user.region
             department = serializer.validated_data.get("department")
 
+            # Проверяем, что отделение указано
+            if not department:
+                raise PermissionDenied("Необходимо указать отделение для нового пользователя.")
+
             # Проверяем, что отделение принадлежит региону пользователя
-            if department and department.region != region:
+            if department.region != user.region:
                 raise PermissionDenied(
                     "Вы не можете назначить пользователя в отделение другого региона."
                 )
 
-            serializer.validated_data["region"] = region
+            # Удаляем 'region' из validated_data, чтобы оно устанавливалось автоматически
+            serializer.validated_data.pop('region', None)
+
+            # Сохраняем пользователя; поле 'department' будет установлено из validated_data
             serializer.save()
         elif user.role == "DEPARTMENT_HEAD":
             department = user.department
             serializer.validated_data["department"] = department
-            serializer.validated_data["region"] = department.region
             serializer.validated_data["role"] = "USER"  # DEPARTMENT_HEAD может создавать только пользователей с ролью USER
+
+            # Удаляем 'region' из validated_data, чтобы оно устанавливалось автоматически
+            serializer.validated_data.pop('region', None)
+
             serializer.save()
         else:
             raise PermissionDenied("У вас нет прав для создания пользователей.")
@@ -506,16 +514,62 @@ class SessionViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
+        queryset = self.queryset.select_related('user')
+
+        # Получаем параметры фильтрации из запроса
+        user_id = self.request.query_params.get('user_id')
+        department_id = self.request.query_params.get('department_id')
+        region = self.request.query_params.get('region')
+
+        # Базовый фильтр на основе роли пользователя
         if user.role == "REGION_HEAD":
-            return Session.objects.filter(user__region=user.region).select_related(
-                "user"
-            )
+            queryset = queryset.filter(user__region=user.region)
+            # Проверяем, что запрашиваемый регион соответствует региону пользователя
+            if region and region != user.region:
+                raise PermissionDenied("Вы не можете просматривать данные другого региона.")
+
+            # Проверяем отделение
+            if department_id:
+                try:
+                    department = Department.objects.get(id=department_id)
+                except Department.DoesNotExist:
+                    raise PermissionDenied("Отделение не найдено.")
+                if department.region != user.region:
+                    raise PermissionDenied("Вы не можете просматривать данные этого отделения.")
+                queryset = queryset.filter(user__department_id=department_id)
+
+            # Проверяем пользователя
+            if user_id:
+                try:
+                    selected_user = User.objects.get(id=user_id)
+                except User.DoesNotExist:
+                    raise PermissionDenied("Пользователь не найден.")
+                if selected_user.region != user.region:
+                    raise PermissionDenied("Вы не можете просматривать данные этого пользователя.")
+                queryset = queryset.filter(user_id=user_id)
+
         elif user.role == "DEPARTMENT_HEAD":
-            return Session.objects.filter(
-                user__department=user.department
-            ).select_related("user")
+            queryset = queryset.filter(user__department=user.department)
+            # Проверяем, что запрашиваемое отделение соответствует отделению пользователя
+            if department_id and int(department_id) != user.department.id:
+                raise PermissionDenied("Вы не можете просматривать данные другого отделения.")
+
+            # Проверяем пользователя
+            if user_id:
+                try:
+                    selected_user = User.objects.get(id=user_id)
+                except User.DoesNotExist:
+                    raise PermissionDenied("Пользователь не найден.")
+                if selected_user.department != user.department:
+                    raise PermissionDenied("Вы не можете просматривать данные этого пользователя.")
+                queryset = queryset.filter(user_id=user_id)
+
         else:
-            return Session.objects.filter(user=user).select_related("user")
+            queryset = queryset.filter(user=user)
+            # Обычные пользователи не могут применять фильтры
+
+        return queryset
+
 
 
 class CameraViewSet(viewsets.ModelViewSet):
@@ -604,16 +658,24 @@ def login_view(request):
     if user is not None:
         print(f"Успешная аутентификация для пользователя: {user.username}")
         login(request, user)
+        # Сессия будет создана автоматически сигналом user_logged_in
         return JsonResponse({"detail": "Authentication successful"})
     else:
         print(f"Аутентификация не удалась для пользователя: {username}")
         return JsonResponse({"detail": "Invalid credentials"}, status=401)
 
 
+
 @api_view(["POST"])
 def logout_view(request):
-    logout(request)
-    return JsonResponse({"detail": "Logout successful"})
+    user = request.user
+    if user.is_authenticated:
+        # Сессия будет обновлена автоматически сигналом user_logged_out
+        logout(request)
+        return JsonResponse({"detail": "Logout successful"})
+    else:
+        return JsonResponse({"detail": "User is not authenticated"}, status=400)
+
 
 
 @api_view(["GET"])

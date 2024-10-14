@@ -39,8 +39,10 @@ import {
   Logout as LogoutIcon,
   OpenInNew as OpenInNewIcon,
   Circle as CircleIcon,
+  Print as PrintIcon,
 } from '@mui/icons-material';
 import { AuthContext } from '../contexts/AuthContext';
+import { useReactToPrint } from 'react-to-print';
 
 const Dashboard = () => {
   const { user, logout } = useContext(AuthContext);
@@ -75,10 +77,26 @@ const Dashboard = () => {
   });
   const navigate = useNavigate();
 
-  // Новые состояния и рефы для сканирования штрихкода
+  // Состояния и рефы для сканирования штрихкода
   const [openBarcodeDialog, setOpenBarcodeDialog] = useState(false);
   const [scannedBarcode, setScannedBarcode] = useState('');
   const barcodeInputRef = useRef(null);
+
+  // Состояния для экспорта отчета
+  const [openExportDialog, setOpenExportDialog] = useState(false);
+  const [exportFilters, setExportFilters] = useState({
+    department: '',
+    employee: '',
+  });
+  const [exportData, setExportData] = useState([]);
+  const reportRef = useRef();
+  const [shouldPrint, setShouldPrint] = useState(false); // Новое состояние
+
+  // Функция для печати отчета
+  const handlePrintReport = useReactToPrint({
+    contentRef:reportRef,
+    documentTitle: 'Отчет по сессиям сотрудников',
+  });
 
   useEffect(() => {
     if (!user) return;
@@ -144,6 +162,13 @@ const Dashboard = () => {
         });
     }
   }, [navigate, user, searchQuery, selectedDepartment]);
+
+  useEffect(() => {
+    if (shouldPrint && exportData.length > 0) {
+      handlePrintReport();
+      setShouldPrint(false);
+    }
+  }, [exportData, shouldPrint, handlePrintReport]);
 
   const handleLogout = async () => {
     await logout();
@@ -239,7 +264,7 @@ const Dashboard = () => {
     event.preventDefault();
 
     // Копируем данные нового сотрудника
-    let employeeData = { ...newEmployee };
+    let employeeData = {...newEmployee};
 
     if (user.role === 'DEPARTMENT_HEAD') {
       employeeData.role = 'USER';
@@ -260,7 +285,7 @@ const Dashboard = () => {
 
       // Проверяем, что выбранное отделение принадлежит региону пользователя
       const selectedDepartment = departments.find(
-        (dept) => dept.id === employeeData.department_id
+          (dept) => dept.id === employeeData.department_id
       );
       if (!selectedDepartment || selectedDepartment.region !== user.region) {
         setSnackbar({
@@ -279,30 +304,31 @@ const Dashboard = () => {
       return;
     }
 
+    // Удаляем department, чтобы не было конфликтов на сервере
     delete employeeData.department;
 
     axios
-      .post('/api/users/', employeeData)
-      .then((response) => {
-        setEmployees([...employees, response.data]);
-        handleCloseEmployeeDialog();
-        setSnackbar({
-          open: true,
-          message: 'Сотрудник успешно добавлен.',
-          severity: 'success',
+        .post('/api/users/', employeeData)
+        .then((response) => {
+          setEmployees([...employees, response.data]);
+          handleCloseEmployeeDialog();
+          setSnackbar({
+            open: true,
+            message: 'Сотрудник успешно добавлен.',
+            severity: 'success',
+          });
+        })
+        .catch((error) => {
+          console.error(
+              'Ошибка при добавлении сотрудника:',
+              error.response?.data || error
+          );
+          setSnackbar({
+            open: true,
+            message: 'Ошибка при добавлении сотрудника.',
+            severity: 'error',
+          });
         });
-      })
-      .catch((error) => {
-        console.error(
-          'Ошибка при добавлении сотрудника:',
-          error.response?.data || error
-        );
-        setSnackbar({
-          open: true,
-          message: 'Ошибка при добавлении сотрудника.',
-          severity: 'error',
-        });
-      });
   };
 
   // Обработка выбора сотрудника
@@ -419,6 +445,90 @@ const Dashboard = () => {
     } finally {
       handleCloseBarcodeDialog();
     }
+  };
+
+  // Обработчики для экспорта отчета
+  const handleOpenExportDialog = () => {
+    setOpenExportDialog(true);
+    setExportFilters({
+      department: '',
+      employee: '',
+    });
+  };
+
+  const handleCloseExportDialog = () => {
+    setOpenExportDialog(false);
+  };
+
+  const handleExportFilterChange = (event) => {
+    const { name, value } = event.target;
+    setExportFilters((prevFilters) => ({
+      ...prevFilters,
+      [name]: value,
+    }));
+
+    // Если выбран отдел, сбрасываем выбор сотрудника
+    if (name === 'department') {
+      setExportFilters((prevFilters) => ({
+        ...prevFilters,
+        employee: '',
+      }));
+    }
+  };
+
+  const handleExportSubmit = () => {
+    // Подготавливаем параметры для запроса
+    let params = {};
+
+    if (user.role === 'DEPARTMENT_HEAD') {
+      // Фильтрация по сотруднику
+      if (exportFilters.employee) {
+        params.user_id = exportFilters.employee;
+      } else {
+        // Все сотрудники отдела
+        params.department_id = user.department.id;
+      }
+    } else if (user.role === 'REGION_HEAD') {
+      // Фильтрация по отделу и сотруднику
+      if (exportFilters.department) {
+        params.department_id = exportFilters.department;
+        if (exportFilters.employee) {
+          params.user_id = exportFilters.employee;
+        }
+      } else {
+        // Все отделы региона
+        params.region = user.region;
+      }
+    }
+
+    axios
+      .get('/api/sessions/', { params })
+      .then((response) => {
+        setExportData(response.data);
+        setShouldPrint(true); // Устанавливаем флаг для печати
+        handleCloseExportDialog();
+      })
+      .catch((error) => {
+        console.error('Ошибка при получении данных сессий:', error);
+        setSnackbar({
+          open: true,
+          message: 'Ошибка при получении данных сессий.',
+          severity: 'error',
+        });
+      });
+  };
+
+  // Функция форматирования даты
+  const formatDate = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
   };
 
   return (
@@ -760,16 +870,26 @@ const Dashboard = () => {
                   alignItems: 'center',
                 }}
               >
-                <Button
-                  variant="contained"
-                  color="primary"
-                  startIcon={<AddIcon />}
-                  onClick={handleOpenEmployeeDialog}
-                  sx={{ whiteSpace: 'nowrap' }}
-                >
-                  Добавить сотрудника
-                </Button>
-
+                <Box>
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    startIcon={<AddIcon />}
+                    onClick={handleOpenEmployeeDialog}
+                    sx={{ whiteSpace: 'nowrap', mr: 2 }}
+                  >
+                    Добавить сотрудника
+                  </Button>
+                  <Button
+                    variant="contained"
+                    color="inherit"
+                    startIcon={<PrintIcon />}
+                    onClick={handleOpenExportDialog}
+                    sx={{ whiteSpace: 'nowrap' }}
+                  >
+                    Экспорт
+                  </Button>
+                </Box>
                 {selectedEmployee && (
                   <Button
                     variant="contained"
@@ -795,11 +915,15 @@ const Dashboard = () => {
                         <TableCell sx={{ fontWeight: 'bold' }}>
                           Фамилия
                         </TableCell>
-                        <TableCell sx={{ fontWeight: 'bold' }}>Имя</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold' }}>
+                          Имя
+                        </TableCell>
                         <TableCell sx={{ fontWeight: 'bold' }}>
                           Звание
                         </TableCell>
-                        <TableCell sx={{ fontWeight: 'bold' }}>Роль</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold' }}>
+                          Роль
+                        </TableCell>
                         <TableCell sx={{ fontWeight: 'bold' }}>
                           Электронная почта
                         </TableCell>
@@ -924,7 +1048,9 @@ const Dashboard = () => {
                           onChange={handleEmployeeInputChange}
                           label="Роль"
                         >
-                          <MenuItem value="USER">Обычный пользователь</MenuItem>
+                          <MenuItem value="USER">
+                            Обычный пользователь
+                          </MenuItem>
                           <MenuItem value="DEPARTMENT_HEAD">
                             Главный по отделению
                           </MenuItem>
@@ -960,9 +1086,150 @@ const Dashboard = () => {
                   </Button>
                 </DialogActions>
               </Dialog>
+
+              {/* Диалоговое окно для экспорта отчета */}
+              <Dialog
+                open={openExportDialog}
+                onClose={handleCloseExportDialog}
+                maxWidth="sm"
+                fullWidth
+              >
+                <DialogTitle>Экспорт отчета о сессиях сотрудников</DialogTitle>
+                <DialogContent>
+                  {user.role === 'REGION_HEAD' && (
+                    <FormControl fullWidth margin="dense">
+                      <InputLabel id="export-department-label">
+                        Отделение
+                      </InputLabel>
+                      <Select
+                        labelId="export-department-label"
+                        name="department"
+                        value={exportFilters.department}
+                        onChange={handleExportFilterChange}
+                        label="Отделение"
+                      >
+                        <MenuItem value="">
+                          <em>Все отделения</em>
+                        </MenuItem>
+                        {departments.map((dept) => (
+                          <MenuItem key={dept.id} value={dept.id}>
+                            {dept.name}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  )}
+
+                  {(user.role === 'DEPARTMENT_HEAD' ||
+                    exportFilters.department) && (
+                    <FormControl fullWidth margin="dense">
+                      <InputLabel id="export-employee-label">
+                        Сотрудник
+                      </InputLabel>
+                      <Select
+                        labelId="export-employee-label"
+                        name="employee"
+                        value={exportFilters.employee}
+                        onChange={handleExportFilterChange}
+                        label="Сотрудник"
+                      >
+                        <MenuItem value="">
+                          <em>Все сотрудники</em>
+                        </MenuItem>
+                        {employees
+                          .filter((emp) =>
+                            user.role === 'DEPARTMENT_HEAD'
+                              ? true
+                              : emp.department &&
+                                emp.department.id ===
+                                  parseInt(exportFilters.department)
+                          )
+                          .map((emp) => (
+                            <MenuItem key={emp.id} value={emp.id}>
+                              {emp.first_name} {emp.last_name}
+                            </MenuItem>
+                          ))}
+                      </Select>
+                    </FormControl>
+                  )}
+                </DialogContent>
+                <DialogActions>
+                  <Button onClick={handleCloseExportDialog}>Отмена</Button>
+                  <Button
+                    onClick={handleExportSubmit}
+                    variant="contained"
+                    color="primary"
+                  >
+                    Сформировать отчет
+                  </Button>
+                </DialogActions>
+              </Dialog>
             </>
           )}
       </Container>
+
+      {/* Компонент для печати отчета */}
+      <div style={{ display: 'none' }}>
+        <div ref={reportRef}>
+          <Container>
+            <Typography variant="h4" gutterBottom>
+              Отчет о сессиях сотрудников
+            </Typography>
+            {user.role === 'REGION_HEAD' && exportFilters.department && (
+              <Typography variant="h6" gutterBottom>
+                Отделение:{' '}
+                {departments.find(
+                  (d) => d.id === parseInt(exportFilters.department)
+                )?.name || 'Все отделения'}
+              </Typography>
+            )}
+            {exportFilters.employee && (
+              <Typography variant="h6" gutterBottom>
+                Сотрудник:{' '}
+                {employees.find(
+                  (e) => e.id === parseInt(exportFilters.employee)
+                )?.first_name}{' '}
+                {employees.find(
+                  (e) => e.id === parseInt(exportFilters.employee)
+                )?.last_name}
+              </Typography>
+            )}
+            <TableContainer component={Paper}>
+              <Table aria-label="Отчет по сессиям">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Фамилия</TableCell>
+                    <TableCell>Имя</TableCell>
+                    <TableCell>Вход</TableCell>
+                    <TableCell>Выход</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {exportData.map((session) => (
+                    <TableRow key={session.id}>
+                      <TableCell>{session.user.last_name}</TableCell>
+                      <TableCell>{session.user.first_name}</TableCell>
+                      <TableCell>{formatDate(session.login)}</TableCell>
+                      <TableCell>
+                        {session.logout
+                          ? formatDate(session.logout)
+                          : 'Активен'}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {exportData.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={4} align="center">
+                        Нет данных для отображения.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Container>
+        </div>
+      </div>
 
       {/* Snackbar для уведомлений */}
       <Snackbar
