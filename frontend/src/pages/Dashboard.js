@@ -1,5 +1,5 @@
 // src/pages/Dashboard.js
-
+import LogoMVDKZ from '../assets/Logo_MVD_KZ.png';
 import React, { useEffect, useState, useContext, useRef } from 'react';
 import axios from '../axiosConfig';
 import { useNavigate } from 'react-router-dom';
@@ -90,7 +90,7 @@ const Dashboard = () => {
   });
   const [exportData, setExportData] = useState([]);
   const reportRef = useRef();
-  const [shouldPrint, setShouldPrint] = useState(false); // Новое состояние
+  const [shouldPrint, setShouldPrint] = useState(false);
 
   // Функция для печати отчета
   const handlePrintReport = useReactToPrint({
@@ -264,7 +264,7 @@ const Dashboard = () => {
     event.preventDefault();
 
     // Копируем данные нового сотрудника
-    let employeeData = {...newEmployee};
+    let employeeData = { ...newEmployee };
 
     if (user.role === 'DEPARTMENT_HEAD') {
       employeeData.role = 'USER';
@@ -285,7 +285,7 @@ const Dashboard = () => {
 
       // Проверяем, что выбранное отделение принадлежит региону пользователя
       const selectedDepartment = departments.find(
-          (dept) => dept.id === employeeData.department_id
+        (dept) => dept.id === employeeData.department_id
       );
       if (!selectedDepartment || selectedDepartment.region !== user.region) {
         setSnackbar({
@@ -308,27 +308,27 @@ const Dashboard = () => {
     delete employeeData.department;
 
     axios
-        .post('/api/users/', employeeData)
-        .then((response) => {
-          setEmployees([...employees, response.data]);
-          handleCloseEmployeeDialog();
-          setSnackbar({
-            open: true,
-            message: 'Сотрудник успешно добавлен.',
-            severity: 'success',
-          });
-        })
-        .catch((error) => {
-          console.error(
-              'Ошибка при добавлении сотрудника:',
-              error.response?.data || error
-          );
-          setSnackbar({
-            open: true,
-            message: 'Ошибка при добавлении сотрудника.',
-            severity: 'error',
-          });
+      .post('/api/users/', employeeData)
+      .then((response) => {
+        setEmployees([...employees, response.data]);
+        handleCloseEmployeeDialog();
+        setSnackbar({
+          open: true,
+          message: 'Сотрудник успешно добавлен.',
+          severity: 'success',
         });
+      })
+      .catch((error) => {
+        console.error(
+          'Ошибка при добавлении сотрудника:',
+          error.response?.data || error
+        );
+        setSnackbar({
+          open: true,
+          message: 'Ошибка при добавлении сотрудника.',
+          severity: 'error',
+        });
+      });
   };
 
   // Обработка выбора сотрудника
@@ -504,6 +504,7 @@ const Dashboard = () => {
     axios
       .get('/api/sessions/', { params })
       .then((response) => {
+        console.log('Полученные сессии:', response.data);
         setExportData(response.data);
         setShouldPrint(true); // Устанавливаем флаг для печати
         handleCloseExportDialog();
@@ -522,13 +523,27 @@ const Dashboard = () => {
   const formatDate = (dateString) => {
     if (!dateString) return '';
     const date = new Date(dateString);
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const year = date.getFullYear();
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-    const seconds = String(date.getSeconds()).padStart(2, '0');
-    return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
+    const options = {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    };
+    return date.toLocaleDateString('ru-RU', options);
+  };
+
+  // Получение названия отделения по ID
+  const getDepartmentName = (departmentId) => {
+    const department = departments.find((d) => d.id === parseInt(departmentId));
+    return department ? department.name : 'Все отделения';
+  };
+
+  // Получение полного имени сотрудника по ID
+  const getEmployeeFullName = (employeeId) => {
+    const employee = employees.find((e) => e.id === parseInt(employeeId));
+    return employee ? `${employee.last_name} ${employee.first_name}` : '';
   };
 
   return (
@@ -1057,7 +1072,9 @@ const Dashboard = () => {
                         </Select>
                       </FormControl>
                       <FormControl fullWidth margin="dense">
-                        <InputLabel id="department-label">Отделение</InputLabel>
+                        <InputLabel id="department-label">
+                          Отделение
+                        </InputLabel>
                         <Select
                           labelId="department-label"
                           name="department"
@@ -1094,7 +1111,9 @@ const Dashboard = () => {
                 maxWidth="sm"
                 fullWidth
               >
-                <DialogTitle>Экспорт отчета о сессиях сотрудников</DialogTitle>
+                <DialogTitle>
+                  Экспорт отчета о сессиях сотрудников
+                </DialogTitle>
                 <DialogContent>
                   {user.role === 'REGION_HEAD' && (
                     <FormControl fullWidth margin="dense">
@@ -1170,64 +1189,105 @@ const Dashboard = () => {
 
       {/* Компонент для печати отчета */}
       <div style={{ display: 'none' }}>
-        <div ref={reportRef}>
-          <Container>
+        <div
+          ref={reportRef}
+          style={{
+            padding: '20px',
+            fontFamily: 'Arial, sans-serif',
+            color: '#000',
+          }}
+        >
+          {/* Header */}
+          <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+            <img
+              src={LogoMVDKZ}
+              alt="Логотип"
+              style={{ maxWidth: '100px', marginBottom: '10px' }}
+            />
             <Typography variant="h4" gutterBottom>
               Отчет о сессиях сотрудников
             </Typography>
-            {user.role === 'REGION_HEAD' && exportFilters.department && (
-              <Typography variant="h6" gutterBottom>
-                Отделение:{' '}
-                {departments.find(
-                  (d) => d.id === parseInt(exportFilters.department)
-                )?.name || 'Все отделения'}
+            <Typography variant="subtitle1">
+              Дата формирования отчета: {formatDate(new Date().toISOString())}
+            </Typography>
+          </div>
+
+          {/* Filters */}
+          <div style={{ marginBottom: '20px' }}>
+            {user.role === 'REGION_HEAD' && (
+              <Typography variant="h6">
+                Регион: {user.region_display}
+              </Typography>
+            )}
+            {exportFilters.department && (
+              <Typography variant="h6">
+                Отделение: {getDepartmentName(exportFilters.department)}
               </Typography>
             )}
             {exportFilters.employee && (
-              <Typography variant="h6" gutterBottom>
-                Сотрудник:{' '}
-                {employees.find(
-                  (e) => e.id === parseInt(exportFilters.employee)
-                )?.first_name}{' '}
-                {employees.find(
-                  (e) => e.id === parseInt(exportFilters.employee)
-                )?.last_name}
+              <Typography variant="h6">
+                Сотрудник: {getEmployeeFullName(exportFilters.employee)}
               </Typography>
             )}
-            <TableContainer component={Paper}>
-              <Table aria-label="Отчет по сессиям">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Фамилия</TableCell>
-                    <TableCell>Имя</TableCell>
-                    <TableCell>Вход</TableCell>
-                    <TableCell>Выход</TableCell>
+          </div>
+
+          {/* Session Table */}
+          <TableContainer component={Paper} style={{ boxShadow: 'none' }}>
+            <Table aria-label="Отчет по сессиям">
+              <TableHead>
+                <TableRow>
+                  <TableCell>
+                    <strong>Фамилия</strong>
+                  </TableCell>
+                  <TableCell>
+                    <strong>Имя</strong>
+                  </TableCell>
+                  <TableCell>
+                    <strong>Звание</strong>
+                  </TableCell>
+                  <TableCell>
+                    <strong>Роль</strong>
+                  </TableCell>
+                  <TableCell>
+                    <strong>Вход</strong>
+                  </TableCell>
+                  <TableCell>
+                    <strong>Выход</strong>
+                  </TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {exportData.map((session) => (
+                  <TableRow key={session.id}>
+                    <TableCell>{session.user.last_name}</TableCell>
+                    <TableCell>{session.user.first_name}</TableCell>
+                    <TableCell>{session.user.rank}</TableCell>
+                    <TableCell>{session.user.role_display}</TableCell>
+                    <TableCell>{formatDate(session.login)}</TableCell>
+                    <TableCell>
+                      {session.logout
+                        ? formatDate(session.logout)
+                        : 'Активен'}
+                    </TableCell>
                   </TableRow>
-                </TableHead>
-                <TableBody>
-                  {exportData.map((session) => (
-                    <TableRow key={session.id}>
-                      <TableCell>{session.user.last_name}</TableCell>
-                      <TableCell>{session.user.first_name}</TableCell>
-                      <TableCell>{formatDate(session.login)}</TableCell>
-                      <TableCell>
-                        {session.logout
-                          ? formatDate(session.logout)
-                          : 'Активен'}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {exportData.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={4} align="center">
-                        Нет данных для отображения.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Container>
+                ))}
+                {exportData.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={6} align="center">
+                      Нет данных для отображения.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+
+          {/* Footer */}
+          <div style={{ marginTop: '40px', textAlign: 'center' }}>
+            <Typography variant="body2">
+              © {new Date().getFullYear()} Министерство внутренних дел Республики Казахстан.
+            </Typography>
+          </div>
         </div>
       </div>
 

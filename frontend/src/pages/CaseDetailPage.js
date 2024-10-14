@@ -48,6 +48,9 @@ import { AuthContext } from "../contexts/AuthContext";
 import Barcode from "react-barcode";
 import { useReactToPrint } from "react-to-print";
 
+// Импортируем логотип
+import LogoMVDKZ from "../assets/Logo_MVD_KZ.png";
+
 const CaseDetailPage = () => {
   const { id } = useParams(); // Получаем ID дела из URL
   const { user } = useContext(AuthContext);
@@ -456,16 +459,18 @@ const CaseDetailPage = () => {
 
   // Функции для форматирования и отображения данных
 
-  // Форматирование даты в "DD/MM/YYYY HH:MM:SS"
+  // Форматирование даты
   const formatDate = (dateString) => {
     const date = new Date(dateString);
-    const day = String(date.getDate()).padStart(2,'0');
-    const month = String(date.getMonth() + 1).padStart(2,'0');
-    const year = date.getFullYear();
-    const hours = String(date.getHours()).padStart(2,'0');
-    const minutes = String(date.getMinutes()).padStart(2,'0');
-    const seconds = String(date.getSeconds()).padStart(2,'0');
-    return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
+    const options = {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    };
+    return date.toLocaleDateString("ru-RU", options);
   };
 
   // Получение сообщения действия
@@ -699,7 +704,8 @@ const CaseDetailPage = () => {
                                       <Select
                                         value={evidence.status}
                                         onChange={(event) => {
-                                          const selectedStatus = event.target.value;
+                                          const selectedStatus =
+                                            event.target.value;
                                           if (evidence.status !== selectedStatus) {
                                             handleEvidenceStatusChange(
                                               evidence.id,
@@ -938,30 +944,70 @@ const CaseDetailPage = () => {
 
       {/* Компонент для печати отчета */}
       <div style={{ display: "none" }}>
-        <div ref={reportRef}>
-          <Container>
-            <Typography variant="h4" gutterBottom>
-              Отчет по делу: {caseItem.name}
+        <div
+          ref={reportRef}
+          style={{
+            padding: "20px",
+            fontFamily: "Arial, sans-serif",
+            color: "#000",
+          }}
+        >
+          {/* Header */}
+          <div style={{ textAlign: "center", marginBottom: "20px" }}>
+            <img
+              src={LogoMVDKZ}
+              alt="Логотип"
+              style={{ maxWidth: "100px", marginBottom: "10px" }}
+            />
+            <Typography variant="h3" gutterBottom>
+              Отчет по делу
             </Typography>
-            <Typography variant="subtitle1" gutterBottom>
-              Описание: {caseItem.description}
+            <Typography variant="subtitle1">
+              Дата формирования отчета: {formatDate(new Date().toISOString())}
             </Typography>
-            <Typography variant="subtitle1" gutterBottom>
-              Создатель: {caseItem.creator_full_name || "Неизвестно"}
+          </div>
+
+          {/* Информация о деле */}
+          <div style={{ marginBottom: "20px" }}>
+            <Typography variant="body1">
+              <strong>Название дела:</strong> {caseItem.name}
             </Typography>
+            <Typography variant="body1">
+              <strong>Описание:</strong> {caseItem.description}
+            </Typography>
+            <Typography variant="body1">
+              <strong>Следователь:</strong>{" "}
+              {caseItem.investigator.full_name || "Неизвестно"}
+            </Typography>
+          </div>
+
+          {/* Вещественные доказательства */}
+          <div style={{ marginBottom: "20px" }}>
             <Typography variant="h5" gutterBottom>
               Вещественные доказательства
             </Typography>
             {groups.map((group) => (
               <Box key={group.id} mb={2}>
                 <Typography variant="h6">{group.name}</Typography>
-                <TableContainer component={Paper}>
-                  <Table aria-label={`Таблица ВД группы ${group.name}`}>
+                <TableContainer
+                  component={Paper}
+                  style={{ boxShadow: "none" }}
+                >
+                  <Table
+                    aria-label={`Таблица ВД группы ${group.name}`}
+                    style={{ tableLayout: "fixed", width: "100%" }}
+                  >
                     <TableHead>
                       <TableRow>
-                        <TableCell>Название</TableCell>
-                        <TableCell>Описание</TableCell>
-                        <TableCell>Статус</TableCell>
+                        <TableCell style={{ width: "30%" }}>
+                          <strong>Название</strong>
+                        </TableCell>
+                        <TableCell style={{ width: "50%" }}>
+                          <strong>Описание</strong>
+                        </TableCell>
+                        <TableCell style={{ width: "20%" }}>
+                          <strong>Статус</strong>
+                        </TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -969,9 +1015,31 @@ const CaseDetailPage = () => {
                       group.material_evidences.length > 0 ? (
                         group.material_evidences.map((evidence) => (
                           <TableRow key={evidence.id}>
-                            <TableCell>{evidence.name}</TableCell>
-                            <TableCell>{evidence.description}</TableCell>
-                            <TableCell>
+                            <TableCell
+                              style={{
+                                width: "30%",
+                                wordBreak: "break-word",
+                                whiteSpace: "normal",
+                              }}
+                            >
+                              {evidence.name}
+                            </TableCell>
+                            <TableCell
+                              style={{
+                                width: "50%",
+                                wordBreak: "break-word",
+                                whiteSpace: "normal",
+                              }}
+                            >
+                              {evidence.description}
+                            </TableCell>
+                            <TableCell
+                              style={{
+                                width: "20%",
+                                wordBreak: "break-word",
+                                whiteSpace: "normal",
+                              }}
+                            >
                               {getStatusLabel(evidence.status)}
                             </TableCell>
                           </TableRow>
@@ -988,113 +1056,174 @@ const CaseDetailPage = () => {
                 </TableContainer>
               </Box>
             ))}
-            <Typography variant="h5" gutterBottom>
-              История изменений
-            </Typography>
-            <TableContainer component={Paper}>
-              <Table aria-label="Таблица истории изменений">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Дата и время</TableCell>
-                    <TableCell>Пользователь</TableCell>
-                    <TableCell>Действие</TableCell>
-                    <TableCell>Изменения</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {changeLogs.map((log) => (
-                    <TableRow key={log.id}>
-                      <TableCell>{formatDate(log.created)}</TableCell>
-                      <TableCell>
-                        {log.user ? log.user.full_name : "Система"}
+          </div>
+
+          {/* История изменений */}
+          {canViewHistory && (
+            <div
+              style={{
+                pageBreakBefore: "always",
+                marginBottom: "20px",
+              }}
+            >
+              <Typography variant="h5" gutterBottom>
+                История изменений
+              </Typography>
+              <TableContainer
+                component={Paper}
+                style={{ boxShadow: "none" }}
+              >
+                <Table
+                  aria-label="Таблица истории изменений"
+                  style={{ tableLayout: "fixed", width: "100%" }}
+                >
+                  <TableHead>
+                    <TableRow>
+                      <TableCell style={{ width: "20%" }}>
+                        <strong>Дата и время</strong>
                       </TableCell>
-                      <TableCell>{getActionMessage(log)}</TableCell>
-                      <TableCell>
-                        {(() => {
-                          if (log.data && log.data.trim() !== "") {
-                            try {
-                              const data = JSON.parse(log.data);
-                              if (log.action === "update") {
-                                const displayFields = [
-                                  "name",
-                                  "description",
-                                  "status",
-                                ];
-                                return Object.entries(data).map(
-                                  ([field, values]) => {
-                                    if (displayFields.includes(field)) {
-                                      return (
-                                        <div key={field}>
-                                          <strong>
-                                            {fieldLabels[field] || field}
-                                          </strong>
-                                          :{" "}
-                                          {field === "status"
-                                            ? getStatusLabel(values.old)
-                                            : values.old}{" "}
-                                          →{" "}
-                                          {field === "status"
-                                            ? getStatusLabel(values.new)
-                                            : values.new}
-                                        </div>
-                                      );
-                                    } else {
-                                      return null;
-                                    }
-                                  }
-                                );
-                              } else if (log.action === "create") {
-                                const displayFields = [
-                                  "name",
-                                  "description",
-                                  "status",
-                                ];
-                                return (
-                                  <div>
-                                    {Object.entries(data).map(
-                                      ([field, value]) => {
-                                        if (displayFields.includes(field)) {
-                                          return (
-                                            <div key={field}>
-                                              <strong>
-                                                {fieldLabels[field] || field}
-                                              </strong>
-                                              :{" "}
-                                              {field === "status"
-                                                ? getStatusLabel(value)
-                                                : value}
-                                            </div>
-                                          );
-                                        } else {
-                                          return null;
-                                        }
-                                      }
-                                    )}
-                                  </div>
-                                );
-                              } else if (log.action === "delete") {
-                                return <div>Объект был удален.</div>;
-                              } else {
-                                return "Нет данных об изменениях.";
-                              }
-                            } catch (error) {
-                              console.error(
-                                "Ошибка парсинга данных лога:",
-                                error
-                              );
-                              return "Нет данных об изменениях.";
-                            }
-                          } else {
-                            return "Нет данных об изменениях.";
-                          }
-                        })()}
+                      <TableCell style={{ width: "20%" }}>
+                        <strong>Пользователь</strong>
+                      </TableCell>
+                      <TableCell style={{ width: "20%" }}>
+                        <strong>Действие</strong>
+                      </TableCell>
+                      <TableCell style={{ width: "40%" }}>
+                        <strong>Изменения</strong>
                       </TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Container>
+                  </TableHead>
+                  <TableBody>
+                    {changeLogs.map((log) => (
+                      <TableRow key={log.id}>
+                        <TableCell
+                          style={{
+                            width: "20%",
+                            wordBreak: "break-word",
+                            whiteSpace: "normal",
+                          }}
+                        >
+                          {formatDate(log.created)}
+                        </TableCell>
+                        <TableCell
+                          style={{
+                            width: "20%",
+                            wordBreak: "break-word",
+                            whiteSpace: "normal",
+                          }}
+                        >
+                          {log.user ? log.user.full_name : "Система"}
+                        </TableCell>
+                        <TableCell
+                          style={{
+                            width: "20%",
+                            wordBreak: "break-word",
+                            whiteSpace: "normal",
+                          }}
+                        >
+                          {getActionMessage(log)}
+                        </TableCell>
+                        <TableCell
+                          style={{
+                            width: "40%",
+                            wordBreak: "break-word",
+                            whiteSpace: "normal",
+                          }}
+                        >
+                          {(() => {
+                            if (log.data && log.data.trim() !== "") {
+                              try {
+                                const data = JSON.parse(log.data);
+                                if (log.action === "update") {
+                                  const displayFields = [
+                                    "name",
+                                    "description",
+                                    "status",
+                                  ];
+                                  return Object.entries(data).map(
+                                    ([field, values]) => {
+                                      if (displayFields.includes(field)) {
+                                        return (
+                                          <div key={field}>
+                                            <strong>
+                                              {fieldLabels[field] || field}
+                                            </strong>
+                                            :{" "}
+                                            {field === "status"
+                                              ? getStatusLabel(values.old)
+                                              : values.old}{" "}
+                                            →{" "}
+                                            {field === "status"
+                                              ? getStatusLabel(values.new)
+                                              : values.new}
+                                          </div>
+                                        );
+                                      } else {
+                                        return null;
+                                      }
+                                    }
+                                  );
+                                } else if (log.action === "create") {
+                                  const displayFields = [
+                                    "name",
+                                    "description",
+                                    "status",
+                                  ];
+                                  return (
+                                    <div>
+                                      {Object.entries(data).map(
+                                        ([field, value]) => {
+                                          if (displayFields.includes(field)) {
+                                            return (
+                                              <div key={field}>
+                                                <strong>
+                                                  {fieldLabels[field] || field}
+                                                </strong>
+                                                :{" "}
+                                                {field === "status"
+                                                  ? getStatusLabel(value)
+                                                  : value}
+                                              </div>
+                                            );
+                                          } else {
+                                            return null;
+                                          }
+                                        }
+                                      )}
+                                    </div>
+                                  );
+                                } else if (log.action === "delete") {
+                                  return <div>Объект был удален.</div>;
+                                } else {
+                                  return "Нет данных об изменениях.";
+                                }
+                              } catch (error) {
+                                console.error(
+                                  "Ошибка парсинга данных лога:",
+                                  error
+                                );
+                                return "Нет данных об изменениях.";
+                              }
+                            } else {
+                              return "Нет данных об изменениях.";
+                            }
+                          })()}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </div>
+          )}
+
+          {/* Footer */}
+          <div style={{ marginTop: "40px", textAlign: "center" }}>
+            <Typography variant="body2">
+              © {new Date().getFullYear()} Министерство внутренних дел Республики
+              Казахстан.
+            </Typography>
+          </div>
         </div>
       </div>
 
