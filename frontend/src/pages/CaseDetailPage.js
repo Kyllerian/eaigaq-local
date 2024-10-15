@@ -144,7 +144,7 @@ const CaseDetailPage = () => {
 
   // Функция для печати отчета
   const handlePrintReport = useReactToPrint({
-    content: () => reportRef.current,
+    contentRef: reportRef,
     documentTitle: `Отчет по делу ${caseItem?.name}`,
     pageStyle: `
       @media print {
