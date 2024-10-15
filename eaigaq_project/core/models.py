@@ -90,12 +90,16 @@ class User(AbstractUser):
 
     # Автоматическое установление региона при сохранении
     def save(self, *args, **kwargs):
-        if self.department and self.department.region:
-            self.region = self.department.region
+        if self.role == 'REGION_HEAD':
+            # Для главы региона позволяем установить регион вручную
+            pass  # Не меняем self.region
         else:
-            self.region = None  # Если отделение не указано, регион тоже не установлен
+            # Для остальных устанавливаем регион на основе отделения
+            if self.department and self.department.region:
+                self.region = self.department.region
+            else:
+                self.region = None  # Если отделение не указано, регион тоже не установлен
         super(User, self).save(*args, **kwargs)
-
 
 
 class Case(models.Model):
@@ -281,6 +285,7 @@ class Camera(models.Model):
 
 class AuditEntry(models.Model):
     object_id = models.IntegerField(_('ID объекта'))
+    object_name = models.CharField(_('Название объекта'), max_length=255, blank=True, null=True)
     table_name = models.CharField(_('Имя таблицы'), max_length=255)
     class_name = models.CharField(_('Имя класса'), max_length=255)
     action = models.CharField(_('Действие'), max_length=10)
@@ -294,7 +299,7 @@ class AuditEntry(models.Model):
         return f"Аудит {self.action} на {self.class_name} пользователем {self.user}"
 
 
-# Сигнал для логирования создания и обновления объектов
+# Сигналы для логирования создания и обновления объектов
 @receiver(post_save, sender=Case)
 def log_case_changes(sender, instance, created, **kwargs):
     action = 'create' if created else 'update'
@@ -318,6 +323,7 @@ def log_case_changes(sender, instance, created, **kwargs):
 
     AuditEntry.objects.create(
         object_id=instance.id,
+        object_name=instance.name,
         table_name='case',
         class_name='Case',
         action=action,
@@ -350,6 +356,7 @@ def log_material_evidence_changes(sender, instance, created, **kwargs):
 
     AuditEntry.objects.create(
         object_id=instance.id,
+        object_name=instance.name,
         table_name='materialevidence',
         class_name='MaterialEvidence',
         action=action,
@@ -364,6 +371,7 @@ def log_material_evidence_changes(sender, instance, created, **kwargs):
 def log_material_evidence_deletion(sender, instance, **kwargs):
     AuditEntry.objects.create(
         object_id=instance.id,
+        object_name=instance.name,
         table_name='materialevidence',
         class_name='MaterialEvidence',
         action='delete',

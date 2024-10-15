@@ -22,12 +22,12 @@ class UserSerializer(serializers.ModelSerializer):
         queryset=Department.objects.all(),
         source='department',
         write_only=True,
-        required=False
+        required=False  # Сделали необязательным
     )
     region_display = serializers.CharField(source='get_region_display', read_only=True)
     role_display = serializers.CharField(source='get_role_display', read_only=True)
     full_name = serializers.CharField(source='get_full_name', read_only=True)
-    region = serializers.CharField(read_only=True)  # Делаем поле 'region' доступным только для чтения
+    region = serializers.CharField(required=False)  # Убрали required=True
 
     class Meta:
         model = User
@@ -38,7 +38,24 @@ class UserSerializer(serializers.ModelSerializer):
             'role', 'role_display', 'is_active'
         ]
         extra_kwargs = {'password': {'write_only': True}}
-        read_only_fields = ['region', 'region_display']
+        read_only_fields = ['region_display']
+
+    def validate(self, attrs):
+        # Получаем текущие значения из instance, если они не переданы в attrs
+        role = attrs.get('role', getattr(self.instance, 'role', 'USER'))
+        department = attrs.get('department', getattr(self.instance, 'department', None))
+        region = attrs.get('region', getattr(self.instance, 'region', None))
+
+        if role == 'REGION_HEAD':
+            # Для главы региона отделение не требуется, регион обязателен
+            if region is None:
+                raise serializers.ValidationError({"region": "Поле 'region' обязательно для роли REGION_HEAD."})
+        else:
+            # Для остальных отделение обязательно
+            if department is None:
+                raise serializers.ValidationError({"department_id": "Поле 'department_id' обязательно для этой роли."})
+            # Регион будет установлен автоматически в методе save модели User
+        return attrs
 
     def create(self, validated_data):
         password = validated_data.pop('password', None)
@@ -56,6 +73,7 @@ class UserSerializer(serializers.ModelSerializer):
             user.save()
         return user
 
+
 class CaseSerializer(serializers.ModelSerializer):
     investigator = UserSerializer(read_only=True)
     creator_name = serializers.CharField(source='creator.get_full_name', read_only=True)
@@ -67,7 +85,7 @@ class CaseSerializer(serializers.ModelSerializer):
         required=False
     )
     department_name = serializers.CharField(source='department.name', read_only=True)
-    region_name = serializers.CharField(source='department.region_display', read_only=True)
+    region_name = serializers.CharField(source='department.get_region_display', read_only=True)
 
     class Meta:
         model = Case
@@ -78,7 +96,7 @@ class CaseSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             'creator', 'creator_name', 'investigator', 'department',
-            'department_name', 'created', 'updated'
+            'department_name', 'created', 'updated', 'region_name'
         ]
 
     def create(self, validated_data):
@@ -87,6 +105,7 @@ class CaseSerializer(serializers.ModelSerializer):
         validated_data['investigator'] = user
         validated_data['department'] = user.department
         return super().create(validated_data)
+
 
 class NestedMaterialEvidenceSerializer(serializers.ModelSerializer):
     status_display = serializers.CharField(source='get_status_display', read_only=True)
@@ -107,6 +126,7 @@ class NestedMaterialEvidenceSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['barcode', 'created', 'updated', 'active', 'group_name']
 
+
 class EvidenceGroupSerializer(serializers.ModelSerializer):
     material_evidences = NestedMaterialEvidenceSerializer(many=True, read_only=True)
     barcode = serializers.CharField(read_only=True)
@@ -124,6 +144,7 @@ class EvidenceGroupSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data['created_by'] = self.context['request'].user
         return super().create(validated_data)
+
 
 class MaterialEvidenceSerializer(serializers.ModelSerializer):
     case = CaseSerializer(read_only=True)
@@ -159,6 +180,7 @@ class MaterialEvidenceSerializer(serializers.ModelSerializer):
         validated_data['created_by'] = self.context['request'].user
         return super().create(validated_data)
 
+
 class MaterialEvidenceEventSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
     material_evidence = MaterialEvidenceSerializer(read_only=True)
@@ -179,6 +201,7 @@ class MaterialEvidenceEventSerializer(serializers.ModelSerializer):
         validated_data['user'] = self.context['request'].user
         return super().create(validated_data)
 
+
 class SessionSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
 
@@ -186,10 +209,12 @@ class SessionSerializer(serializers.ModelSerializer):
         model = Session
         fields = ['id', 'user', 'login', 'logout', 'active']
 
+
 class CameraSerializer(serializers.ModelSerializer):
     class Meta:
         model = Camera
         fields = ['id', 'device_id', 'name', 'type', 'created', 'updated', 'active']
+
 
 class AuditEntrySerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
@@ -199,7 +224,7 @@ class AuditEntrySerializer(serializers.ModelSerializer):
     class Meta:
         model = AuditEntry
         fields = [
-            'id', 'object_id', 'table_name', 'class_name', 'class_name_display', 'action',
+            'id', 'object_id', 'object_name', 'table_name', 'class_name', 'class_name_display', 'action',
             'fields', 'data', 'created', 'user', 'case'
         ]
         read_only_fields = ['created', 'user', 'case']
@@ -214,6 +239,7 @@ class AuditEntrySerializer(serializers.ModelSerializer):
         }
         return class_name_map.get(obj.class_name, obj.class_name)
 
+
 class NestedEvidenceGroupSerializer(serializers.ModelSerializer):
     material_evidences = NestedMaterialEvidenceSerializer(many=True, read_only=True)
     barcode = serializers.CharField(read_only=True)
@@ -222,13 +248,14 @@ class NestedEvidenceGroupSerializer(serializers.ModelSerializer):
         model = EvidenceGroup
         fields = ['id', 'name', 'barcode', 'material_evidences']
 
+
 class CaseDetailSerializer(serializers.ModelSerializer):
     investigator = UserSerializer(read_only=True)
     creator_name = serializers.CharField(source='creator.get_full_name', read_only=True)
     department = DepartmentSerializer(read_only=True)
     department_name = serializers.CharField(source='department.name', read_only=True)
     evidence_groups = NestedEvidenceGroupSerializer(many=True, read_only=True)
-    region_name = serializers.CharField(source='department.region_display', read_only=True)
+    region_name = serializers.CharField(source='department.get_region_display', read_only=True)
 
     class Meta:
         model = Case
@@ -240,5 +267,5 @@ class CaseDetailSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             'creator', 'creator_name', 'investigator', 'department',
-            'department_name', 'created', 'updated', 'evidence_groups'
+            'department_name', 'created', 'updated', 'evidence_groups', 'region_name'
         ]

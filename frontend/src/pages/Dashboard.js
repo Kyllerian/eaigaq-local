@@ -1,5 +1,5 @@
 // src/pages/Dashboard.js
-import LogoMVDKZ from '../assets/Logo_MVD_KZ.png';
+
 import React, { useEffect, useState, useContext, useRef } from 'react';
 import axios from '../axiosConfig';
 import { useNavigate } from 'react-router-dom';
@@ -7,9 +7,6 @@ import {
   Typography,
   Container,
   Box,
-  AppBar,
-  Toolbar,
-  Button,
   Tabs,
   Tab,
   Table,
@@ -32,17 +29,40 @@ import {
   FormControl,
   IconButton,
   Tooltip,
-  useTheme,
+  InputAdornment,
+  Button,
 } from '@mui/material';
 import {
   Add as AddIcon,
-  Logout as LogoutIcon,
   OpenInNew as OpenInNewIcon,
   Circle as CircleIcon,
   Print as PrintIcon,
+  Search as SearchIcon,
 } from '@mui/icons-material';
+import { styled, useTheme } from '@mui/material/styles';
 import { AuthContext } from '../contexts/AuthContext';
 import { useReactToPrint } from 'react-to-print';
+import Header from '../components/Header';
+import LogoMVDKZ from '../assets/Logo_MVD_KZ.png';
+
+const StyledButton = styled(Button)(({ theme }) => ({
+  borderRadius: '5px',
+  textTransform: 'none',
+  backgroundColor: '#1976d2',
+  color: '#ffffff',
+  '&:hover': {
+    backgroundColor: '#0d47a1',
+  },
+  '&.Mui-disabled': {
+    backgroundColor: '#cfd8dc',
+    color: '#ffffff',
+    opacity: 0.7,
+  },
+}));
+
+const StyledTableCell = styled(TableCell)(({ theme }) => ({
+  fontWeight: 'bold',
+}));
 
 const Dashboard = () => {
   const { user, logout } = useContext(AuthContext);
@@ -77,6 +97,10 @@ const Dashboard = () => {
   });
   const navigate = useNavigate();
 
+  // Новые состояния для поиска и фильтрации сотрудников
+  const [employeeSearchQuery, setEmployeeSearchQuery] = useState('');
+  const [selectedEmployeeDepartment, setSelectedEmployeeDepartment] = useState('');
+
   // Состояния и рефы для сканирования штрихкода
   const [openBarcodeDialog, setOpenBarcodeDialog] = useState(false);
   const [scannedBarcode, setScannedBarcode] = useState('');
@@ -94,7 +118,7 @@ const Dashboard = () => {
 
   // Функция для печати отчета
   const handlePrintReport = useReactToPrint({
-    contentRef:reportRef,
+    contentRef: reportRef,
     documentTitle: 'Отчет по сессиям сотрудников',
   });
 
@@ -546,27 +570,27 @@ const Dashboard = () => {
     return employee ? `${employee.last_name} ${employee.first_name}` : '';
   };
 
+  // Обработчики для поиска и фильтрации сотрудников
+  const handleEmployeeSearchChange = (event) => {
+    setEmployeeSearchQuery(event.target.value);
+  };
+
+  const handleEmployeeDepartmentChange = (event) => {
+    setSelectedEmployeeDepartment(event.target.value);
+  };
+
   return (
-    <Box>
-      {/* Верхнее меню */}
-      <AppBar position="fixed" color="primary" elevation={0}>
-        <Toolbar>
-          <Typography variant="h6" sx={{ flexGrow: 1 }}>
-            Дашборд
-          </Typography>
-          <Button
-            color="inherit"
-            onClick={handleLogout}
-            startIcon={<LogoutIcon />}
-          >
-            Выйти
-          </Button>
-        </Toolbar>
-      </AppBar>
+    <Box sx={{ backgroundColor: '#e9edf5', minHeight: '100vh' }}>
+      {/* Шапка */}
+      <Header onLogout={handleLogout} />
 
       {/* Основной контент */}
       <Container
-        sx={{ marginTop: theme.spacing(12), paddingTop: theme.spacing(4) }}
+        sx={{
+          marginTop: theme.spacing(12),
+          paddingTop: theme.spacing(4),
+          pb: theme.spacing(4),
+        }}
       >
         {/* Вкладки */}
         {user &&
@@ -575,8 +599,8 @@ const Dashboard = () => {
             value={tabValue}
             onChange={handleTabChange}
             sx={{ marginBottom: theme.spacing(3) }}
-            indicatorColor="primary"
-            textColor="primary"
+            TabIndicatorProps={{ style: { backgroundColor: '#3d4785' } }}
+            textColor="inherit"
           >
             <Tab label="Дела" />
             <Tab label="Сотрудники" />
@@ -588,9 +612,9 @@ const Dashboard = () => {
         )}
 
         {error && (
-          <Typography variant="body1" color="error" gutterBottom>
+          <Alert severity="error" sx={{ mb: 2 }}>
             {error}
-          </Typography>
+          </Alert>
         )}
 
         {/* Вкладка "Дела" */}
@@ -604,9 +628,10 @@ const Dashboard = () => {
               <Box
                 sx={{
                   display: 'flex',
+                  flexWrap: 'wrap',
                   alignItems: 'center',
-                  mb: theme.spacing(2),
                   gap: theme.spacing(2),
+                  mb: theme.spacing(2),
                 }}
               >
                 <TextField
@@ -614,9 +639,22 @@ const Dashboard = () => {
                   variant="outlined"
                   value={searchQuery}
                   onChange={handleSearchChange}
-                  sx={{ flexGrow: 1 }}
                   size="small"
+                  sx={{ flexGrow: 1 }}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <SearchIcon color="action" />
+                      </InputAdornment>
+                    ),
+                  }}
                 />
+                <StyledButton
+                  onClick={handleOpenBarcodeDialog}
+                  sx={{ height: '40px' }}
+                >
+                  Сканировать штрихкод
+                </StyledButton>
                 {user.role === 'REGION_HEAD' && (
                   <FormControl
                     sx={{ minWidth: 200 }}
@@ -643,33 +681,23 @@ const Dashboard = () => {
                     </Select>
                   </FormControl>
                 )}
-                {/* Добавляем кнопку "Сканировать штрихкод" */}
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={handleOpenBarcodeDialog}
-                >
-                  Сканировать штрихкод
-                </Button>
               </Box>
               <Box
                 sx={{
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
-                  mb: theme.spacing(2),
+                  flexWrap: 'wrap',
+                  gap: theme.spacing(2),
                 }}
               >
                 {user.role !== 'REGION_HEAD' ? (
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    startIcon={<AddIcon />}
+                  <StyledButton
                     onClick={handleOpenCaseDialog}
-                    sx={{ whiteSpace: 'nowrap' }}
+                    startIcon={<AddIcon />}
                   >
-                    Добавить
-                  </Button>
+                    Добавить дело
+                  </StyledButton>
                 ) : (
                   <Box sx={{ width: 128 }} />
                 )}
@@ -703,16 +731,13 @@ const Dashboard = () => {
                       />
                     </IconButton>
                   </Tooltip>
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    startIcon={<OpenInNewIcon />}
+                  <StyledButton
                     onClick={handleOpenCaseDetails}
+                    startIcon={<OpenInNewIcon />}
                     disabled={!selectedCase}
-                    sx={{ whiteSpace: 'nowrap' }}
                   >
-                    Открыть
-                  </Button>
+                    Открыть дело
+                  </StyledButton>
                 </Box>
               </Box>
             </Box>
@@ -720,22 +745,25 @@ const Dashboard = () => {
             {/* Таблица с делами */}
             <Paper elevation={1}>
               <TableContainer>
-                <Table aria-label="Таблица дел">
+                <Table
+                  aria-label="Таблица дел"
+                  sx={{ tableLayout: 'fixed', minWidth: 650 }}
+                >
                   <TableHead>
                     <TableRow>
-                      <TableCell sx={{ fontWeight: 'bold' }}>
+                      <StyledTableCell sx={{ width: '20%' }}>
                         Название дела
-                      </TableCell>
-                      <TableCell sx={{ fontWeight: 'bold' }}>
+                      </StyledTableCell>
+                      <StyledTableCell sx={{ width: '50%' }}>
                         Описание
-                      </TableCell>
-                      <TableCell sx={{ fontWeight: 'bold' }}>
-                        Создатель
-                      </TableCell>
+                      </StyledTableCell>
+                      <StyledTableCell sx={{ width: '15%' }}>
+                        Следователь
+                      </StyledTableCell>
                       {user && user.role === 'REGION_HEAD' && (
-                        <TableCell sx={{ fontWeight: 'bold' }}>
+                        <StyledTableCell sx={{ width: '15%' }}>
                           Отделение
-                        </TableCell>
+                        </StyledTableCell>
                       )}
                     </TableRow>
                   </TableHead>
@@ -754,7 +782,6 @@ const Dashboard = () => {
                           component="th"
                           scope="row"
                           sx={{
-                            maxWidth: 200,
                             whiteSpace: 'nowrap',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
@@ -764,7 +791,6 @@ const Dashboard = () => {
                         </TableCell>
                         <TableCell
                           sx={{
-                            maxWidth: 300,
                             whiteSpace: 'nowrap',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
@@ -772,9 +798,23 @@ const Dashboard = () => {
                         >
                           {caseItem.description}
                         </TableCell>
-                        <TableCell>{caseItem.creator_name}</TableCell>
+                        <TableCell
+                          sx={{
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                          }}
+                        >
+                          {caseItem.creator_name}
+                        </TableCell>
                         {user && user.role === 'REGION_HEAD' && (
-                          <TableCell>
+                          <TableCell
+                            sx={{
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                            }}
+                          >
                             {caseItem.department_name ||
                               (caseItem.department &&
                                 caseItem.department.name) ||
@@ -824,13 +864,9 @@ const Dashboard = () => {
                 </DialogContent>
                 <DialogActions>
                   <Button onClick={handleCloseCaseDialog}>Отмена</Button>
-                  <Button
-                    onClick={handleCaseFormSubmit}
-                    variant="contained"
-                    color="primary"
-                  >
+                  <StyledButton onClick={handleCaseFormSubmit}>
                     Создать
-                  </Button>
+                  </StyledButton>
                 </DialogActions>
               </Dialog>
             )}
@@ -859,13 +895,9 @@ const Dashboard = () => {
               </DialogContent>
               <DialogActions>
                 <Button onClick={handleCloseBarcodeDialog}>Отмена</Button>
-                <Button
-                  onClick={handleBarcodeSubmit}
-                  variant="contained"
-                  color="primary"
-                >
+                <StyledButton onClick={handleBarcodeSubmit}>
                   Найти
-                </Button>
+                </StyledButton>
               </DialogActions>
             </Dialog>
           </>
@@ -873,9 +905,61 @@ const Dashboard = () => {
 
         {/* Вкладка "Сотрудники" */}
         {tabValue === 1 &&
-          (user.role === 'DEPARTMENT_HEAD' ||
-            user.role === 'REGION_HEAD') && (
+          (user.role === 'DEPARTMENT_HEAD' || user.role === 'REGION_HEAD') && (
             <>
+              {/* Поиск и фильтрация для главы региона */}
+              {user.role === 'REGION_HEAD' && (
+                <Box
+                  sx={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    alignItems: 'center',
+                    gap: theme.spacing(2),
+                    mb: theme.spacing(2),
+                  }}
+                >
+                  <TextField
+                    label="Поиск по имени или фамилии"
+                    variant="outlined"
+                    value={employeeSearchQuery}
+                    onChange={handleEmployeeSearchChange}
+                    size="small"
+                    sx={{ flexGrow: 1 }}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <SearchIcon color="action" />
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                  <FormControl
+                    sx={{ minWidth: 200 }}
+                    variant="outlined"
+                    size="small"
+                  >
+                    <InputLabel id="employee-department-filter-label">
+                      Отделение
+                    </InputLabel>
+                    <Select
+                      labelId="employee-department-filter-label"
+                      value={selectedEmployeeDepartment}
+                      onChange={handleEmployeeDepartmentChange}
+                      label="Отделение"
+                    >
+                      <MenuItem value="">
+                        <em>Все отделения</em>
+                      </MenuItem>
+                      {departments.map((dept) => (
+                        <MenuItem key={dept.id} value={dept.id}>
+                          {dept.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Box>
+              )}
+
               {/* Кнопки над таблицей */}
               <Box
                 sx={{
@@ -883,100 +967,191 @@ const Dashboard = () => {
                   justifyContent: 'space-between',
                   mb: theme.spacing(2),
                   alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: theme.spacing(2),
                 }}
               >
                 <Box>
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    startIcon={<AddIcon />}
+                  <StyledButton
                     onClick={handleOpenEmployeeDialog}
-                    sx={{ whiteSpace: 'nowrap', mr: 2 }}
+                    startIcon={<AddIcon />}
+                    sx={{ mr: 2 }}
                   >
                     Добавить сотрудника
-                  </Button>
-                  <Button
-                    variant="contained"
-                    color="inherit"
-                    startIcon={<PrintIcon />}
+                  </StyledButton>
+                  <StyledButton
                     onClick={handleOpenExportDialog}
-                    sx={{ whiteSpace: 'nowrap' }}
+                    startIcon={<PrintIcon />}
                   >
-                    Экспорт
-                  </Button>
+                    Экспорт отчета
+                  </StyledButton>
                 </Box>
                 {selectedEmployee && (
-                  <Button
-                    variant="contained"
-                    color={
-                      selectedEmployee.is_active ? 'secondary' : 'success'
-                    }
+                  <StyledButton
                     onClick={handleToggleActive}
-                    sx={{ whiteSpace: 'nowrap' }}
+                    sx={{
+                      backgroundColor: selectedEmployee.is_active
+                        ? theme.palette.error.main
+                        : theme.palette.success.main,
+                      '&:hover': {
+                        backgroundColor: selectedEmployee.is_active
+                          ? theme.palette.error.dark
+                          : theme.palette.success.dark,
+                      },
+                    }}
                   >
                     {selectedEmployee.is_active
                       ? 'Деактивировать'
                       : 'Активировать'}
-                  </Button>
+                  </StyledButton>
                 )}
               </Box>
 
               {/* Таблица с сотрудниками */}
               <Paper elevation={1}>
                 <TableContainer>
-                  <Table aria-label="Таблица сотрудников">
+                  <Table
+                    aria-label="Таблица сотрудников"
+                    sx={{ tableLayout: 'fixed', minWidth: 800 }}
+                  >
                     <TableHead>
                       <TableRow>
-                        <TableCell sx={{ fontWeight: 'bold' }}>
+                        <StyledTableCell sx={{ width: '15%' }}>
                           Фамилия
-                        </TableCell>
-                        <TableCell sx={{ fontWeight: 'bold' }}>
+                        </StyledTableCell>
+                        <StyledTableCell sx={{ width: '15%' }}>
                           Имя
-                        </TableCell>
-                        <TableCell sx={{ fontWeight: 'bold' }}>
+                        </StyledTableCell>
+                        <StyledTableCell sx={{ width: '10%' }}>
                           Звание
-                        </TableCell>
-                        <TableCell sx={{ fontWeight: 'bold' }}>
+                        </StyledTableCell>
+                        <StyledTableCell sx={{ width: '15%' }}>
                           Роль
-                        </TableCell>
-                        <TableCell sx={{ fontWeight: 'bold' }}>
+                        </StyledTableCell>
+                        <StyledTableCell sx={{ width: '20%' }}>
                           Электронная почта
-                        </TableCell>
-                        <TableCell sx={{ fontWeight: 'bold' }}>
+                        </StyledTableCell>
+                        <StyledTableCell sx={{ width: '15%' }}>
                           Отделение
-                        </TableCell>
-                        <TableCell sx={{ fontWeight: 'bold' }}>
+                        </StyledTableCell>
+                        <StyledTableCell sx={{ width: '10%' }}>
                           Статус
-                        </TableCell>
+                        </StyledTableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {employees.map((employee) => (
-                        <TableRow
-                          key={employee.id}
-                          hover
-                          selected={
-                            selectedEmployee &&
-                            selectedEmployee.id === employee.id
+                      {employees
+                        .filter((employee) => {
+                          // Фильтрация по отделению
+                          if (selectedEmployeeDepartment) {
+                            return (
+                              employee.department &&
+                              employee.department.id ===
+                                parseInt(selectedEmployeeDepartment)
+                            );
                           }
-                          onClick={() => handleEmployeeSelect(employee)}
-                          style={{ cursor: 'pointer' }}
-                        >
-                          <TableCell>{employee.last_name}</TableCell>
-                          <TableCell>{employee.first_name}</TableCell>
-                          <TableCell>{employee.rank}</TableCell>
-                          <TableCell>{employee.role_display}</TableCell>
-                          <TableCell>{employee.email}</TableCell>
-                          <TableCell>
-                            {employee.department
-                              ? employee.department.name
-                              : 'Не указано'}
-                          </TableCell>
-                          <TableCell>
-                            {employee.is_active ? 'Активен' : 'Неактивен'}
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                          return true;
+                        })
+                        .filter((employee) => {
+                          // Поиск по имени и фамилии
+                          if (employeeSearchQuery) {
+                            const fullName = `${employee.first_name} ${employee.last_name}`.toLowerCase();
+                            const reverseFullName = `${employee.last_name} ${employee.first_name}`.toLowerCase();
+                            return (
+                              employee.first_name
+                                .toLowerCase()
+                                .includes(employeeSearchQuery.toLowerCase()) ||
+                              employee.last_name
+                                .toLowerCase()
+                                .includes(employeeSearchQuery.toLowerCase()) ||
+                              fullName.includes(
+                                employeeSearchQuery.toLowerCase()
+                              ) ||
+                              reverseFullName.includes(
+                                employeeSearchQuery.toLowerCase()
+                              )
+                            );
+                          }
+                          return true;
+                        })
+                        .map((employee) => (
+                          <TableRow
+                            key={employee.id}
+                            hover
+                            selected={
+                              selectedEmployee &&
+                              selectedEmployee.id === employee.id
+                            }
+                            onClick={() => handleEmployeeSelect(employee)}
+                            style={{ cursor: 'pointer' }}
+                          >
+                            <TableCell
+                              sx={{
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                              }}
+                            >
+                              {employee.last_name}
+                            </TableCell>
+                            <TableCell
+                              sx={{
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                              }}
+                            >
+                              {employee.first_name}
+                            </TableCell>
+                            <TableCell
+                              sx={{
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                              }}
+                            >
+                              {employee.rank}
+                            </TableCell>
+                            <TableCell
+                              sx={{
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                              }}
+                            >
+                              {employee.role_display}
+                            </TableCell>
+                            <TableCell
+                              sx={{
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                              }}
+                            >
+                              {employee.email}
+                            </TableCell>
+                            <TableCell
+                              sx={{
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                              }}
+                            >
+                              {employee.department
+                                ? employee.department.name
+                                : 'Не указано'}
+                            </TableCell>
+                            <TableCell
+                              sx={{
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                              }}
+                            >
+                              {employee.is_active ? 'Активен' : 'Неактивен'}
+                            </TableCell>
+                          </TableRow>
+                        ))}
                     </TableBody>
                   </Table>
                 </TableContainer>
@@ -1063,18 +1238,14 @@ const Dashboard = () => {
                           onChange={handleEmployeeInputChange}
                           label="Роль"
                         >
-                          <MenuItem value="USER">
-                            Обычный пользователь
-                          </MenuItem>
+                          <MenuItem value="USER">Обычный пользователь</MenuItem>
                           <MenuItem value="DEPARTMENT_HEAD">
                             Главный по отделению
                           </MenuItem>
                         </Select>
                       </FormControl>
                       <FormControl fullWidth margin="dense">
-                        <InputLabel id="department-label">
-                          Отделение
-                        </InputLabel>
+                        <InputLabel id="department-label">Отделение</InputLabel>
                         <Select
                           labelId="department-label"
                           name="department"
@@ -1094,13 +1265,9 @@ const Dashboard = () => {
                 </DialogContent>
                 <DialogActions>
                   <Button onClick={handleCloseEmployeeDialog}>Отмена</Button>
-                  <Button
-                    onClick={handleEmployeeFormSubmit}
-                    variant="contained"
-                    color="primary"
-                  >
+                  <StyledButton onClick={handleEmployeeFormSubmit}>
                     Создать
-                  </Button>
+                  </StyledButton>
                 </DialogActions>
               </Dialog>
 
@@ -1111,9 +1278,7 @@ const Dashboard = () => {
                 maxWidth="sm"
                 fullWidth
               >
-                <DialogTitle>
-                  Экспорт отчета о сессиях сотрудников
-                </DialogTitle>
+                <DialogTitle>Экспорт отчета о сессиях сотрудников</DialogTitle>
                 <DialogContent>
                   {user.role === 'REGION_HEAD' && (
                     <FormControl fullWidth margin="dense">
@@ -1174,13 +1339,9 @@ const Dashboard = () => {
                 </DialogContent>
                 <DialogActions>
                   <Button onClick={handleCloseExportDialog}>Отмена</Button>
-                  <Button
-                    onClick={handleExportSubmit}
-                    variant="contained"
-                    color="primary"
-                  >
+                  <StyledButton onClick={handleExportSubmit}>
                     Сформировать отчет
-                  </Button>
+                  </StyledButton>
                 </DialogActions>
               </Dialog>
             </>
@@ -1265,9 +1426,7 @@ const Dashboard = () => {
                     <TableCell>{session.user.role_display}</TableCell>
                     <TableCell>{formatDate(session.login)}</TableCell>
                     <TableCell>
-                      {session.logout
-                        ? formatDate(session.logout)
-                        : 'Активен'}
+                      {session.logout ? formatDate(session.logout) : 'Активен'}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -1285,7 +1444,8 @@ const Dashboard = () => {
           {/* Footer */}
           <div style={{ marginTop: '40px', textAlign: 'center' }}>
             <Typography variant="body2">
-              © {new Date().getFullYear()} Министерство внутренних дел Республики Казахстан.
+              © {new Date().getFullYear()} Министерство внутренних дел Республики
+              Казахстан.
             </Typography>
           </div>
         </div>

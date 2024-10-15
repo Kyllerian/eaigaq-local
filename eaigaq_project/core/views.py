@@ -69,30 +69,34 @@ class UserViewSet(viewsets.ModelViewSet):
         user = self.request.user
 
         if user.role == "REGION_HEAD":
+            # REGION_HEAD может создавать пользователей в своем регионе
+            new_user_region = serializer.validated_data.get("region")
             department = serializer.validated_data.get("department")
 
-            # Проверяем, что отделение указано
-            if not department:
-                raise PermissionDenied("Необходимо указать отделение для нового пользователя.")
-
-            # Проверяем, что отделение принадлежит региону пользователя
-            if department.region != user.region:
+            # Если указан отделение, проверяем, что оно принадлежит региону пользователя
+            if department and department.region != user.region:
                 raise PermissionDenied(
                     "Вы не можете назначить пользователя в отделение другого региона."
                 )
 
-            # Удаляем 'region' из validated_data, чтобы оно устанавливалось автоматически
-            serializer.validated_data.pop('region', None)
+            # Если регион не указан, устанавливаем регион пользователя
+            if not new_user_region:
+                serializer.validated_data["region"] = user.region
+            else:
+                # Проверяем, что указанный регион совпадает с регионом пользователя
+                if new_user_region != user.region:
+                    raise PermissionDenied(
+                        "Вы не можете создавать пользователей в другом регионе."
+                    )
 
-            # Сохраняем пользователя; поле 'department' будет установлено из validated_data
             serializer.save()
         elif user.role == "DEPARTMENT_HEAD":
             department = user.department
             serializer.validated_data["department"] = department
             serializer.validated_data["role"] = "USER"  # DEPARTMENT_HEAD может создавать только пользователей с ролью USER
 
-            # Удаляем 'region' из validated_data, чтобы оно устанавливалось автоматически
-            serializer.validated_data.pop('region', None)
+            # Регион будет установлен автоматически в модели User
+            serializer.validated_data.pop("region", None)
 
             serializer.save()
         else:
@@ -119,6 +123,13 @@ class UserViewSet(viewsets.ModelViewSet):
             else:
                 raise PermissionDenied(
                     "У вас нет прав для изменения этого пользователя."
+                )
+
+        # Проверяем, что DEPARTMENT_HEAD не может менять роль пользователя
+        if "role" in request.data and user.role == "DEPARTMENT_HEAD":
+            if request.data["role"] != "USER":
+                raise PermissionDenied(
+                    "Вы не можете изменять роль пользователя."
                 )
 
         return super().update(request, *args, **kwargs)
@@ -253,6 +264,8 @@ class CaseViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         user = self.request.user
+        if not user.department:
+            raise PermissionDenied("У вас нет назначенного отделения для создания дела.")
         serializer.save(
             creator=user, investigator=user, department=user.department
         )
@@ -281,6 +294,7 @@ class CaseViewSet(viewsets.ModelViewSet):
             # Создаем запись в AuditEntry
             AuditEntry.objects.create(
                 object_id=instance.id,
+                object_name=instance.name,
                 table_name='case',
                 class_name='Case',
                 action='update',
@@ -416,6 +430,7 @@ class MaterialEvidenceViewSet(viewsets.ModelViewSet):
             # Создаем запись в AuditEntry
             AuditEntry.objects.create(
                 object_id=instance.id,
+                object_name=instance.name,
                 table_name='materialevidence',
                 class_name='MaterialEvidence',
                 action='update',
