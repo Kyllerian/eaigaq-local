@@ -1,7 +1,6 @@
 # docker/entrypoint.sh
 #!/bin/bash
 set -e
-
 # Выполняем миграции и собираем статические файлы
 python3 manage.py migrate
 python3 manage.py collectstatic --noinput
