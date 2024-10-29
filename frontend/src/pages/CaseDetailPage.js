@@ -33,6 +33,7 @@ import {
   Select,
   MenuItem,
   FormControl,
+  InputLabel, // Добавлено
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -48,6 +49,7 @@ import Barcode from 'react-barcode';
 import { useReactToPrint } from 'react-to-print';
 import Header from '../components/Header';
 import LogoMVDKZ from '../assets/Logo_MVD_KZ.png';
+import { EVIDENCE_TYPES } from '../constants/evidenceTypes'; // Добавлено
 
 const StyledButton = styled(Button)(({ theme }) => ({
   borderRadius: '5px',
@@ -80,6 +82,7 @@ const CaseDetailPage = () => {
   const [newEvidence, setNewEvidence] = useState({
     name: '',
     description: '',
+    type: 'OTHER', // Добавлено
   });
   const [openGroupDialog, setOpenGroupDialog] = useState(false);
   const [openEvidenceDialog, setOpenEvidenceDialog] = useState(false);
@@ -114,7 +117,7 @@ const CaseDetailPage = () => {
 
   // Функция для печати только штрихкода
   const handlePrintBarcode = useReactToPrint({
-    contentRef: barcodeRef,
+    contentRef:barcodeRef,
     documentTitle: 'Штрихкод',
     pageStyle: `
       @page {
@@ -343,7 +346,7 @@ const CaseDetailPage = () => {
 
   const handleCloseEvidenceDialog = () => {
     setOpenEvidenceDialog(false);
-    setNewEvidence({ name: '', description: '' });
+    setNewEvidence({ name: '', description: '', type: 'OTHER' }); // Добавлено сброс type
   };
 
   const handleEvidenceInputChange = (event) => {
@@ -360,6 +363,7 @@ const CaseDetailPage = () => {
         description: newEvidence.description,
         case_id: id,
         group_id: selectedGroupId,
+        type: newEvidence.type, // Добавлено
       })
       .then((response) => {
         // Обновляем список доказательств в группе
@@ -524,11 +528,18 @@ const CaseDetailPage = () => {
     return status ? status.label : value;
   };
 
+  // Получение отображаемого типа
+  const getTypeLabel = (value) => {
+    const type = EVIDENCE_TYPES.find((type) => type.value === value);
+    return type ? type.label : value;
+  };
+
   // Отображаемые названия полей
   const fieldLabels = {
     name: 'Название',
     description: 'Описание',
     status: 'Статус',
+    type: 'Тип ВД', // Добавлено
     updated: 'Обновлено',
     created: 'Создано',
     case: 'Дело',
@@ -722,6 +733,7 @@ const CaseDetailPage = () => {
                           <TableRow>
                             <StyledTableCell>Название</StyledTableCell>
                             <StyledTableCell>Описание</StyledTableCell>
+                            <StyledTableCell>Тип ВД</StyledTableCell> {/* Добавлено */}
                             <StyledTableCell>Статус</StyledTableCell>
                             <StyledTableCell>Действия</StyledTableCell>
                           </TableRow>
@@ -733,6 +745,9 @@ const CaseDetailPage = () => {
                               <TableRow key={evidence.id}>
                                 <TableCell>{evidence.name}</TableCell>
                                 <TableCell>{evidence.description}</TableCell>
+                                <TableCell>
+                                  {getTypeLabel(evidence.type)} {/* Добавлено */}
+                                </TableCell>
                                 <TableCell>
                                   {canEdit ? (
                                     <FormControl fullWidth variant="standard">
@@ -786,7 +801,7 @@ const CaseDetailPage = () => {
                             ))
                           ) : (
                             <TableRow>
-                              <TableCell colSpan={4} align="center">
+                              <TableCell colSpan={5} align="center"> {/* Обновлено colSpan */}
                                 Нет вещественных доказательств.
                               </TableCell>
                             </TableRow>
@@ -849,6 +864,22 @@ const CaseDetailPage = () => {
                   multiline
                   rows={4}
                 />
+                <FormControl fullWidth margin="dense" required> {/* Добавлено */}
+                  <InputLabel id="evidence-type-label">Тип ВД</InputLabel>
+                  <Select
+                    labelId="evidence-type-label"
+                    label="Тип ВД"
+                    name="type"
+                    value={newEvidence.type}
+                    onChange={handleEvidenceInputChange}
+                  >
+                    {EVIDENCE_TYPES.map((type) => (
+                      <MenuItem key={type.value} value={type.value}>
+                        {type.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
               </DialogContent>
               <DialogActions>
                 <Button onClick={handleCloseEvidenceDialog}>Отмена</Button>
@@ -1043,13 +1074,16 @@ const CaseDetailPage = () => {
                   >
                     <TableHead>
                       <TableRow>
-                        <TableCell style={{ width: '30%' }}>
+                        <TableCell style={{ width: '25%' }}>
                           <strong>Название</strong>
                         </TableCell>
-                        <TableCell style={{ width: '50%' }}>
+                        <TableCell style={{ width: '25%' }}>
                           <strong>Описание</strong>
                         </TableCell>
                         <TableCell style={{ width: '20%' }}>
+                          <strong>Тип ВД</strong> {/* Добавлено */}
+                        </TableCell>
+                        <TableCell style={{ width: '30%' }}>
                           <strong>Статус</strong>
                         </TableCell>
                       </TableRow>
@@ -1061,7 +1095,7 @@ const CaseDetailPage = () => {
                           <TableRow key={evidence.id}>
                             <TableCell
                               style={{
-                                width: '30%',
+                                width: '25%',
                                 wordBreak: 'break-word',
                                 whiteSpace: 'normal',
                               }}
@@ -1070,7 +1104,7 @@ const CaseDetailPage = () => {
                             </TableCell>
                             <TableCell
                               style={{
-                                width: '50%',
+                                width: '25%',
                                 wordBreak: 'break-word',
                                 whiteSpace: 'normal',
                               }}
@@ -1084,13 +1118,22 @@ const CaseDetailPage = () => {
                                 whiteSpace: 'normal',
                               }}
                             >
+                              {getTypeLabel(evidence.type)} {/* Добавлено */}
+                            </TableCell>
+                            <TableCell
+                              style={{
+                                width: '30%',
+                                wordBreak: 'break-word',
+                                whiteSpace: 'normal',
+                              }}
+                            >
                               {getStatusLabel(evidence.status)}
                             </TableCell>
                           </TableRow>
                         ))
                       ) : (
                         <TableRow>
-                          <TableCell colSpan={3} align="center">
+                          <TableCell colSpan={4} align="center">
                             Нет вещественных доказательств.
                           </TableCell>
                         </TableRow>
@@ -1127,57 +1170,21 @@ const CaseDetailPage = () => {
                 >
                   <TableHead>
                     <TableRow>
-                      <TableCell style={{ width: '20%' }}>
-                        <strong>Дата и время</strong>
-                      </TableCell>
-                      <TableCell style={{ width: '20%' }}>
-                        <strong>Пользователь</strong>
-                      </TableCell>
-                      <TableCell style={{ width: '20%' }}>
-                        <strong>Действие</strong>
-                      </TableCell>
-                      <TableCell style={{ width: '40%' }}>
-                        <strong>Изменения</strong>
-                      </TableCell>
+                      <StyledTableCell>Дата и время</StyledTableCell>
+                      <StyledTableCell>Пользователь</StyledTableCell>
+                      <StyledTableCell>Действие</StyledTableCell>
+                      <StyledTableCell>Изменения</StyledTableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
                     {changeLogs.map((log) => (
                       <TableRow key={log.id}>
-                        <TableCell
-                          style={{
-                            width: '20%',
-                            wordBreak: 'break-word',
-                            whiteSpace: 'normal',
-                          }}
-                        >
-                          {formatDate(log.created)}
-                        </TableCell>
-                        <TableCell
-                          style={{
-                            width: '20%',
-                            wordBreak: 'break-word',
-                            whiteSpace: 'normal',
-                          }}
-                        >
+                        <TableCell>{formatDate(log.created)}</TableCell>
+                        <TableCell>
                           {log.user ? log.user.full_name : 'Система'}
                         </TableCell>
-                        <TableCell
-                          style={{
-                            width: '20%',
-                            wordBreak: 'break-word',
-                            whiteSpace: 'normal',
-                          }}
-                        >
-                          {getActionMessage(log)}
-                        </TableCell>
-                        <TableCell
-                          style={{
-                            width: '40%',
-                            wordBreak: 'break-word',
-                            whiteSpace: 'normal',
-                          }}
-                        >
+                        <TableCell>{getActionMessage(log)}</TableCell>
+                        <TableCell>
                           {(() => {
                             if (log.data && log.data.trim() !== '') {
                               try {
@@ -1187,6 +1194,7 @@ const CaseDetailPage = () => {
                                     'name',
                                     'description',
                                     'status',
+                                    'type', // Добавлено
                                   ];
                                   return Object.entries(data).map(
                                     ([field, values]) => {
@@ -1199,11 +1207,15 @@ const CaseDetailPage = () => {
                                             :{' '}
                                             {field === 'status'
                                               ? getStatusLabel(values.old)
-                                              : values.old}{' '}
+                                              : field === 'type'
+                                                ? getTypeLabel(values.old)
+                                                : values.old}{' '}
                                             →{' '}
                                             {field === 'status'
                                               ? getStatusLabel(values.new)
-                                              : values.new}
+                                              : field === 'type'
+                                                ? getTypeLabel(values.new)
+                                                : values.new}
                                           </div>
                                         );
                                       } else {
@@ -1216,6 +1228,7 @@ const CaseDetailPage = () => {
                                     'name',
                                     'description',
                                     'status',
+                                    'type', // Добавлено
                                   ];
                                   return (
                                     <div>
@@ -1230,7 +1243,9 @@ const CaseDetailPage = () => {
                                                 :{' '}
                                                 {field === 'status'
                                                   ? getStatusLabel(value)
-                                                  : value}
+                                                  : field === 'type'
+                                                    ? getTypeLabel(value)
+                                                    : value}
                                               </div>
                                             );
                                           } else {
@@ -1299,6 +1314,10 @@ const CaseDetailPage = () => {
                   margin={0}
                 />
               </div>
+              {/*/!* Добавлено отображение типа *!/*/}
+              {/*<Typography variant="body2" style={{ marginTop: '10px' }}>*/}
+              {/*  Тип ВД: {getTypeLabel(selectedGroupId ? groups.find(g => g.id === selectedGroupId)?.type : '')}*/}
+              {/*</Typography>*/}
             </div>
           )}
         </DialogContent>
@@ -1328,6 +1347,7 @@ const CaseDetailPage = () => {
 };
 
 export default CaseDetailPage;
+
 
 // // src/pages/CaseDetailPage.js
 //
@@ -1363,7 +1383,7 @@ export default CaseDetailPage;
 //   Tooltip,
 //   Select,
 //   MenuItem,
-//   FormControl, Toolbar,
+//   FormControl,
 // } from '@mui/material';
 // import {
 //   Add as AddIcon,
@@ -1377,15 +1397,8 @@ export default CaseDetailPage;
 // import { AuthContext } from '../contexts/AuthContext';
 // import Barcode from 'react-barcode';
 // import { useReactToPrint } from 'react-to-print';
+// import Header from '../components/Header';
 // import LogoMVDKZ from '../assets/Logo_MVD_KZ.png';
-//
-// const StyledAppBar = styled('div')(({ theme }) => ({
-//   backgroundColor: '#1976d2',
-//   padding: theme.spacing(2),
-//   display: 'flex',
-//   alignItems: 'center',
-//   color: '#ffffff',
-// }));
 //
 // const StyledButton = styled(Button)(({ theme }) => ({
 //   borderRadius: '5px',
@@ -1482,7 +1495,7 @@ export default CaseDetailPage;
 //
 //   // Функция для печати отчета
 //   const handlePrintReport = useReactToPrint({
-//     content: () => reportRef.current,
+//     contentRef: reportRef,
 //     documentTitle: `Отчет по делу ${caseItem?.name}`,
 //     pageStyle: `
 //       @media print {
@@ -1566,6 +1579,7 @@ export default CaseDetailPage;
 //     }
 //   }, [id, canViewHistory]);
 //
+//   // Обработка вкладок
 //   const handleTabChange = (event, newValue) => {
 //     setTabValue(newValue);
 //   };
@@ -1892,21 +1906,30 @@ export default CaseDetailPage;
 //
 //   return (
 //     <Box sx={{ backgroundColor: '#e9edf5', minHeight: '100vh' }}>
-//       {/* Верхнее меню */}
-//       <StyledAppBar>
-//         <Toolbar disableGutters>
+//       {/* Шапка */}
+//       <Header onLogout={() => navigate('/login')} />
+//
+//       {/* Основной контент */}
+//       <Container sx={{ marginTop: theme.spacing(12), pb: theme.spacing(4) }}>
+//         {/* Кнопка "Назад" и заголовок */}
+//         <Box
+//           sx={{
+//             display: 'flex',
+//             alignItems: 'center',
+//             mb: theme.spacing(2),
+//           }}
+//         >
 //           <IconButton
 //             edge="start"
 //             color="inherit"
 //             onClick={() => navigate(-1)}
-//             sx={{ ml: 2 }}
+//             sx={{ mr: 1 }}
 //           >
 //             <ArrowBackIcon />
 //           </IconButton>
-//           <Typography variant="h6" sx={{ flexGrow: 1, ml: 2 }}>
-//             Детали дела
-//           </Typography>
-//           {/* Кнопка Экспорт */}
+//           <Typography variant="h5">Детали дела</Typography>
+//           <Box sx={{ flexGrow: 1 }} />
+//           {/* Кнопка "Экспорт" */}
 //           {canView && (
 //             <StyledButton
 //               onClick={handlePrintReport}
@@ -1916,6 +1939,7 @@ export default CaseDetailPage;
 //               Экспорт
 //             </StyledButton>
 //           )}
+//           {/* Кнопка "Активировать/Закрыть" */}
 //           {canEdit && (
 //             <Tooltip
 //               title={caseItem.active ? 'Закрыть дело' : 'Активировать дело'}
@@ -1931,21 +1955,15 @@ export default CaseDetailPage;
 //                       ? theme.palette.error.dark
 //                       : theme.palette.success.dark,
 //                   },
-//                   mr: 2,
 //                 }}
-//                 startIcon={
-//                   caseItem.active ? <CloseIcon /> : <CheckCircleIcon />
-//                 }
+//                 startIcon={caseItem.active ? <CloseIcon /> : <CheckCircleIcon />}
 //               >
 //                 {caseItem.active ? 'Закрыть' : 'Активировать'}
 //               </StyledButton>
 //             </Tooltip>
 //           )}
-//         </Toolbar>
-//       </StyledAppBar>
+//         </Box>
 //
-//       {/* Основной контент */}
-//       <Container sx={{ marginTop: theme.spacing(12), pb: theme.spacing(4) }}>
 //         {/* Вкладки */}
 //         <Tabs
 //           value={tabValue}

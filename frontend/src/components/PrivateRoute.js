@@ -1,18 +1,21 @@
 // src/components/PrivateRoute.js
 
-
 import React, { useContext } from 'react';
 import { Navigate } from 'react-router-dom';
 import { AuthContext } from '../contexts/AuthContext';
 
-const PrivateRoute = ({ children }) => {
+function PrivateRoute({ children }) {
   const { user, loading } = useContext(AuthContext);
 
   if (loading) {
-    return <div>Загрузка...</div>;
+    return <div>Загрузка...</div>; // Можно заменить на спиннер
   }
 
-  return user ? children : <Navigate to="/login" />;
-};
+  if (!user) {
+    return <Navigate to="/login" />;
+  }
+
+  return children;
+}
 
 export default PrivateRoute;

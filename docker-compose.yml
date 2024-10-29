@@ -1,6 +1,3 @@
-# docker-compose.yml
-version: '3.8'
-
 services:
   db:
     image: postgres:13
@@ -10,6 +7,25 @@ services:
       - postgres_data:/var/lib/postgresql/data/
     networks:
       - webnet
+    # healthcheck:
+    #   test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER}"]
+    #   interval: 10s
+    #   timeout: 5s
+    #   retries: 5
+
+  redis:
+    image: redis:latest
+    expose:
+      - "6379"
+#    ports:
+#      - "6379:6379"
+    networks:
+      - webnet
+#    healthcheck:
+#      test: ["CMD", "redis-cli", "ping"]
+#      interval: 10s
+#      timeout: 5s
+#      retries: 5
 
   backend:
     build:
@@ -19,6 +35,7 @@ services:
       - ./env/.env.backend
     depends_on:
       - db
+      - redis
     volumes:
       - static_volume:/app/staticfiles
     networks:
@@ -27,22 +44,50 @@ services:
       - "8000"
     deploy:
       resources:
+        limits:
+          cpus: '8'
+          memory: 8g
         reservations:
           devices:
             - driver: nvidia
               count: 1
-              capabilities: [gpu]
-        limits:
-          cpus: '16'
-          memory: 24g
+              capabilities: [ gpu ]
+    runtime: nvidia
     init: true
+    command: ["daphne", "-b", "0.0.0.0", "-p", "8000", "eaigaq_project.asgi:application"]
+
+  celery:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.backend
+    env_file:
+      - ./env/.env.backend
+    depends_on:
+      - db
+      - redis
+    networks:
+      - webnet
+    deploy:
+      resources:
+        limits:
+          cpus: '8'
+          memory: 8g
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [ gpu ]
+    runtime: nvidia
+    init: true
+    command: ["celery", "-A", "eaigaq_project", "worker", "--loglevel=info","--pool=solo"]
 
   nginx:
     build:
       context: .
       dockerfile: docker/Dockerfile.frontend
     depends_on:
-      - backend
+      backend:
+        condition: service_started
     ports:
       - "80:80"
     networks:

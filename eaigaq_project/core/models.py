@@ -5,10 +5,11 @@ from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from django.forms.models import model_to_dict
+from django.conf import settings
 import uuid
 import random
 import json
-from django.db.models.signals import post_save, post_delete
+from django.db.models.signals import pre_save, post_save, post_delete
 from django.dispatch import receiver
 
 
@@ -19,7 +20,7 @@ class Region(models.TextChoices):
     ATYRAU = 'ATYRAU', _('Атырауская область')
     EAST_KAZAKHSTAN = 'EAST_KAZAKHSTAN', _('Восточно-Казахстанская область')
     ZHAMBYL = 'ZHAMBYL', _('Жамбылская область')
-    WEST_KAZAKHSTAN = 'WEST_KAZAKHSTAN', _('Западно-Казахстанская область')
+    WEST_KAZAKHSTAN = 'WEST_KAZAKHSTAN', _('Западно-Казахстанская область')  # Corrected 'WEST_KAZAKHСТАН' to 'WEST_KAZAKHSTAN'
     KARAGANDA = 'KARAGANDA', _('Карагандинская область')
     KOSTANAY = 'KOSTANAY', _('Костанайская область')
     KYZYLORDA = 'KYZYLORDA', _('Кызылординская область')
@@ -48,7 +49,6 @@ class Department(models.Model):
 class User(AbstractUser):
     phone_number = models.CharField(_('Номер телефона'), max_length=20, blank=True)
     rank = models.CharField(_('Звание'), max_length=50, blank=True)
-    face_data = models.BinaryField(_('Данные лица'), blank=True, null=True)
     department = models.ForeignKey(
         Department,
         on_delete=models.SET_NULL,
@@ -75,21 +75,16 @@ class User(AbstractUser):
         choices=ROLE_CHOICES,
         default='USER',
     )
+    biometric_registered = models.BooleanField(_('Биометрия зарегистрирована'), default=False)
 
     def __str__(self):
         return f"{self.get_full_name()} - ({self.rank})"
 
-    # Заглушки для методов распознавания лица
-    def set_face_data(self, image):
-        # TODO: Реализовать сохранение данных лица
-        pass
-
-    def verify_face(self, image):
-        # TODO: Реализовать проверку лица
-        return False
-
     # Автоматическое установление региона при сохранении
     def save(self, *args, **kwargs):
+        # Сохраняем текущее значение biometric_registered
+        biometric_registered = self.biometric_registered
+
         if self.role == 'REGION_HEAD':
             # Для главы региона позволяем установить регион вручную
             pass  # Не меняем self.region
@@ -99,7 +94,26 @@ class User(AbstractUser):
                 self.region = self.department.region
             else:
                 self.region = None  # Если отделение не указано, регион тоже не установлен
+
+        # Восстанавливаем значение biometric_registered
+        self.biometric_registered = biometric_registered
+
         super(User, self).save(*args, **kwargs)
+
+
+class FaceEncoding(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='face_encodings',
+        verbose_name=_('Пользователь')
+    )
+    encoding = models.BinaryField(_('Кодировка лица'))
+    stage = models.CharField(_('Этап регистрации'), max_length=50, null=True, blank=True)
+    created_at = models.DateTimeField(_('Дата создания'), auto_now_add=True)
+
+    def __str__(self):
+        return f"Кодировка лица для {self.user.username} от {self.created_at.strftime('%Y-%m-%d %H:%M:%S')}"
 
 
 class Case(models.Model):
@@ -125,8 +139,6 @@ class Case(models.Model):
 
     def __str__(self):
         return self.name
-
-    # Убираем метод save() для логирования
 
 
 class MaterialEvidenceStatus(models.TextChoices):
@@ -175,6 +187,12 @@ class EvidenceGroup(models.Model):
     def __str__(self):
         return self.name
 
+class MaterialEvidenceType(models.TextChoices):
+    FIREARM = 'FIREARM', _('Огнестрельное оружие')
+    COLD_WEAPON = 'COLD_WEAPON', _('Холодное оружие')
+    DRUGS = 'DRUGS', _('Наркотики')
+    OTHER = 'OTHER', _('Другое')
+
 
 class MaterialEvidence(models.Model):
     name = models.CharField(_('Название ВД'), max_length=255)
@@ -204,6 +222,13 @@ class MaterialEvidence(models.Model):
     updated = models.DateTimeField(_('Обновлено'), auto_now=True)
     active = models.BooleanField(_('Активно'), default=True)
 
+    type = models.CharField(
+        _('Тип ВД'),
+        max_length=20,
+        choices=MaterialEvidenceType.choices,
+        default=MaterialEvidenceType.OTHER,  # Значение по умолчанию
+    )
+
     def save(self, *args, **kwargs):
         if not self.barcode:
             self.barcode = self.generate_unique_barcode()
@@ -229,8 +254,6 @@ class MaterialEvidence(models.Model):
     def __str__(self):
         return self.name
 
-    # Убираем метод save() для логирования
-
 
 class MaterialEvidenceEvent(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name=_('Пользователь'))
@@ -246,8 +269,6 @@ class MaterialEvidenceEvent(models.Model):
 
     def __str__(self):
         return f"{self.action} - {self.user} - {self.created.strftime('%Y-%m-%d %H:%M:%S')}"
-
-    # Убираем метод save() для логирования
 
 
 class Session(models.Model):
@@ -299,15 +320,34 @@ class AuditEntry(models.Model):
         return f"Аудит {self.action} на {self.class_name} пользователем {self.user}"
 
 
-# Сигналы для логирования создания и обновления объектов
+# ---------------------------
+# Signals for logging changes
+# ---------------------------
+
+# # Create a cache to store old instance data
+# from threading import local
+# _thread_locals = local()
+
+@receiver(pre_save, sender=Case)
+def store_old_case_instance(sender, instance, **kwargs):
+    if instance.pk:
+        try:
+            instance._old_instance = sender.objects.get(pk=instance.pk)
+        except sender.DoesNotExist:
+            instance._old_instance = None
+    else:
+        instance._old_instance = None
+
 @receiver(post_save, sender=Case)
 def log_case_changes(sender, instance, created, **kwargs):
     action = 'create' if created else 'update'
     user = instance.creator if instance.creator else None
 
-    # Получаем изменения
     if not created:
-        old_instance = sender.objects.get(pk=instance.pk)
+        old_instance = getattr(instance, '_old_instance', None)
+        if not old_instance:
+            return
+
         changes = {}
         for field in instance._meta.fields:
             field_name = field.name
@@ -318,6 +358,7 @@ def log_case_changes(sender, instance, created, **kwargs):
         if not changes:
             return
     else:
+        # Для создания записи сохраняем все поля
         changes = model_to_dict(instance)
         changes = {k: str(v) for k, v in changes.items()}
 
@@ -333,6 +374,15 @@ def log_case_changes(sender, instance, created, **kwargs):
         case=instance
     )
 
+@receiver(pre_save, sender=MaterialEvidence)
+def store_old_material_evidence_instance(sender, instance, **kwargs):
+    if instance.pk:
+        try:
+            instance._old_instance = sender.objects.get(pk=instance.pk)
+        except sender.DoesNotExist:
+            instance._old_instance = None
+    else:
+        instance._old_instance = None
 
 @receiver(post_save, sender=MaterialEvidence)
 def log_material_evidence_changes(sender, instance, created, **kwargs):
@@ -340,7 +390,10 @@ def log_material_evidence_changes(sender, instance, created, **kwargs):
     user = instance.created_by if instance.created_by else None
 
     if not created:
-        old_instance = sender.objects.get(pk=instance.pk)
+        old_instance = getattr(instance, '_old_instance', None)
+        if not old_instance:
+            return
+
         changes = {}
         for field in instance._meta.fields:
             field_name = field.name
@@ -351,6 +404,7 @@ def log_material_evidence_changes(sender, instance, created, **kwargs):
         if not changes:
             return
     else:
+        # Для создания записи сохраняем все поля
         changes = model_to_dict(instance)
         changes = {k: str(v) for k, v in changes.items()}
 
@@ -365,7 +419,6 @@ def log_material_evidence_changes(sender, instance, created, **kwargs):
         user=user,
         case=instance.case
     )
-
 
 @receiver(post_delete, sender=MaterialEvidence)
 def log_material_evidence_deletion(sender, instance, **kwargs):

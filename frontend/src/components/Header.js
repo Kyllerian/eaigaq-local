@@ -6,9 +6,7 @@ import { styled } from '@mui/material/styles';
 import MenuIcon from '@mui/icons-material/Menu';
 import LogoMVDKZ from '../assets/Logo_MVD_KZ.png';
 
-// const StyledAppBar = styled(AppBar)(({ theme }) => ({
-//   background: 'linear-gradient(90deg, #1e3c72 0%, #2a5298 100%)',
-// }));
+
 
 const StyledAppBar = styled(AppBar)(({ theme }) => ({
   backgroundColor: '#1976d2', // Основной цвет AppBar
@@ -39,12 +37,6 @@ const Header = ({ onLogout }) => {
         <Logo src={LogoMVDKZ} alt="Логотип" />
         <Title variant="h5">E-aigaq</Title>
 
-        {/*/!* Навигационные кнопки для больших экранов *!/*/}
-        {/*<Box sx={{ display: { xs: 'none', md: 'flex' } }}>*/}
-        {/*  <Button color="inherit">Главная</Button>*/}
-        {/*  <Button color="inherit">О нас</Button>*/}
-        {/*  <Button color="inherit">Контакты</Button>*/}
-        {/*</Box>*/}
 
         <Button color="inherit" onClick={onLogout}>
           Выйти

@@ -7,8 +7,6 @@ from django.db.models import Q
 from django.forms.models import model_to_dict
 import json
 
-from .permissions import IsCreator, IsRegionHead, IsDepartmentHead
-
 from rest_framework.exceptions import PermissionDenied
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import (
@@ -20,6 +18,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.filters import SearchFilter
 
+from .permissions import IsCreator, IsRegionHead, IsDepartmentHead
 from .models import (
     User,
     Department,
@@ -30,6 +29,7 @@ from .models import (
     Camera,
     AuditEntry,
     EvidenceGroup,
+    FaceEncoding,
 )
 from .serializers import (
     UserSerializer,
@@ -648,14 +648,6 @@ class AuditEntryViewSet(viewsets.ModelViewSet):
 # Authentication and CSRF Views
 # ---------------------------
 
-# Заглушка для биометрической аутентификации
-@api_view(["POST"])
-@permission_classes([AllowAny])
-def biometric_auth(request):
-    # TODO: Реализовать биометрическую аутентификацию позже
-    return Response({"message": "Biometric authentication placeholder"})
-
-
 @ensure_csrf_cookie
 @api_view(["GET"])
 @permission_classes([AllowAny])
@@ -668,16 +660,20 @@ def get_csrf_token(request):
 def login_view(request):
     username = request.data.get("username")
     password = request.data.get("password")
-    print(f"Попытка входа: {username}")
+    # logger.info(f"Попытка входа: {username}")
     user = authenticate(request, username=username, password=password)
     if user is not None:
-        print(f"Успешная аутентификация для пользователя: {user.username}")
-        login(request, user)
-        # Сессия будет создана автоматически сигналом user_logged_in
-        return JsonResponse({"detail": "Authentication successful"})
+        # logger.info(f"Успешная аутентификация для пользователя: {user.username}")
+        request.session['temp_user_id'] = user.id
+        if user.biometric_registered:
+            # Требуется биометрическая аутентификация через WebSocket
+            return JsonResponse({"detail": "Требуется биометрическая аутентификация", "biometric_required": True})
+        else:
+            # Требуется регистрация биометрии через WebSocket
+            return JsonResponse({"detail": "Требуется регистрация биометрии", "biometric_registration_required": True})
     else:
-        print(f"Аутентификация не удалась для пользователя: {username}")
-        return JsonResponse({"detail": "Invalid credentials"}, status=401)
+        # logger.warning(f"Аутентификация не удалась для пользователя: {username}")
+        return JsonResponse({"detail": "Неверные учетные данные"}, status=401)
 
 
 
@@ -685,12 +681,10 @@ def login_view(request):
 def logout_view(request):
     user = request.user
     if user.is_authenticated:
-        # Сессия будет обновлена автоматически сигналом user_logged_out
         logout(request)
-        return JsonResponse({"detail": "Logout successful"})
+        return JsonResponse({"detail": "Вы успешно вышли из системы"})
     else:
-        return JsonResponse({"detail": "User is not authenticated"}, status=400)
-
+        return JsonResponse({"detail": "Пользователь не аутентифицирован"}, status=400)
 
 
 @api_view(["GET"])
