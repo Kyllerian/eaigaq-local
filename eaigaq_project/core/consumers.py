@@ -37,7 +37,7 @@ class BiometricConsumer(AsyncWebsocketConsumer):
         self.recognized = False
         self.stopped = False
         self.start_time = None
-        self.max_duration = 10  # Максимальная длительность попытки распознавания (секунды)
+        self.max_duration = 15  # Максимальная длительность попытки распознавания (секунды)
 
         self.stage = None  # 'registration' or 'authentication'
 
@@ -113,7 +113,7 @@ class BiometricConsumer(AsyncWebsocketConsumer):
 
             if result['status'] == 'success':
                 self.encoding_count += 1
-                if self.encoding_count >= 5:
+                if self.encoding_count >= 10:
                     # Достаточно кодировок, завершаем регистрацию
                     await self.set_biometric_registered(True)
                     # Аутентифицируем пользователя после успешной регистрации
@@ -122,7 +122,7 @@ class BiometricConsumer(AsyncWebsocketConsumer):
                     self.stopped = True
                     await self.close()
                 else:
-                    await self.safe_send(json.dumps({'message': f'Кодировка лица сохранена ({self.encoding_count}/5)'}))
+                    await self.safe_send(json.dumps({'message': f'Кодировка лица сохранена ({self.encoding_count}/10)'}))
             elif result['status'] == 'no_face':
                 await self.safe_send(json.dumps({'warning': 'Лицо не обнаружено на текущем кадре.'}))
             else:

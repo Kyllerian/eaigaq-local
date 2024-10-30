@@ -1,4 +1,4 @@
-# core/urls.py
+# eaigaq_project/core/urls.py
 
 from django.urls import include, path
 from rest_framework import routers

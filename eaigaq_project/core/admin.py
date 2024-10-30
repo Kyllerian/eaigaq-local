@@ -1,4 +1,4 @@
-# core/admin.py
+# eaigaq_project/core/admin.py
 
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
@@ -76,11 +76,6 @@ class CaseAdmin(admin.ModelAdmin):
     list_filter = ('active', 'created', 'updated')
 
 
-# @admin.register(MaterialEvidence)
-# class MaterialEvidenceAdmin(admin.ModelAdmin):
-#     list_display = ('name', 'case', 'status', 'barcode', 'created', 'updated')
-#     search_fields = ('name', 'description', 'barcode')
-#     list_filter = ('status', 'active', 'created', 'updated')
 
 @admin.register(MaterialEvidence)
 class MaterialEvidenceAdmin(admin.ModelAdmin):

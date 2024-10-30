@@ -10,3 +10,5 @@ face_recognition
 celery
 gevent
 eventlet
+django-filter
+channels

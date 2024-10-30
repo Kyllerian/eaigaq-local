@@ -2,7 +2,7 @@
 
 
 # Используем базовый образ с установленными CUDA, dlib и OpenCV
-FROM aigaq_image_v7.5:latest
+FROM kyllerian/aigaq-base:v1.4
 
 # Устанавливаем рабочую директорию внутри контейнера
 WORKDIR /app

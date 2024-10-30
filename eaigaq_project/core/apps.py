@@ -1,4 +1,4 @@
-# core/apps.py
+# eaigaq_project/core/apps.py
 
 from django.apps import AppConfig
 

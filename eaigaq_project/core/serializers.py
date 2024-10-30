@@ -1,4 +1,4 @@
-# core/serializers.py
+# eaigaq_project/core/serializers.py
 
 from rest_framework import serializers
 from .models import (
@@ -146,6 +146,8 @@ class EvidenceGroupSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data['created_by'] = self.context['request'].user
         return super().create(validated_data)
+
+
 
 
 class MaterialEvidenceSerializer(serializers.ModelSerializer):

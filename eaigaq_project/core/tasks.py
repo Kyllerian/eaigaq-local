@@ -1,4 +1,4 @@
-# core/tasks.py
+# eaigaq_project/core/tasks.py
 
 from celery import shared_task
 import numpy as np

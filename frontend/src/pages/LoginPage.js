@@ -183,7 +183,7 @@ function LoginPage() {
             Войти
           </Button>
         </Box>
-        {/* Дополнительные ссылки */}
+
         <Box
           sx={{
             display: 'flex',
@@ -193,7 +193,6 @@ function LoginPage() {
             mt: 2,
           }}
         >
-          {/* Здесь можно добавить ссылки, например, на регистрацию */}
         </Box>
       </Screen>
     </Box>
