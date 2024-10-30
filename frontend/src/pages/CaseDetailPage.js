@@ -1314,10 +1314,6 @@ const CaseDetailPage = () => {
                   margin={0}
                 />
               </div>
-              {/*/!* Добавлено отображение типа *!/*/}
-              {/*<Typography variant="body2" style={{ marginTop: '10px' }}>*/}
-              {/*  Тип ВД: {getTypeLabel(selectedGroupId ? groups.find(g => g.id === selectedGroupId)?.type : '')}*/}
-              {/*</Typography>*/}
             </div>
           )}
         </DialogContent>

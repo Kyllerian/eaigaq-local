@@ -109,8 +109,11 @@ const Dashboard = () => {
 
   // Состояния и рефы для сканирования штрихкода
   const [openBarcodeDialog, setOpenBarcodeDialog] = useState(false);
+  const [openBarcodeDisplayDialog, setOpenBarcodeDisplayDialog] = useState(false);
+
   const [scannedBarcode, setScannedBarcode] = useState('');
   const barcodeInputRef = useRef(null);
+
 
   // Состояния для экспорта отчета по сессиям сотрудников
   const [openExportDialog, setOpenExportDialog] = useState(false);
@@ -135,7 +138,7 @@ const Dashboard = () => {
 
   // Функция для печати отчета по сессиям сотрудников
   const handlePrintReport = useReactToPrint({
-    content: () => reportRef.current,
+    contentRef: reportRef,
     documentTitle: 'Отчет по сессиям сотрудников',
   });
 
@@ -772,7 +775,7 @@ const Dashboard = () => {
   const handlePrintEvidenceBarcode = (evidence) => {
     if (evidence.barcode) {
       setScannedBarcode(evidence.barcode);
-      setOpenBarcodeDialog(true);
+      setOpenBarcodeDisplayDialog(true);
     } else {
       setSnackbar({
         open: true,
@@ -2042,8 +2045,8 @@ const Dashboard = () => {
 
         {/* Диалоговое окно для отображения штрихкода */}
         <Dialog
-          open={openBarcodeDialog}
-          onClose={() => setOpenBarcodeDialog(false)}
+          open={openBarcodeDisplayDialog}
+          onClose={() => setOpenBarcodeDisplayDialog(false)}
           maxWidth="xs"
           fullWidth
         >
@@ -2068,7 +2071,7 @@ const Dashboard = () => {
             )}
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setOpenBarcodeDialog(false)}>Закрыть</Button>
+            <Button onClick={() => openBarcodeDisplayDialog(false)}>Закрыть</Button>
             <StyledButton onClick={handlePrintBarcode}>Печать</StyledButton>
           </DialogActions>
         </Dialog>
