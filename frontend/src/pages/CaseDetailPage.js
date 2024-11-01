@@ -50,6 +50,9 @@ import { useReactToPrint } from 'react-to-print';
 import Header from '../components/Header';
 import LogoMVDKZ from '../assets/Logo_MVD_KZ.png';
 import { EVIDENCE_TYPES } from '../constants/evidenceTypes'; // Добавлено
+import Layout from '../components/Layout';
+import CaseDetailInfromation from '../components/CaseDetailComponents/Information';
+import CaseDetailMatEvidence from '../components/CaseDetailComponents/MatEvidence';
 
 const StyledButton = styled(Button)(({ theme }) => ({
   borderRadius: '5px',
@@ -117,7 +120,7 @@ const CaseDetailPage = () => {
 
   // Функция для печати только штрихкода
   const handlePrintBarcode = useReactToPrint({
-    contentRef:barcodeRef,
+    contentRef: barcodeRef,
     documentTitle: 'Штрихкод',
     pageStyle: `
       @page {
@@ -371,12 +374,12 @@ const CaseDetailPage = () => {
           prevGroups.map((group) =>
             group.id === selectedGroupId
               ? {
-                  ...group,
-                  material_evidences: [
-                    ...group.material_evidences,
-                    response.data,
-                  ],
-                }
+                ...group,
+                material_evidences: [
+                  ...group.material_evidences,
+                  response.data,
+                ],
+              }
               : group
           )
         );
@@ -513,9 +516,8 @@ const CaseDetailPage = () => {
       log.class_name === 'MaterialEvidence' &&
       log.action === 'update'
     ) {
-      return `Изменение статуса вещественного доказательства: ${
-        log.object_name || ''
-      }`;
+      return `Изменение статуса вещественного доказательства: ${log.object_name || ''
+        }`;
     } else {
       // Другие случаи
       return `${log.class_name_display} - ${log.action}`;
@@ -567,10 +569,10 @@ const CaseDetailPage = () => {
   return (
     <Box sx={{ backgroundColor: '#e9edf5', minHeight: '100vh' }}>
       {/* Шапка */}
-      <Header onLogout={() => navigate('/login')} />
+      {/* <Header onLogout={() => navigate('/login')} /> */}
 
       {/* Основной контент */}
-      <Container sx={{ marginTop: theme.spacing(12), pb: theme.spacing(4) }}>
+      <Layout>
         {/* Кнопка "Назад" и заголовок */}
         <Box
           sx={{
@@ -639,256 +641,282 @@ const CaseDetailPage = () => {
 
         {/* Вкладка "Информация" */}
         {tabValue === 0 && (
-          <Paper elevation={1} sx={{ padding: theme.spacing(3) }}>
-            <Grid container spacing={2}>
-              <Grid item xs={12}>
-                <TextField
-                  label="Название дела"
-                  name="name"
-                  value={caseItem.name}
-                  onChange={handleInfoChange}
-                  fullWidth
-                  disabled={!canEdit}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  label="Описание дела"
-                  name="description"
-                  value={caseItem.description}
-                  onChange={handleInfoChange}
-                  fullWidth
-                  multiline
-                  rows={4}
-                  disabled={!canEdit}
-                />
-              </Grid>
-              {canEdit && (
-                <Grid item xs={12} sx={{ textAlign: 'right' }}>
-                  <StyledButton onClick={handleInfoSave}>
-                    Сохранить изменения
-                  </StyledButton>
-                </Grid>
-              )}
-            </Grid>
-          </Paper>
+          <CaseDetailInfromation caseItem={caseItem} handleInfoChange={handleInfoChange} handleInfoSave={handleInfoSave} canEdit={canEdit} />
+          // <Paper elevation={1} sx={{ padding: theme.spacing(3) }}>
+          //   <Grid container spacing={2}>
+          //     <Grid item xs={12}>
+          //       <TextField
+          //         label="Название дела"
+          //         name="name"
+          //         value={caseItem.name}
+          //         onChange={handleInfoChange}
+          //         fullWidth
+          //         disabled={!canEdit}
+          //       />
+          //     </Grid>
+          //     <Grid item xs={12}>
+          //       <TextField
+          //         label="Описание дела"
+          //         name="description"
+          //         value={caseItem.description}
+          //         onChange={handleInfoChange}
+          //         fullWidth
+          //         multiline
+          //         rows={4}
+          //         disabled={!canEdit}
+          //       />
+          //     </Grid>
+          //     {canEdit && (
+          //       <Grid item xs={12} sx={{ textAlign: 'right' }}>
+          //         <StyledButton onClick={handleInfoSave}>
+          //           Сохранить изменения
+          //         </StyledButton>
+          //       </Grid>
+          //     )}
+          //   </Grid>
+          // </Paper>
         )}
 
         {/* Вкладка "Вещдоки" */}
         {tabValue === 1 && (
-          <Box>
-            {/* Кнопки над таблицей */}
-            <Box
-              sx={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                mb: theme.spacing(2),
-              }}
-            >
-              {canAddGroup && (
-                <StyledButton
-                  onClick={handleOpenGroupDialog}
-                  startIcon={<AddIcon />}
-                >
-                  Добавить группу
-                </StyledButton>
-              )}
-              {selectedGroupId && (
-                <Box sx={{ display: 'flex', gap: theme.spacing(2) }}>
-                  {canAddGroup && (
-                    <StyledButton
-                      onClick={handleOpenEvidenceDialog}
-                      startIcon={<AddIcon />}
-                    >
-                      Добавить вещественное доказательство
-                    </StyledButton>
-                  )}
-                  <StyledButton
-                    onClick={() => handlePrintGroupBarcode(selectedGroupId)}
-                    startIcon={<PrintIcon />}
-                  >
-                    Печать штрихкода
-                  </StyledButton>
-                </Box>
-              )}
-            </Box>
+          // <Box>
+          //   {/* Кнопки над таблицей */}
+          //   <Box
+          //     sx={{
+          //       display: 'flex',
+          //       justifyContent: 'space-between',
+          //       mb: theme.spacing(2),
+          //     }}
+          //   >
+          //     {canAddGroup && (
+          //       <StyledButton
+          //         onClick={handleOpenGroupDialog}
+          //         startIcon={<AddIcon />}
+          //       >
+          //         Добавить группу
+          //       </StyledButton>
+          //     )}
+          //     {selectedGroupId && (
+          //       <Box sx={{ display: 'flex', gap: theme.spacing(2) }}>
+          //         {canAddGroup && (
+          //           <StyledButton
+          //             onClick={handleOpenEvidenceDialog}
+          //             startIcon={<AddIcon />}
+          //           >
+          //             Добавить вещественное доказательство
+          //           </StyledButton>
+          //         )}
+          //         <StyledButton
+          //           onClick={() => handlePrintGroupBarcode(selectedGroupId)}
+          //           startIcon={<PrintIcon />}
+          //         >
+          //           Печать штрихкода
+          //         </StyledButton>
+          //       </Box>
+          //     )}
+          //   </Box>
 
-            {/* Таблица с группами и вещественными доказательствами */}
-            <Box>
-              {groups.map((group) => (
-                <Accordion
-                  key={group.id}
-                  expanded={selectedGroupId === group.id}
-                  onChange={() => handleGroupSelect(group.id)}
-                >
-                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                    <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                      <Typography variant="h6">{group.name}</Typography>
-                    </Box>
-                  </AccordionSummary>
-                  <AccordionDetails>
-                    <TableContainer component={Paper}>
-                      <Table aria-label={`Таблица ВД группы ${group.name}`}>
-                        <TableHead>
-                          <TableRow>
-                            <StyledTableCell>Название</StyledTableCell>
-                            <StyledTableCell>Описание</StyledTableCell>
-                            <StyledTableCell>Тип ВД</StyledTableCell> {/* Добавлено */}
-                            <StyledTableCell>Статус</StyledTableCell>
-                            <StyledTableCell>Действия</StyledTableCell>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {group.material_evidences &&
-                          group.material_evidences.length > 0 ? (
-                            group.material_evidences.map((evidence) => (
-                              <TableRow key={evidence.id}>
-                                <TableCell>{evidence.name}</TableCell>
-                                <TableCell>{evidence.description}</TableCell>
-                                <TableCell>
-                                  {getTypeLabel(evidence.type)} {/* Добавлено */}
-                                </TableCell>
-                                <TableCell>
-                                  {canEdit ? (
-                                    <FormControl fullWidth variant="standard">
-                                      <Select
-                                        value={evidence.status}
-                                        onChange={(event) => {
-                                          const selectedStatus =
-                                            event.target.value;
-                                          if (
-                                            evidence.status !== selectedStatus
-                                          ) {
-                                            handleEvidenceStatusChange(
-                                              evidence.id,
-                                              selectedStatus
-                                            );
-                                          }
-                                        }}
-                                      >
-                                        {evidenceStatuses.map((status) => (
-                                          <MenuItem
-                                            key={status.value}
-                                            value={status.value}
-                                          >
-                                            {status.label}
-                                          </MenuItem>
-                                        ))}
-                                      </Select>
-                                    </FormControl>
-                                  ) : (
-                                    evidence.status_display ||
-                                    evidenceStatuses.find(
-                                      (status) =>
-                                        status.value === evidence.status
-                                    )?.label ||
-                                    evidence.status
-                                  )}
-                                </TableCell>
-                                <TableCell>
-                                  <Tooltip title="Печать штрихкода">
-                                    <IconButton
-                                      color="primary"
-                                      onClick={() =>
-                                        handlePrintEvidenceBarcode(evidence)
-                                      }
-                                    >
-                                      <PrintIcon />
-                                    </IconButton>
-                                  </Tooltip>
-                                </TableCell>
-                              </TableRow>
-                            ))
-                          ) : (
-                            <TableRow>
-                              <TableCell colSpan={5} align="center"> {/* Обновлено colSpan */}
-                                Нет вещественных доказательств.
-                              </TableCell>
-                            </TableRow>
-                          )}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
-                  </AccordionDetails>
-                </Accordion>
-              ))}
-            </Box>
+          //   {/* Таблица с группами и вещественными доказательствами */}
+          //   <Box>
+          //     {groups.map((group) => (
+          //       <Accordion
+          //         key={group.id}
+          //         expanded={selectedGroupId === group.id}
+          //         onChange={() => handleGroupSelect(group.id)}
+          //       >
+          //         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+          //           <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+          //             <Typography variant="h6">{group.name}</Typography>
+          //           </Box>
+          //         </AccordionSummary>
+          //         <AccordionDetails>
+          //           <TableContainer component={Paper}>
+          //             <Table aria-label={`Таблица ВД группы ${group.name}`}>
+          //               <TableHead>
+          //                 <TableRow>
+          //                   <StyledTableCell>Название</StyledTableCell>
+          //                   <StyledTableCell>Описание</StyledTableCell>
+          //                   <StyledTableCell>Тип ВД</StyledTableCell> {/* Добавлено */}
+          //                   <StyledTableCell>Статус</StyledTableCell>
+          //                   <StyledTableCell>Действия</StyledTableCell>
+          //                 </TableRow>
+          //               </TableHead>
+          //               <TableBody>
+          //                 {group.material_evidences &&
+          //                   group.material_evidences.length > 0 ? (
+          //                   group.material_evidences.map((evidence) => (
+          //                     <TableRow key={evidence.id}>
+          //                       <TableCell>{evidence.name}</TableCell>
+          //                       <TableCell>{evidence.description}</TableCell>
+          //                       <TableCell>
+          //                         {getTypeLabel(evidence.type)} {/* Добавлено */}
+          //                       </TableCell>
+          //                       <TableCell>
+          //                         {canEdit ? (
+          //                           <FormControl fullWidth variant="standard">
+          //                             <Select
+          //                               value={evidence.status}
+          //                               onChange={(event) => {
+          //                                 const selectedStatus =
+          //                                   event.target.value;
+          //                                 if (
+          //                                   evidence.status !== selectedStatus
+          //                                 ) {
+          //                                   handleEvidenceStatusChange(
+          //                                     evidence.id,
+          //                                     selectedStatus
+          //                                   );
+          //                                 }
+          //                               }}
+          //                             >
+          //                               {evidenceStatuses.map((status) => (
+          //                                 <MenuItem
+          //                                   key={status.value}
+          //                                   value={status.value}
+          //                                 >
+          //                                   {status.label}
+          //                                 </MenuItem>
+          //                               ))}
+          //                             </Select>
+          //                           </FormControl>
+          //                         ) : (
+          //                           evidence.status_display ||
+          //                           evidenceStatuses.find(
+          //                             (status) =>
+          //                               status.value === evidence.status
+          //                           )?.label ||
+          //                           evidence.status
+          //                         )}
+          //                       </TableCell>
+          //                       <TableCell>
+          //                         <Tooltip title="Печать штрихкода">
+          //                           <IconButton
+          //                             color="primary"
+          //                             onClick={() =>
+          //                               handlePrintEvidenceBarcode(evidence)
+          //                             }
+          //                           >
+          //                             <PrintIcon />
+          //                           </IconButton>
+          //                         </Tooltip>
+          //                       </TableCell>
+          //                     </TableRow>
+          //                   ))
+          //                 ) : (
+          //                   <TableRow>
+          //                     <TableCell colSpan={5} align="center"> {/* Обновлено colSpan */}
+          //                       Нет вещественных доказательств.
+          //                     </TableCell>
+          //                   </TableRow>
+          //                 )}
+          //               </TableBody>
+          //             </Table>
+          //           </TableContainer>
+          //         </AccordionDetails>
+          //       </Accordion>
+          //     ))}
+          //   </Box>
 
-            {/* Диалоговое окно для добавления новой группы */}
-            <Dialog open={openGroupDialog} onClose={handleCloseGroupDialog}>
-              <DialogTitle>Добавить группу</DialogTitle>
-              <DialogContent>
-                <TextField
-                  autoFocus
-                  margin="dense"
-                  label="Название группы"
-                  name="name"
-                  value={newGroup.name}
-                  onChange={handleGroupInputChange}
-                  fullWidth
-                  required
-                />
-              </DialogContent>
-              <DialogActions>
-                <Button onClick={handleCloseGroupDialog}>Отмена</Button>
-                <StyledButton onClick={handleGroupFormSubmit}>
-                  Добавить
-                </StyledButton>
-              </DialogActions>
-            </Dialog>
+          //   {/* Диалоговое окно для добавления новой группы */}
+          //   <Dialog open={openGroupDialog} onClose={handleCloseGroupDialog}>
+          //     <DialogTitle>Добавить группу</DialogTitle>
+          //     <DialogContent>
+          //       <TextField
+          //         autoFocus
+          //         margin="dense"
+          //         label="Название группы"
+          //         name="name"
+          //         value={newGroup.name}
+          //         onChange={handleGroupInputChange}
+          //         fullWidth
+          //         required
+          //       />
+          //     </DialogContent>
+          //     <DialogActions>
+          //       <Button onClick={handleCloseGroupDialog}>Отмена</Button>
+          //       <StyledButton onClick={handleGroupFormSubmit}>
+          //         Добавить
+          //       </StyledButton>
+          //     </DialogActions>
+          //   </Dialog>
 
-            {/* Диалоговое окно для добавления нового вещественного доказательства */}
-            <Dialog
-              open={openEvidenceDialog}
-              onClose={handleCloseEvidenceDialog}
-            >
-              <DialogTitle>Добавить вещественное доказательство</DialogTitle>
-              <DialogContent>
-                <TextField
-                  autoFocus
-                  margin="dense"
-                  label="Название ВД"
-                  name="name"
-                  value={newEvidence.name}
-                  onChange={handleEvidenceInputChange}
-                  fullWidth
-                  required
-                />
-                <TextField
-                  margin="dense"
-                  label="Описание ВД"
-                  name="description"
-                  value={newEvidence.description}
-                  onChange={handleEvidenceInputChange}
-                  fullWidth
-                  multiline
-                  rows={4}
-                />
-                <FormControl fullWidth margin="dense" required> {/* Добавлено */}
-                  <InputLabel id="evidence-type-label">Тип ВД</InputLabel>
-                  <Select
-                    labelId="evidence-type-label"
-                    label="Тип ВД"
-                    name="type"
-                    value={newEvidence.type}
-                    onChange={handleEvidenceInputChange}
-                  >
-                    {EVIDENCE_TYPES.map((type) => (
-                      <MenuItem key={type.value} value={type.value}>
-                        {type.label}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </DialogContent>
-              <DialogActions>
-                <Button onClick={handleCloseEvidenceDialog}>Отмена</Button>
-                <StyledButton onClick={handleEvidenceFormSubmit}>
-                  Добавить
-                </StyledButton>
-              </DialogActions>
-            </Dialog>
-          </Box>
+          //   {/* Диалоговое окно для добавления нового вещественного доказательства */}
+          //   <Dialog
+          //     open={openEvidenceDialog}
+          //     onClose={handleCloseEvidenceDialog}
+          //   >
+          //     <DialogTitle>Добавить вещественное доказательство</DialogTitle>
+          //     <DialogContent>
+          //       <TextField
+          //         autoFocus
+          //         margin="dense"
+          //         label="Название ВД"
+          //         name="name"
+          //         value={newEvidence.name}
+          //         onChange={handleEvidenceInputChange}
+          //         fullWidth
+          //         required
+          //       />
+          //       <TextField
+          //         margin="dense"
+          //         label="Описание ВД"
+          //         name="description"
+          //         value={newEvidence.description}
+          //         onChange={handleEvidenceInputChange}
+          //         fullWidth
+          //         multiline
+          //         rows={4}
+          //       />
+          //       <FormControl fullWidth margin="dense" required> {/* Добавлено */}
+          //         <InputLabel id="evidence-type-label">Тип ВД</InputLabel>
+          //         <Select
+          //           labelId="evidence-type-label"
+          //           label="Тип ВД"
+          //           name="type"
+          //           value={newEvidence.type}
+          //           onChange={handleEvidenceInputChange}
+          //         >
+          //           {EVIDENCE_TYPES.map((type) => (
+          //             <MenuItem key={type.value} value={type.value}>
+          //               {type.label}
+          //             </MenuItem>
+          //           ))}
+          //         </Select>
+          //       </FormControl>
+          //     </DialogContent>
+          //     <DialogActions>
+          //       <Button onClick={handleCloseEvidenceDialog}>Отмена</Button>
+          //       <StyledButton onClick={handleEvidenceFormSubmit}>
+          //         Добавить
+          //       </StyledButton>
+          //     </DialogActions>
+          //   </Dialog>
+          // </Box>
+          <CaseDetailMatEvidence
+            handleCloseEvidenceDialog={handleCloseEvidenceDialog}
+            handleCloseGroupDialog={handleCloseGroupDialog}
+            handleEvidenceInputChange={handleEvidenceInputChange}
+            handleEvidenceStatusChange={handleEvidenceStatusChange}
+            handleGroupFormSubmit={handleGroupFormSubmit}
+            handleEvidenceFormSubmit={handleEvidenceFormSubmit}
+            handleGroupInputChange={handleGroupInputChange}
+            handleGroupSelect={handleGroupSelect}
+            handleOpenEvidenceDialog={handleOpenEvidenceDialog}
+            handleOpenGroupDialog={handleOpenGroupDialog}
+            handlePrintEvidenceBarcode={handlePrintEvidenceBarcode}
+            handlePrintGroupBarcode={handlePrintGroupBarcode}
+            canEdit={canEdit}
+            canAddGroup={canAddGroup}
+            selectedGroupId={selectedGroupId}
+            groups={groups}
+            getTypeLabel={getTypeLabel}
+            evidenceStatuses={evidenceStatuses}
+            openGroupDialog={openGroupDialog}
+            openEvidenceDialog={openEvidenceDialog}
+            newEvidence={newEvidence}
+            newGroup={newGroup}
+            EVIDENCE_TYPES={EVIDENCE_TYPES}
+          />
         )}
 
         {/* Вкладка "История изменений" */}
@@ -1002,7 +1030,7 @@ const CaseDetailPage = () => {
             </TableContainer>
           </Paper>
         )}
-      </Container>
+      </Layout>
 
       {/* Компонент для печати отчета */}
       <div style={{ display: 'none' }}>
@@ -1090,7 +1118,7 @@ const CaseDetailPage = () => {
                     </TableHead>
                     <TableBody>
                       {group.material_evidences &&
-                      group.material_evidences.length > 0 ? (
+                        group.material_evidences.length > 0 ? (
                         group.material_evidences.map((evidence) => (
                           <TableRow key={evidence.id}>
                             <TableCell

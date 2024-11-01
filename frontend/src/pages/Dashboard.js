@@ -46,6 +46,7 @@ import Header from '../components/Header';
 import LogoMVDKZ from '../assets/Logo_MVD_KZ.png';
 import { EVIDENCE_TYPES } from '../constants/evidenceTypes';
 import Barcode from 'react-barcode';
+import Layout from '../components/Layout';
 
 const StyledButton = styled(Button)(({ theme }) => ({
   borderRadius: '5px',
@@ -798,13 +799,14 @@ const Dashboard = () => {
       <Header onLogout={handleLogout} />
 
       {/* Основной контент */}
-      <Container
+      {/* <Container
         sx={{
           marginTop: theme.spacing(12),
           paddingTop: theme.spacing(4),
           pb: theme.spacing(4),
         }}
-      >
+      > */}
+      <Layout>
         {/* Вкладки */}
         {user &&
         (user.role === 'DEPARTMENT_HEAD' || user.role === 'REGION_HEAD') ? (
@@ -2091,7 +2093,7 @@ const Dashboard = () => {
             {snackbar.message}
           </Alert>
         </Snackbar>
-      </Container>
+      </Layout>
     </Box>
   );
 };

@@ -46,13 +46,13 @@ services:
       resources:
         limits:
           cpus: '8'
-          memory: 8g
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [ gpu ]
-    runtime: nvidia
+          memory: 4g
+#        reservations:
+#          devices:
+#            - driver: nvidia
+#              count: 1
+#              capabilities: [ gpu ]
+#    runtime: nvidia
     init: true
     command: ["daphne", "-b", "0.0.0.0", "-p", "8000", "eaigaq_project.asgi:application"]
 
@@ -71,13 +71,13 @@ services:
       resources:
         limits:
           cpus: '8'
-          memory: 8g
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [ gpu ]
-    runtime: nvidia
+          memory: 4g
+#        reservations:
+#          devices:
+#            - driver: nvidia
+#              count: 1
+#              capabilities: [ gpu ]
+#    runtime: nvidia
     init: true
     command: ["celery", "-A", "eaigaq_project", "worker", "--loglevel=info","--pool=solo"]
 

@@ -2,7 +2,7 @@
 
 
 # Используем базовый образ с установленными CUDA, dlib и OpenCV
-FROM kyllerian/aigaq-base:v1.4
+FROM aigaq_image_v7.5:latest
 
 # Устанавливаем рабочую директорию внутри контейнера
 WORKDIR /app
@@ -17,6 +17,8 @@ COPY eaigaq_project/ /app/
 
 # Копируем скрипт точки входа
 COPY docker/entrypoint.sh /app/
+
+RUN sed -i 's/\r$//' ./entrypoint.sh
 
 # Делаем скрипт исполняемым
 RUN chmod +x /app/entrypoint.sh
