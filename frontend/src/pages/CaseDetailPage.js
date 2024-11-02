@@ -39,6 +39,7 @@ import { StyledButton, StyledTableCell } from '../components/StyledComponents';
 import CaseInformationTab from '../components/CaseInformationTab';
 import EvidenceTab from '../components/EvidenceTab';
 import ChangeHistoryTab from '../components/ChangeHistoryTab';
+import Loading from '../components/Loading';
 
 const CaseDetailPage = () => {
   const { id } = useParams(); // Получаем ID дела из URL
@@ -234,9 +235,9 @@ const CaseDetailPage = () => {
 
   if (!caseItem) {
     return (
-      <Container>
-        <Typography variant="h6">Загрузка...</Typography>
-      </Container>
+        <Container>
+          <Loading/>
+        </Container>
     );
   }
 
