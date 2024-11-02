@@ -10,6 +10,8 @@ import {
 } from '@mui/material';
 
 import { styled, useTheme } from '@mui/material/styles';
+import { fieldLabels } from '../../constants/fieldsLabels';
+import { evidenceStatuses } from '../../constants/evidenceStatuses';
 
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
     fontWeight: 'bold',
@@ -29,9 +31,36 @@ const formatDate = (dateString) => {
     return date.toLocaleDateString('ru-RU', options);
 };
 
-export default function History({ changeLogs, getActionMessage, fieldLabels, getStatusLabel }) {
+export default function History({ changeLogs, }) {
     const theme = useTheme();
+    // Получение отображаемого статуса
+    const getStatusLabel = (value) => {
+        const status = evidenceStatuses.find((status) => status.value === value);
+        return status ? status.label : value;
+    };
 
+    // Получение сообщения действия
+    const getActionMessage = (log) => {
+        if (log.class_name === 'Case' && log.action === 'create') {
+            return 'Создание дела';
+        } else if (log.class_name === 'Case' && log.action === 'update') {
+            return 'Изменение данных дела';
+        } else if (
+            log.class_name === 'MaterialEvidence' &&
+            log.action === 'create'
+        ) {
+            return `Добавлено вещественное доказательство: ${log.object_name || ''}`;
+        } else if (
+            log.class_name === 'MaterialEvidence' &&
+            log.action === 'update'
+        ) {
+            return `Изменение статуса вещественного доказательства: ${log.object_name || ''
+                }`;
+        } else {
+            // Другие случаи
+            return `${log.class_name_display} - ${log.action}`;
+        }
+    };
     return (
         <>
             <Paper elevation={1} sx={{ padding: theme.spacing(3) }}>

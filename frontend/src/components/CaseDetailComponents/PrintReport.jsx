@@ -12,6 +12,9 @@ import {
 
 import { styled } from '@mui/material/styles';
 import LogoMVDKZ from '../../assets/Logo_MVD_KZ.png';
+import { fieldLabels } from '../../constants/fieldsLabels';
+import { EVIDENCE_TYPES } from '../../constants/evidenceTypes';
+import { evidenceStatuses } from '../../constants/evidenceStatuses';
 
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
     fontWeight: 'bold',
@@ -31,8 +34,40 @@ const formatDate = (dateString) => {
     return date.toLocaleDateString('ru-RU', options);
 };
 
-export default function PrintReport({ caseItem, changeLogs, getActionMessage, fieldLabels, getStatusLabel, reportRef, groups, getTypeLabel, canViewHistory }) {
+export default function PrintReport({ caseItem, changeLogs, reportRef, groups, canViewHistory }) {
+    // Получение отображаемого типа
+    const getTypeLabel = (value) => {
+        const type = EVIDENCE_TYPES.find((type) => type.value === value);
+        return type ? type.label : value;
+    };
+    // Получение отображаемого статуса
+    const getStatusLabel = (value) => {
+        const status = evidenceStatuses.find((status) => status.value === value);
+        return status ? status.label : value;
+    };
 
+    // Получение сообщения действия
+    const getActionMessage = (log) => {
+        if (log.class_name === 'Case' && log.action === 'create') {
+            return 'Создание дела';
+        } else if (log.class_name === 'Case' && log.action === 'update') {
+            return 'Изменение данных дела';
+        } else if (
+            log.class_name === 'MaterialEvidence' &&
+            log.action === 'create'
+        ) {
+            return `Добавлено вещественное доказательство: ${log.object_name || ''}`;
+        } else if (
+            log.class_name === 'MaterialEvidence' &&
+            log.action === 'update'
+        ) {
+            return `Изменение статуса вещественного доказательства: ${log.object_name || ''
+                }`;
+        } else {
+            // Другие случаи
+            return `${log.class_name_display} - ${log.action}`;
+        }
+    };
     return (
         <>
             <div style={{ display: 'none' }}>

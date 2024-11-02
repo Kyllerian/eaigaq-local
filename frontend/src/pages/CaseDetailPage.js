@@ -20,7 +20,6 @@ import {
 import { styled, useTheme } from '@mui/material/styles';
 import { AuthContext } from '../contexts/AuthContext';
 import { useReactToPrint } from 'react-to-print';
-import { EVIDENCE_TYPES } from '../constants/evidenceTypes'; // Добавлено
 import Layout from '../components/Layout';
 import CaseDetailInfromation from '../components/CaseDetailComponents/Information';
 import CaseDetailMatEvidence from '../components/CaseDetailComponents/MatEvidence';
@@ -28,7 +27,6 @@ import History from '../components/CaseDetailComponents/History';
 import BackButton from '../components/Buttons/Back';
 import PrintReport from '../components/CaseDetailComponents/PrintReport';
 import Loading from '../components/Loading';
-import DialogSeenBarcode from '../components/CaseDetailComponents/DialogSeenBarcode';
 import Notifyer from '../components/Notifyer';
 
 const StyledButton = styled(Button)(({ theme }) => ({
@@ -52,73 +50,21 @@ const CaseDetailPage = () => {
   const theme = useTheme();
   const [caseItem, setCaseItem] = useState(null);
   const [groups, setGroups] = useState([]);
-  const [selectedGroupId, setSelectedGroupId] = useState(null);
-  const [newGroup, setNewGroup] = useState({ name: '' });
-  const [newEvidence, setNewEvidence] = useState({
-    name: '',
-    description: '',
-    type: 'OTHER', // Добавлено
-  });
-  const [openGroupDialog, setOpenGroupDialog] = useState(false);
-  const [openEvidenceDialog, setOpenEvidenceDialog] = useState(false);
   const [tabValue, setTabValue] = useState(0);
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: '',
     severity: 'success',
   });
-  // Состояния для диалогового окна и значения штрихкода
-  const [openBarcodeDialog, setOpenBarcodeDialog] = useState(false);
-  const [barcodeValueToDisplay, setBarcodeValueToDisplay] = useState('');
-  const barcodeRef = useRef(); // Реф для печати штрихкода
 
   // Реф для печати отчета
   const reportRef = useRef();
-
-  // Массив возможных статусов вещественного доказательства
-  const evidenceStatuses = [
-    { value: 'IN_STORAGE', label: 'На хранении' },
-    { value: 'DESTROYED', label: 'Уничтожен' },
-    { value: 'TAKEN', label: 'Взят' },
-    { value: 'ON_EXAMINATION', label: 'На экспертизе' },
-    { value: 'ARCHIVED', label: 'В архиве' },
-  ];
 
   // Состояние для хранения логов изменений
   const [changeLogs, setChangeLogs] = useState([]);
 
   // Состояние для предотвращения повторных запросов
   const [isStatusUpdating, setIsStatusUpdating] = useState(false);
-
-  // Функция для печати только штрихкода
-  const handlePrintBarcode = useReactToPrint({
-    contentRef: barcodeRef,
-    documentTitle: 'Штрихкод',
-    pageStyle: `
-      @page {
-        size: 58mm 40mm;
-        margin: 0;
-      }
-      @media print {
-        body {
-          margin: 0;
-        }
-        #barcode-container {
-          width: 58mm;
-          height: 40mm;
-          padding: 6.36mm;
-          box-sizing: border-box;
-          display: flex;
-          justify-content: center;
-          align-items: center;
-        }
-        #barcode svg {
-          width: auto;
-          height: 70%;
-        }
-      }
-    `,
-  });
 
   // Функция для печати отчета
   const handlePrintReport = useReactToPrint({
@@ -266,256 +212,6 @@ const CaseDetailPage = () => {
       });
   };
 
-  // Вкладка "Вещдоки"
-  const handleOpenGroupDialog = () => {
-    setOpenGroupDialog(true);
-  };
-
-  const handleCloseGroupDialog = () => {
-    setOpenGroupDialog(false);
-    setNewGroup({ name: '' });
-  };
-
-  const handleGroupInputChange = (event) => {
-    const { name, value } = event.target;
-    setNewGroup({ ...newGroup, [name]: value });
-  };
-
-  const handleGroupFormSubmit = (event) => {
-    event.preventDefault();
-
-    axios
-      .post('/api/evidence-groups/', {
-        name: newGroup.name,
-        case: id,
-      })
-      .then((response) => {
-        setGroups([...groups, response.data]);
-        handleCloseGroupDialog();
-        setSnackbar({
-          open: true,
-          message: 'Группа успешно добавлена.',
-          severity: 'success',
-        });
-      })
-      .catch((error) => {
-        console.error(
-          'Ошибка при добавлении группы:',
-          error.response?.data || error
-        );
-        setSnackbar({
-          open: true,
-          message: 'Ошибка при добавлении группы.',
-          severity: 'error',
-        });
-      });
-  };
-
-  const handleGroupSelect = (groupId) => {
-    setSelectedGroupId(groupId === selectedGroupId ? null : groupId);
-  };
-
-  const handleOpenEvidenceDialog = () => {
-    setOpenEvidenceDialog(true);
-  };
-
-  const handleCloseEvidenceDialog = () => {
-    setOpenEvidenceDialog(false);
-    setNewEvidence({ name: '', description: '', type: 'OTHER' }); // Добавлено сброс type
-  };
-
-  const handleEvidenceInputChange = (event) => {
-    const { name, value } = event.target;
-    setNewEvidence({ ...newEvidence, [name]: value });
-  };
-
-  const handleEvidenceFormSubmit = (event) => {
-    event.preventDefault();
-
-    axios
-      .post('/api/material-evidences/', {
-        name: newEvidence.name,
-        description: newEvidence.description,
-        case_id: id,
-        group_id: selectedGroupId,
-        type: newEvidence.type, // Добавлено
-      })
-      .then((response) => {
-        // Обновляем список доказательств в группе
-        setGroups((prevGroups) =>
-          prevGroups.map((group) =>
-            group.id === selectedGroupId
-              ? {
-                ...group,
-                material_evidences: [
-                  ...group.material_evidences,
-                  response.data,
-                ],
-              }
-              : group
-          )
-        );
-        handleCloseEvidenceDialog();
-        setSnackbar({
-          open: true,
-          message: 'Вещественное доказательство добавлено.',
-          severity: 'success',
-        });
-      })
-      .catch((error) => {
-        console.error(
-          'Ошибка при добавлении вещественного доказательства:',
-          error.response?.data || error
-        );
-        setSnackbar({
-          open: true,
-          message: 'Ошибка при добавлении вещественного доказательства.',
-          severity: 'error',
-        });
-      });
-  };
-
-  // Функции для отображения и печати штрихкодов
-  const handleOpenBarcodeDialog = (barcodeValue) => {
-    if (!barcodeValue) {
-      setSnackbar({
-        open: true,
-        message: 'Штрихкод недоступен.',
-        severity: 'error',
-      });
-      return;
-    }
-    setBarcodeValueToDisplay(barcodeValue);
-    setOpenBarcodeDialog(true);
-  };
-
-  const handlePrintGroupBarcode = (groupId) => {
-    const group = groups.find((g) => g.id === groupId);
-    if (group && group.barcode) {
-      handleOpenBarcodeDialog(group.barcode);
-    } else {
-      setSnackbar({
-        open: true,
-        message: 'Штрихкод группы недоступен.',
-        severity: 'error',
-      });
-    }
-  };
-
-  const handlePrintEvidenceBarcode = (evidence) => {
-    if (evidence.barcode) {
-      handleOpenBarcodeDialog(evidence.barcode);
-    } else {
-      setSnackbar({
-        open: true,
-        message: 'Штрихкод недоступен.',
-        severity: 'error',
-      });
-    }
-  };
-
-  // Функция для изменения статуса вещественного доказательства
-  const handleEvidenceStatusChange = (evidenceId, newStatus) => {
-    if (isStatusUpdating) return; // Предотвращаем повторные запросы
-    setIsStatusUpdating(true);
-
-    axios
-      .patch(`/api/material-evidences/${evidenceId}/`, { status: newStatus })
-      .then((response) => {
-        // Обновляем состояние групп с обновленным статусом вещественного доказательства
-        setGroups((prevGroups) =>
-          prevGroups.map((group) => ({
-            ...group,
-            material_evidences: group.material_evidences.map((evidence) =>
-              evidence.id === evidenceId ? response.data : evidence
-            ),
-          }))
-        );
-        setSnackbar({
-          open: true,
-          message: 'Статус вещественного доказательства обновлен.',
-          severity: 'success',
-        });
-      })
-      .catch((error) => {
-        console.error(
-          'Ошибка при обновлении статуса вещественного доказательства:',
-          error.response?.data || error
-        );
-        setSnackbar({
-          open: true,
-          message: 'Ошибка при обновлении статуса вещественного доказательства.',
-          severity: 'error',
-        });
-      })
-      .finally(() => {
-        setIsStatusUpdating(false);
-      });
-  };
-
-  // Функции для форматирования и отображения данных
-
-  // Форматирование даты
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    const options = {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    };
-    return date.toLocaleDateString('ru-RU', options);
-  };
-
-  // Получение сообщения действия
-  const getActionMessage = (log) => {
-    if (log.class_name === 'Case' && log.action === 'create') {
-      return 'Создание дела';
-    } else if (log.class_name === 'Case' && log.action === 'update') {
-      return 'Изменение данных дела';
-    } else if (
-      log.class_name === 'MaterialEvidence' &&
-      log.action === 'create'
-    ) {
-      return `Добавлено вещественное доказательство: ${log.object_name || ''}`;
-    } else if (
-      log.class_name === 'MaterialEvidence' &&
-      log.action === 'update'
-    ) {
-      return `Изменение статуса вещественного доказательства: ${log.object_name || ''
-        }`;
-    } else {
-      // Другие случаи
-      return `${log.class_name_display} - ${log.action}`;
-    }
-  };
-
-  // Получение отображаемого статуса
-  const getStatusLabel = (value) => {
-    const status = evidenceStatuses.find((status) => status.value === value);
-    return status ? status.label : value;
-  };
-
-  // Получение отображаемого типа
-  const getTypeLabel = (value) => {
-    const type = EVIDENCE_TYPES.find((type) => type.value === value);
-    return type ? type.label : value;
-  };
-
-  // Отображаемые названия полей
-  const fieldLabels = {
-    name: 'Название',
-    description: 'Описание',
-    status: 'Статус',
-    type: 'Тип ВД', // Добавлено
-    updated: 'Обновлено',
-    created: 'Создано',
-    case: 'Дело',
-    group: 'Группа',
-  };
-
   if (!caseItem) {
     return (
         <Loading/>
@@ -603,54 +299,28 @@ const CaseDetailPage = () => {
         {/* Вкладка "Вещдоки" */}
         {tabValue === 1 && (
           <CaseDetailMatEvidence
-            handleCloseEvidenceDialog={handleCloseEvidenceDialog}
-            handleCloseGroupDialog={handleCloseGroupDialog}
-            handleEvidenceInputChange={handleEvidenceInputChange}
-            handleEvidenceStatusChange={handleEvidenceStatusChange}
-            handleGroupFormSubmit={handleGroupFormSubmit}
-            handleEvidenceFormSubmit={handleEvidenceFormSubmit}
-            handleGroupInputChange={handleGroupInputChange}
-            handleGroupSelect={handleGroupSelect}
-            handleOpenEvidenceDialog={handleOpenEvidenceDialog}
-            handleOpenGroupDialog={handleOpenGroupDialog}
-            handlePrintEvidenceBarcode={handlePrintEvidenceBarcode}
-            handlePrintGroupBarcode={handlePrintGroupBarcode}
+            id={id}
             canEdit={canEdit}
             canAddGroup={canAddGroup}
-            selectedGroupId={selectedGroupId}
             groups={groups}
-            getTypeLabel={getTypeLabel}
-            evidenceStatuses={evidenceStatuses}
-            openGroupDialog={openGroupDialog}
-            openEvidenceDialog={openEvidenceDialog}
-            newEvidence={newEvidence}
-            newGroup={newGroup}
-            EVIDENCE_TYPES={EVIDENCE_TYPES}
+            setGroups={setGroups}
+            setIsStatusUpdating={setIsStatusUpdating}
+            isStatusUpdating={isStatusUpdating} 
+            setSnackbar={setSnackbar}
           />
         )}
 
         {/* Вкладка "История изменений" */}
         {canViewHistory && tabValue === 2 && (
-          <History changeLogs={changeLogs} formatDate={formatDate} getActionMessage={getActionMessage} getStatusLabel={getStatusLabel} fieldLabels={fieldLabels} />
+          <History changeLogs={changeLogs} />
         )}
       </Layout>
 
       {/* Компонент для печати отчета */}
       <PrintReport reportRef={reportRef} caseItem={caseItem} 
         changeLogs={changeLogs}
-        getActionMessage={getActionMessage}
-        fieldLabels={fieldLabels}
-        getStatusLabel={getStatusLabel}
         groups={groups}
-        getTypeLabel={getTypeLabel}
         canViewHistory={canViewHistory}
-      />
-      {/* Диалоговое окно для отображения штрихкода */}
-      <DialogSeenBarcode openBarcodeDialog={openBarcodeDialog}
-        setOpenBarcodeDialog={setOpenBarcodeDialog}
-        barcodeValueToDisplay={barcodeValueToDisplay}
-        barcodeRef={barcodeRef}
-        handlePrintBarcode={handlePrintBarcode}
       />
 
       {/* Snackbar для уведомлений */}

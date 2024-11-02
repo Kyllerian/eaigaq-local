@@ -32,6 +32,12 @@ import {
 } from '@mui/icons-material';
 
 import { styled, useTheme } from '@mui/material/styles';
+import { evidenceStatuses } from '../../constants/evidenceStatuses';
+import axios from '../../axiosConfig';
+import { useRef, useState } from 'react';
+import DialogSeenBarcode from './DialogSeenBarcode';
+import { useReactToPrint } from 'react-to-print';
+import { EVIDENCE_TYPES } from '../../constants/evidenceTypes';
 
 const StyledButton = styled(Button)(({ theme }) => ({
     borderRadius: '5px',
@@ -52,11 +58,248 @@ const StyledTableCell = styled(TableCell)(({ theme }) => ({
     fontWeight: 'bold',
 }));
 
-export default function CaseDetailMatEvidence({ handleCloseEvidenceDialog, handleCloseGroupDialog, handleEvidenceInputChange,
-    handleEvidenceStatusChange, handleGroupFormSubmit, handleEvidenceFormSubmit, handleGroupInputChange, handleGroupSelect, handleOpenEvidenceDialog,
-    handleOpenGroupDialog, handlePrintEvidenceBarcode, handlePrintGroupBarcode, canEdit, canAddGroup, selectedGroupId, groups, getTypeLabel, 
-    evidenceStatuses, openGroupDialog, openEvidenceDialog, newEvidence, newGroup, EVIDENCE_TYPES }) {
+export default function CaseDetailMatEvidence({
+    id, setGroups, setIsStatusUpdating, isStatusUpdating, setSnackbar, canEdit, canAddGroup, groups, }) {
     const theme = useTheme();
+    const [selectedGroupId, setSelectedGroupId] = useState(null);
+    const [newGroup, setNewGroup] = useState({ name: '' });
+    const [newEvidence, setNewEvidence] = useState({
+      name: '',
+      description: '',
+      type: 'OTHER', // Добавлено
+    });
+    const [openGroupDialog, setOpenGroupDialog] = useState(false);
+    const [openEvidenceDialog, setOpenEvidenceDialog] = useState(false);
+
+    // Состояния для диалогового окна и значения штрихкода
+    const [openBarcodeDialog, setOpenBarcodeDialog] = useState(false);
+    const [barcodeValueToDisplay, setBarcodeValueToDisplay] = useState('');
+    const barcodeRef = useRef(); // Реф для печати штрихкода
+
+    // Вкладка "Вещдоки"
+    const handleOpenGroupDialog = () => {
+        setOpenGroupDialog(true);
+    };
+
+    const handleCloseGroupDialog = () => {
+        setOpenGroupDialog(false);
+        setNewGroup({ name: '' });
+    };
+
+    const handleGroupInputChange = (event) => {
+        const { name, value } = event.target;
+        setNewGroup({ ...newGroup, [name]: value });
+    };
+
+    const handleGroupFormSubmit = (event) => {
+        event.preventDefault();
+
+        axios
+            .post('/api/evidence-groups/', {
+                name: newGroup.name,
+                case: id,
+            })
+            .then((response) => {
+                setGroups([...groups, response.data]);
+                handleCloseGroupDialog();
+                setSnackbar({
+                    open: true,
+                    message: 'Группа успешно добавлена.',
+                    severity: 'success',
+                });
+            })
+            .catch((error) => {
+                console.error(
+                    'Ошибка при добавлении группы:',
+                    error.response?.data || error
+                );
+                setSnackbar({
+                    open: true,
+                    message: 'Ошибка при добавлении группы.',
+                    severity: 'error',
+                });
+            });
+    };
+
+    const handleGroupSelect = (groupId) => {
+        setSelectedGroupId(groupId === selectedGroupId ? null : groupId);
+    };
+
+    const handleOpenEvidenceDialog = () => {
+        setOpenEvidenceDialog(true);
+    };
+
+    const handleCloseEvidenceDialog = () => {
+        setOpenEvidenceDialog(false);
+        setNewEvidence({ name: '', description: '', type: 'OTHER' }); // Добавлено сброс type
+    };
+
+    const handleEvidenceInputChange = (event) => {
+        const { name, value } = event.target;
+        setNewEvidence({ ...newEvidence, [name]: value });
+    };
+
+    const handleEvidenceFormSubmit = (event) => {
+        event.preventDefault();
+
+        axios
+            .post('/api/material-evidences/', {
+                name: newEvidence.name,
+                description: newEvidence.description,
+                case_id: id,
+                group_id: selectedGroupId,
+                type: newEvidence.type, // Добавлено
+            })
+            .then((response) => {
+                // Обновляем список доказательств в группе
+                setGroups((prevGroups) =>
+                    prevGroups.map((group) =>
+                        group.id === selectedGroupId
+                            ? {
+                                ...group,
+                                material_evidences: [
+                                    ...group.material_evidences,
+                                    response.data,
+                                ],
+                            }
+                            : group
+                    )
+                );
+                handleCloseEvidenceDialog();
+                setSnackbar({
+                    open: true,
+                    message: 'Вещественное доказательство добавлено.',
+                    severity: 'success',
+                });
+            })
+            .catch((error) => {
+                console.error(
+                    'Ошибка при добавлении вещественного доказательства:',
+                    error.response?.data || error
+                );
+                setSnackbar({
+                    open: true,
+                    message: 'Ошибка при добавлении вещественного доказательства.',
+                    severity: 'error',
+                });
+            });
+    };
+
+
+
+    // Получение отображаемого типа
+    const getTypeLabel = (value) => {
+        const type = EVIDENCE_TYPES.find((type) => type.value === value);
+        return type ? type.label : value;
+    };
+
+    // Функция для изменения статуса вещественного доказательства
+    const handleEvidenceStatusChange = (evidenceId, newStatus) => {
+        if (isStatusUpdating) return; // Предотвращаем повторные запросы
+        setIsStatusUpdating(true);
+
+        axios
+            .patch(`/api/material-evidences/${evidenceId}/`, { status: newStatus })
+            .then((response) => {
+                // Обновляем состояние групп с обновленным статусом вещественного доказательства
+                setGroups((prevGroups) =>
+                    prevGroups.map((group) => ({
+                        ...group,
+                        material_evidences: group.material_evidences.map((evidence) =>
+                            evidence.id === evidenceId ? response.data : evidence
+                        ),
+                    }))
+                );
+                setSnackbar({
+                    open: true,
+                    message: 'Статус вещественного доказательства обновлен.',
+                    severity: 'success',
+                });
+            })
+            .catch((error) => {
+                console.error(
+                    'Ошибка при обновлении статуса вещественного доказательства:',
+                    error.response?.data || error
+                );
+                setSnackbar({
+                    open: true,
+                    message: 'Ошибка при обновлении статуса вещественного доказательства.',
+                    severity: 'error',
+                });
+            })
+            .finally(() => {
+                setIsStatusUpdating(false);
+            });
+    };
+
+    // Функции для отображения и печати штрихкодов
+    const handleOpenBarcodeDialog = (barcodeValue) => {
+        if (!barcodeValue) {
+            setSnackbar({
+                open: true,
+                message: 'Штрихкод недоступен.',
+                severity: 'error',
+            });
+            return;
+        }
+        setBarcodeValueToDisplay(barcodeValue);
+        setOpenBarcodeDialog(true);
+    };
+
+    const handlePrintEvidenceBarcode = (evidence) => {
+        if (evidence.barcode) {
+            handleOpenBarcodeDialog(evidence.barcode);
+        } else {
+            setSnackbar({
+                open: true,
+                message: 'Штрихкод недоступен.',
+                severity: 'error',
+            });
+        }
+    };
+
+    // Функция для печати только штрихкода
+    const handlePrintBarcode = useReactToPrint({
+        contentRef: barcodeRef,
+        documentTitle: 'Штрихкод',
+        pageStyle: `
+      @page {
+        size: 58mm 40mm;
+        margin: 0;
+      }
+      @media print {
+        body {
+          margin: 0;
+        }
+        #barcode-container {
+          width: 58mm;
+          height: 40mm;
+          padding: 6.36mm;
+          box-sizing: border-box;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+        }
+        #barcode svg {
+          width: auto;
+          height: 70%;
+        }
+      }
+    `,
+    });
+
+    const handlePrintGroupBarcode = (groupId) => {
+        const group = groups.find((g) => g.id === groupId);
+        if (group && group.barcode) {
+            handleOpenBarcodeDialog(group.barcode);
+        } else {
+            setSnackbar({
+                open: true,
+                message: 'Штрихкод группы недоступен.',
+                severity: 'error',
+            });
+        }
+    };
 
     return (
         <>
@@ -273,6 +516,14 @@ export default function CaseDetailMatEvidence({ handleCloseEvidenceDialog, handl
                     </DialogActions>
                 </Dialog>
             </Box>
+
+            {/* Диалоговое окно для отображения штрихкода */}
+            <DialogSeenBarcode openBarcodeDialog={openBarcodeDialog}
+                setOpenBarcodeDialog={setOpenBarcodeDialog}
+                barcodeValueToDisplay={barcodeValueToDisplay}
+                barcodeRef={barcodeRef}
+                handlePrintBarcode={handlePrintBarcode}
+            />
         </>
     );
 }
