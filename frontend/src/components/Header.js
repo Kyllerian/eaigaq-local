@@ -5,6 +5,7 @@ import { AppBar, Toolbar, Typography, Button, IconButton, Box } from '@mui/mater
 import { styled } from '@mui/material/styles';
 import MenuIcon from '@mui/icons-material/Menu';
 import LogoMVDKZ from '../assets/Logo_MVD_KZ.png';
+import { Link } from 'react-router-dom';
 
 
 
@@ -30,13 +31,13 @@ const Header = ({ onLogout }) => {
     <StyledAppBar position="fixed" elevation={0}>
       <Toolbar>
         {/* Иконка меню для мобильных устройств */}
-        <IconButton edge="start" color="inherit" aria-label="menu" sx={{ mr: 2, display: { xs: 'block', md: 'none' } }}>
-          <MenuIcon />
-        </IconButton>
+        <Link to={"/"}>
+          <Logo src={LogoMVDKZ} alt="Логотип" />
+        </Link>
 
-        <Logo src={LogoMVDKZ} alt="Логотип" />
-        <Title variant="h5">E-aigaq</Title>
-
+        <Link to={"/"} style={{flexGrow: 1, textDecoration: "none"}}>
+          <Title variant="h5">E-aigaq</Title>
+        </Link>
 
         <Button color="inherit" onClick={onLogout}>
           Выйти

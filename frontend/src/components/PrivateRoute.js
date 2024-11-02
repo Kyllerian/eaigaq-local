@@ -3,12 +3,13 @@
 import React, { useContext } from 'react';
 import { Navigate } from 'react-router-dom';
 import { AuthContext } from '../contexts/AuthContext';
+import Loading from './Loading';
 
 function PrivateRoute({ children }) {
   const { user, loading } = useContext(AuthContext);
 
   if (loading) {
-    return <div>Загрузка...</div>; // Можно заменить на спиннер
+    return <Loading/>; // Можно заменить на спиннер
   }
 
   if (!user) {
