@@ -1,74 +1,44 @@
 // src/pages/CaseDetailPage.js
 
 import React, { useEffect, useState, useContext, useRef } from 'react';
-import axios from '../axiosConfig';
-import { useParams, useNavigate } from 'react-router-dom';
 import {
   Typography,
   Container,
   Box,
-  Button,
+  IconButton,
   Tabs,
   Tab,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
   Snackbar,
   Alert,
-  IconButton,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
-  Grid,
-  Tooltip,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel, // Добавлено
+  Paper,
+  TableContainer,
+  Table,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableBody,
 } from '@mui/material';
 import {
-  Add as AddIcon,
   ArrowBack as ArrowBackIcon,
-  ExpandMore as ExpandMoreIcon,
+  Print as PrintIcon,
   Close as CloseIcon,
   CheckCircle as CheckCircleIcon,
-  Print as PrintIcon,
 } from '@mui/icons-material';
-import { styled, useTheme } from '@mui/material/styles';
+import { useTheme } from '@mui/material/styles';
+import { useParams, useNavigate } from 'react-router-dom';
+import axios from '../axiosConfig';
 import { AuthContext } from '../contexts/AuthContext';
-import Barcode from 'react-barcode';
-import { useReactToPrint } from 'react-to-print';
 import Header from '../components/Header';
-import LogoMVDKZ from '../assets/Logo_MVD_KZ.png';
-import { EVIDENCE_TYPES } from '../constants/evidenceTypes'; // Добавлено
+import { useReactToPrint } from 'react-to-print';
+import LogoMVDKZ from '../assets/Logo_MVD_KZ.png'; // Импорт логотипа
+import { EVIDENCE_TYPES } from '../constants/evidenceTypes'; // Импорт типов ВД
+import { evidenceStatuses } from '../constants/evidenceStatuses'; // Импорт статусов ВД
 
-const StyledButton = styled(Button)(({ theme }) => ({
-  borderRadius: '5px',
-  textTransform: 'none',
-  backgroundColor: '#1976d2',
-  color: '#ffffff',
-  '&:hover': {
-    backgroundColor: '#0d47a1',
-  },
-  '&.Mui-disabled': {
-    backgroundColor: '#cfd8dc',
-    color: '#ffffff',
-    opacity: 0.7,
-  },
-}));
-
-const StyledTableCell = styled(TableCell)(({ theme }) => ({
-  fontWeight: 'bold',
-}));
+// Import custom components
+import { StyledButton, StyledTableCell } from '../components/StyledComponents';
+import CaseInformationTab from '../components/CaseInformationTab';
+import EvidenceTab from '../components/EvidenceTab';
+import ChangeHistoryTab from '../components/ChangeHistoryTab';
 
 const CaseDetailPage = () => {
   const { id } = useParams(); // Получаем ID дела из URL
@@ -77,105 +47,24 @@ const CaseDetailPage = () => {
   const theme = useTheme();
   const [caseItem, setCaseItem] = useState(null);
   const [groups, setGroups] = useState([]);
-  const [selectedGroupId, setSelectedGroupId] = useState(null);
-  const [newGroup, setNewGroup] = useState({ name: '' });
-  const [newEvidence, setNewEvidence] = useState({
-    name: '',
-    description: '',
-    type: 'OTHER', // Добавлено
-  });
-  const [openGroupDialog, setOpenGroupDialog] = useState(false);
-  const [openEvidenceDialog, setOpenEvidenceDialog] = useState(false);
+  const [changeLogs, setChangeLogs] = useState([]);
   const [tabValue, setTabValue] = useState(0);
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: '',
     severity: 'success',
   });
-  // Состояния для диалогового окна и значения штрихкода
-  const [openBarcodeDialog, setOpenBarcodeDialog] = useState(false);
-  const [barcodeValueToDisplay, setBarcodeValueToDisplay] = useState('');
-  const barcodeRef = useRef(); // Реф для печати штрихкода
-
-  // Реф для печати отчета
   const reportRef = useRef();
 
-  // Массив возможных статусов вещественного доказательства
-  const evidenceStatuses = [
-    { value: 'IN_STORAGE', label: 'На хранении' },
-    { value: 'DESTROYED', label: 'Уничтожен' },
-    { value: 'TAKEN', label: 'Взят' },
-    { value: 'ON_EXAMINATION', label: 'На экспертизе' },
-    { value: 'ARCHIVED', label: 'В архиве' },
-  ];
-
-  // Состояние для хранения логов изменений
-  const [changeLogs, setChangeLogs] = useState([]);
-
-  // Состояние для предотвращения повторных запросов
-  const [isStatusUpdating, setIsStatusUpdating] = useState(false);
-
-  // Функция для печати только штрихкода
-  const handlePrintBarcode = useReactToPrint({
-    contentRef:barcodeRef,
-    documentTitle: 'Штрихкод',
-    pageStyle: `
-      @page {
-        size: 58mm 40mm;
-        margin: 0;
-      }
-      @media print {
-        body {
-          margin: 0;
-        }
-        #barcode-container {
-          width: 58mm;
-          height: 40mm;
-          padding: 6.36mm;
-          box-sizing: border-box;
-          display: flex;
-          justify-content: center;
-          align-items: center;
-        }
-        #barcode svg {
-          width: auto;
-          height: 70%;
-        }
-      }
-    `,
-  });
-
-  // Функция для печати отчета
-  const handlePrintReport = useReactToPrint({
-    contentRef: reportRef,
-    documentTitle: `Отчет по делу ${caseItem?.name}`,
-    pageStyle: `
-      @media print {
-        body {
-          -webkit-print-color-adjust: exact;
-        }
-      }
-    `,
-  });
-
-  // Проверяем, является ли текущий пользователь создателем или следователем дела
+  // Права доступа
   const isCreatorOrInvestigator =
-    user &&
-    (user.id === caseItem?.creator || user.id === caseItem?.investigator);
-
-  // Проверяем права просмотра
+    user && (user.id === caseItem?.creator || user.id === caseItem?.investigator);
   const canView =
     isCreatorOrInvestigator ||
     user.role === 'DEPARTMENT_HEAD' ||
     user.role === 'REGION_HEAD';
-
-  // Определяем, может ли пользователь редактировать дело
   const canEdit = isCreatorOrInvestigator && user.role !== 'REGION_HEAD';
-
-  // Определяем, может ли пользователь добавлять группы
   const canAddGroup = isCreatorOrInvestigator && user.role !== 'REGION_HEAD';
-
-  // Определяем, может ли пользователь видеть историю изменений
   const canViewHistory =
     (user.role === 'DEPARTMENT_HEAD' ||
       user.role === 'REGION_HEAD' ||
@@ -198,7 +87,7 @@ const CaseDetailPage = () => {
         });
       });
 
-    // Получаем группы и связанные с ними вещественные доказательства
+    // Получаем группы и вещественные доказательства
     axios
       .get(`/api/evidence-groups/?case=${id}`)
       .then((response) => {
@@ -213,7 +102,7 @@ const CaseDetailPage = () => {
         });
       });
 
-    // Получаем историю изменений дела, если пользователь имеет право ее видеть
+    // Получаем историю изменений, если пользователь имеет право на просмотр
     if (canViewHistory) {
       axios
         .get(`/api/audit-entries/?case_id=${id}`)
@@ -231,42 +120,12 @@ const CaseDetailPage = () => {
     }
   }, [id, canViewHistory]);
 
-  // Обработка вкладок
+  // Обработчик изменения вкладки
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
   };
 
-  // Вкладка "Информация"
-  const handleInfoChange = (event) => {
-    const { name, value } = event.target;
-    setCaseItem((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleInfoSave = () => {
-    axios
-      .put(`/api/cases/${id}/`, {
-        name: caseItem.name,
-        description: caseItem.description,
-        active: caseItem.active,
-      })
-      .then((response) => {
-        setCaseItem(response.data);
-        setSnackbar({
-          open: true,
-          message: 'Дело успешно обновлено.',
-          severity: 'success',
-        });
-      })
-      .catch((error) => {
-        console.error('Ошибка при обновлении дела:', error);
-        setSnackbar({
-          open: true,
-          message: 'Ошибка при обновлении дела.',
-          severity: 'error',
-        });
-      });
-  };
-
+  // Обработчик переключения статуса дела
   const handleStatusToggle = () => {
     const updatedStatus = !caseItem.active;
     axios
@@ -291,196 +150,18 @@ const CaseDetailPage = () => {
       });
   };
 
-  // Вкладка "Вещдоки"
-  const handleOpenGroupDialog = () => {
-    setOpenGroupDialog(true);
-  };
-
-  const handleCloseGroupDialog = () => {
-    setOpenGroupDialog(false);
-    setNewGroup({ name: '' });
-  };
-
-  const handleGroupInputChange = (event) => {
-    const { name, value } = event.target;
-    setNewGroup({ ...newGroup, [name]: value });
-  };
-
-  const handleGroupFormSubmit = (event) => {
-    event.preventDefault();
-
-    axios
-      .post('/api/evidence-groups/', {
-        name: newGroup.name,
-        case: id,
-      })
-      .then((response) => {
-        setGroups([...groups, response.data]);
-        handleCloseGroupDialog();
-        setSnackbar({
-          open: true,
-          message: 'Группа успешно добавлена.',
-          severity: 'success',
-        });
-      })
-      .catch((error) => {
-        console.error(
-          'Ошибка при добавлении группы:',
-          error.response?.data || error
-        );
-        setSnackbar({
-          open: true,
-          message: 'Ошибка при добавлении группы.',
-          severity: 'error',
-        });
-      });
-  };
-
-  const handleGroupSelect = (groupId) => {
-    setSelectedGroupId(groupId === selectedGroupId ? null : groupId);
-  };
-
-  const handleOpenEvidenceDialog = () => {
-    setOpenEvidenceDialog(true);
-  };
-
-  const handleCloseEvidenceDialog = () => {
-    setOpenEvidenceDialog(false);
-    setNewEvidence({ name: '', description: '', type: 'OTHER' }); // Добавлено сброс type
-  };
-
-  const handleEvidenceInputChange = (event) => {
-    const { name, value } = event.target;
-    setNewEvidence({ ...newEvidence, [name]: value });
-  };
-
-  const handleEvidenceFormSubmit = (event) => {
-    event.preventDefault();
-
-    axios
-      .post('/api/material-evidences/', {
-        name: newEvidence.name,
-        description: newEvidence.description,
-        case_id: id,
-        group_id: selectedGroupId,
-        type: newEvidence.type, // Добавлено
-      })
-      .then((response) => {
-        // Обновляем список доказательств в группе
-        setGroups((prevGroups) =>
-          prevGroups.map((group) =>
-            group.id === selectedGroupId
-              ? {
-                  ...group,
-                  material_evidences: [
-                    ...group.material_evidences,
-                    response.data,
-                  ],
-                }
-              : group
-          )
-        );
-        handleCloseEvidenceDialog();
-        setSnackbar({
-          open: true,
-          message: 'Вещественное доказательство добавлено.',
-          severity: 'success',
-        });
-      })
-      .catch((error) => {
-        console.error(
-          'Ошибка при добавлении вещественного доказательства:',
-          error.response?.data || error
-        );
-        setSnackbar({
-          open: true,
-          message: 'Ошибка при добавлении вещественного доказательства.',
-          severity: 'error',
-        });
-      });
-  };
-
-  const handleSnackbarClose = () => {
-    setSnackbar({ ...snackbar, open: false });
-  };
-
-  // Функции для отображения и печати штрихкодов
-  const handleOpenBarcodeDialog = (barcodeValue) => {
-    if (!barcodeValue) {
-      setSnackbar({
-        open: true,
-        message: 'Штрихкод недоступен.',
-        severity: 'error',
-      });
-      return;
-    }
-    setBarcodeValueToDisplay(barcodeValue);
-    setOpenBarcodeDialog(true);
-  };
-
-  const handlePrintGroupBarcode = (groupId) => {
-    const group = groups.find((g) => g.id === groupId);
-    if (group && group.barcode) {
-      handleOpenBarcodeDialog(group.barcode);
-    } else {
-      setSnackbar({
-        open: true,
-        message: 'Штрихкод группы недоступен.',
-        severity: 'error',
-      });
-    }
-  };
-
-  const handlePrintEvidenceBarcode = (evidence) => {
-    if (evidence.barcode) {
-      handleOpenBarcodeDialog(evidence.barcode);
-    } else {
-      setSnackbar({
-        open: true,
-        message: 'Штрихкод недоступен.',
-        severity: 'error',
-      });
-    }
-  };
-
-  // Функция для изменения статуса вещественного доказательства
-  const handleEvidenceStatusChange = (evidenceId, newStatus) => {
-    if (isStatusUpdating) return; // Предотвращаем повторные запросы
-    setIsStatusUpdating(true);
-
-    axios
-      .patch(`/api/material-evidences/${evidenceId}/`, { status: newStatus })
-      .then((response) => {
-        // Обновляем состояние групп с обновленным статусом вещественного доказательства
-        setGroups((prevGroups) =>
-          prevGroups.map((group) => ({
-            ...group,
-            material_evidences: group.material_evidences.map((evidence) =>
-              evidence.id === evidenceId ? response.data : evidence
-            ),
-          }))
-        );
-        setSnackbar({
-          open: true,
-          message: 'Статус вещественного доказательства обновлен.',
-          severity: 'success',
-        });
-      })
-      .catch((error) => {
-        console.error(
-          'Ошибка при обновлении статуса вещественного доказательства:',
-          error.response?.data || error
-        );
-        setSnackbar({
-          open: true,
-          message: 'Ошибка при обновлении статуса вещественного доказательства.',
-          severity: 'error',
-        });
-      })
-      .finally(() => {
-        setIsStatusUpdating(false);
-      });
-  };
+  // Обработчик печати отчёта
+  const handlePrintReport = useReactToPrint({
+    contentRef: reportRef,
+    documentTitle: `Отчет по делу ${caseItem?.name}`,
+    pageStyle: `
+      @media print {
+        body {
+          -webkit-print-color-adjust: exact;
+        }
+      }
+    `,
+  });
 
   // Функции для форматирования и отображения данных
 
@@ -539,11 +220,16 @@ const CaseDetailPage = () => {
     name: 'Название',
     description: 'Описание',
     status: 'Статус',
-    type: 'Тип ВД', // Добавлено
+    type: 'Тип ВД',
     updated: 'Обновлено',
     created: 'Создано',
     case: 'Дело',
     group: 'Группа',
+  };
+
+  // Закрытие Snackbar
+  const handleSnackbarClose = () => {
+    setSnackbar({ ...snackbar, open: false });
   };
 
   if (!caseItem) {
@@ -566,12 +252,12 @@ const CaseDetailPage = () => {
 
   return (
     <Box sx={{ backgroundColor: '#e9edf5', minHeight: '100vh' }}>
-      {/* Шапка */}
+      {/* Header */}
       <Header onLogout={() => navigate('/login')} />
 
-      {/* Основной контент */}
+      {/* Main Content */}
       <Container sx={{ marginTop: theme.spacing(12), pb: theme.spacing(4) }}>
-        {/* Кнопка "Назад" и заголовок */}
+        {/* Back Button and Title */}
         <Box
           sx={{
             display: 'flex',
@@ -589,7 +275,7 @@ const CaseDetailPage = () => {
           </IconButton>
           <Typography variant="h5">Детали дела</Typography>
           <Box sx={{ flexGrow: 1 }} />
-          {/* Кнопка "Экспорт" */}
+          {/* Export Button */}
           {canView && (
             <StyledButton
               onClick={handlePrintReport}
@@ -599,32 +285,28 @@ const CaseDetailPage = () => {
               Экспорт
             </StyledButton>
           )}
-          {/* Кнопка "Активировать/Закрыть" */}
+          {/* Activate/Close Button */}
           {canEdit && (
-            <Tooltip
-              title={caseItem.active ? 'Закрыть дело' : 'Активировать дело'}
-            >
-              <StyledButton
-                onClick={handleStatusToggle}
-                sx={{
+            <StyledButton
+              onClick={handleStatusToggle}
+              sx={{
+                backgroundColor: caseItem.active
+                  ? theme.palette.error.main
+                  : theme.palette.success.main,
+                '&:hover': {
                   backgroundColor: caseItem.active
-                    ? theme.palette.error.main
-                    : theme.palette.success.main,
-                  '&:hover': {
-                    backgroundColor: caseItem.active
-                      ? theme.palette.error.dark
-                      : theme.palette.success.dark,
-                  },
-                }}
-                startIcon={caseItem.active ? <CloseIcon /> : <CheckCircleIcon />}
-              >
-                {caseItem.active ? 'Закрыть' : 'Активировать'}
-              </StyledButton>
-            </Tooltip>
+                    ? theme.palette.error.dark
+                    : theme.palette.success.dark,
+                },
+              }}
+              startIcon={caseItem.active ? <CloseIcon /> : <CheckCircleIcon />}
+            >
+              {caseItem.active ? 'Закрыть' : 'Активировать'}
+            </StyledButton>
           )}
         </Box>
 
-        {/* Вкладки */}
+        {/* Tabs */}
         <Tabs
           value={tabValue}
           onChange={handleTabChange}
@@ -637,374 +319,32 @@ const CaseDetailPage = () => {
           {canViewHistory && <Tab label="История изменений" value={2} />}
         </Tabs>
 
-        {/* Вкладка "Информация" */}
+        {/* Tab Content */}
         {tabValue === 0 && (
-          <Paper elevation={1} sx={{ padding: theme.spacing(3) }}>
-            <Grid container spacing={2}>
-              <Grid item xs={12}>
-                <TextField
-                  label="Название дела"
-                  name="name"
-                  value={caseItem.name}
-                  onChange={handleInfoChange}
-                  fullWidth
-                  disabled={!canEdit}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  label="Описание дела"
-                  name="description"
-                  value={caseItem.description}
-                  onChange={handleInfoChange}
-                  fullWidth
-                  multiline
-                  rows={4}
-                  disabled={!canEdit}
-                />
-              </Grid>
-              {canEdit && (
-                <Grid item xs={12} sx={{ textAlign: 'right' }}>
-                  <StyledButton onClick={handleInfoSave}>
-                    Сохранить изменения
-                  </StyledButton>
-                </Grid>
-              )}
-            </Grid>
-          </Paper>
+          <CaseInformationTab
+            caseItem={caseItem}
+            canEdit={canEdit}
+            setCaseItem={setCaseItem}
+            setSnackbar={setSnackbar}
+          />
         )}
-
-        {/* Вкладка "Вещдоки" */}
         {tabValue === 1 && (
-          <Box>
-            {/* Кнопки над таблицей */}
-            <Box
-              sx={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                mb: theme.spacing(2),
-              }}
-            >
-              {canAddGroup && (
-                <StyledButton
-                  onClick={handleOpenGroupDialog}
-                  startIcon={<AddIcon />}
-                >
-                  Добавить группу
-                </StyledButton>
-              )}
-              {selectedGroupId && (
-                <Box sx={{ display: 'flex', gap: theme.spacing(2) }}>
-                  {canAddGroup && (
-                    <StyledButton
-                      onClick={handleOpenEvidenceDialog}
-                      startIcon={<AddIcon />}
-                    >
-                      Добавить вещественное доказательство
-                    </StyledButton>
-                  )}
-                  <StyledButton
-                    onClick={() => handlePrintGroupBarcode(selectedGroupId)}
-                    startIcon={<PrintIcon />}
-                  >
-                    Печать штрихкода
-                  </StyledButton>
-                </Box>
-              )}
-            </Box>
-
-            {/* Таблица с группами и вещественными доказательствами */}
-            <Box>
-              {groups.map((group) => (
-                <Accordion
-                  key={group.id}
-                  expanded={selectedGroupId === group.id}
-                  onChange={() => handleGroupSelect(group.id)}
-                >
-                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                    <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                      <Typography variant="h6">{group.name}</Typography>
-                    </Box>
-                  </AccordionSummary>
-                  <AccordionDetails>
-                    <TableContainer component={Paper}>
-                      <Table aria-label={`Таблица ВД группы ${group.name}`}>
-                        <TableHead>
-                          <TableRow>
-                            <StyledTableCell>Название</StyledTableCell>
-                            <StyledTableCell>Описание</StyledTableCell>
-                            <StyledTableCell>Тип ВД</StyledTableCell> {/* Добавлено */}
-                            <StyledTableCell>Статус</StyledTableCell>
-                            <StyledTableCell>Действия</StyledTableCell>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {group.material_evidences &&
-                          group.material_evidences.length > 0 ? (
-                            group.material_evidences.map((evidence) => (
-                              <TableRow key={evidence.id}>
-                                <TableCell>{evidence.name}</TableCell>
-                                <TableCell>{evidence.description}</TableCell>
-                                <TableCell>
-                                  {getTypeLabel(evidence.type)} {/* Добавлено */}
-                                </TableCell>
-                                <TableCell>
-                                  {canEdit ? (
-                                    <FormControl fullWidth variant="standard">
-                                      <Select
-                                        value={evidence.status}
-                                        onChange={(event) => {
-                                          const selectedStatus =
-                                            event.target.value;
-                                          if (
-                                            evidence.status !== selectedStatus
-                                          ) {
-                                            handleEvidenceStatusChange(
-                                              evidence.id,
-                                              selectedStatus
-                                            );
-                                          }
-                                        }}
-                                      >
-                                        {evidenceStatuses.map((status) => (
-                                          <MenuItem
-                                            key={status.value}
-                                            value={status.value}
-                                          >
-                                            {status.label}
-                                          </MenuItem>
-                                        ))}
-                                      </Select>
-                                    </FormControl>
-                                  ) : (
-                                    evidence.status_display ||
-                                    evidenceStatuses.find(
-                                      (status) =>
-                                        status.value === evidence.status
-                                    )?.label ||
-                                    evidence.status
-                                  )}
-                                </TableCell>
-                                <TableCell>
-                                  <Tooltip title="Печать штрихкода">
-                                    <IconButton
-                                      color="primary"
-                                      onClick={() =>
-                                        handlePrintEvidenceBarcode(evidence)
-                                      }
-                                    >
-                                      <PrintIcon />
-                                    </IconButton>
-                                  </Tooltip>
-                                </TableCell>
-                              </TableRow>
-                            ))
-                          ) : (
-                            <TableRow>
-                              <TableCell colSpan={5} align="center"> {/* Обновлено colSpan */}
-                                Нет вещественных доказательств.
-                              </TableCell>
-                            </TableRow>
-                          )}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
-                  </AccordionDetails>
-                </Accordion>
-              ))}
-            </Box>
-
-            {/* Диалоговое окно для добавления новой группы */}
-            <Dialog open={openGroupDialog} onClose={handleCloseGroupDialog}>
-              <DialogTitle>Добавить группу</DialogTitle>
-              <DialogContent>
-                <TextField
-                  autoFocus
-                  margin="dense"
-                  label="Название группы"
-                  name="name"
-                  value={newGroup.name}
-                  onChange={handleGroupInputChange}
-                  fullWidth
-                  required
-                />
-              </DialogContent>
-              <DialogActions>
-                <Button onClick={handleCloseGroupDialog}>Отмена</Button>
-                <StyledButton onClick={handleGroupFormSubmit}>
-                  Добавить
-                </StyledButton>
-              </DialogActions>
-            </Dialog>
-
-            {/* Диалоговое окно для добавления нового вещественного доказательства */}
-            <Dialog
-              open={openEvidenceDialog}
-              onClose={handleCloseEvidenceDialog}
-            >
-              <DialogTitle>Добавить вещественное доказательство</DialogTitle>
-              <DialogContent>
-                <TextField
-                  autoFocus
-                  margin="dense"
-                  label="Название ВД"
-                  name="name"
-                  value={newEvidence.name}
-                  onChange={handleEvidenceInputChange}
-                  fullWidth
-                  required
-                />
-                <TextField
-                  margin="dense"
-                  label="Описание ВД"
-                  name="description"
-                  value={newEvidence.description}
-                  onChange={handleEvidenceInputChange}
-                  fullWidth
-                  multiline
-                  rows={4}
-                />
-                <FormControl fullWidth margin="dense" required> {/* Добавлено */}
-                  <InputLabel id="evidence-type-label">Тип ВД</InputLabel>
-                  <Select
-                    labelId="evidence-type-label"
-                    label="Тип ВД"
-                    name="type"
-                    value={newEvidence.type}
-                    onChange={handleEvidenceInputChange}
-                  >
-                    {EVIDENCE_TYPES.map((type) => (
-                      <MenuItem key={type.value} value={type.value}>
-                        {type.label}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </DialogContent>
-              <DialogActions>
-                <Button onClick={handleCloseEvidenceDialog}>Отмена</Button>
-                <StyledButton onClick={handleEvidenceFormSubmit}>
-                  Добавить
-                </StyledButton>
-              </DialogActions>
-            </Dialog>
-          </Box>
+          <EvidenceTab
+            caseId={id}
+            user={user}
+            groups={groups}
+            setGroups={setGroups}
+            canAddGroup={canAddGroup}
+            canEdit={canEdit}
+            setSnackbar={setSnackbar}
+          />
         )}
-
-        {/* Вкладка "История изменений" */}
         {canViewHistory && tabValue === 2 && (
-          <Paper elevation={1} sx={{ padding: theme.spacing(3) }}>
-            <Typography variant="h6" gutterBottom>
-              История изменений
-            </Typography>
-            <TableContainer component={Paper}>
-              <Table aria-label="Таблица истории изменений">
-                <TableHead>
-                  <TableRow>
-                    <StyledTableCell>Дата и время</StyledTableCell>
-                    <StyledTableCell>Пользователь</StyledTableCell>
-                    <StyledTableCell>Действие</StyledTableCell>
-                    <StyledTableCell>Изменения</StyledTableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {changeLogs.map((log) => (
-                    <TableRow key={log.id}>
-                      <TableCell>{formatDate(log.created)}</TableCell>
-                      <TableCell>
-                        {log.user ? log.user.full_name : 'Система'}
-                      </TableCell>
-                      <TableCell>{getActionMessage(log)}</TableCell>
-                      <TableCell>
-                        {(() => {
-                          if (log.data && log.data.trim() !== '') {
-                            try {
-                              const data = JSON.parse(log.data);
-                              if (log.action === 'update') {
-                                const displayFields = [
-                                  'name',
-                                  'description',
-                                  'status',
-                                ];
-                                return Object.entries(data).map(
-                                  ([field, values]) => {
-                                    if (displayFields.includes(field)) {
-                                      return (
-                                        <div key={field}>
-                                          <strong>
-                                            {fieldLabels[field] || field}
-                                          </strong>
-                                          :{' '}
-                                          {field === 'status'
-                                            ? getStatusLabel(values.old)
-                                            : values.old}{' '}
-                                          →{' '}
-                                          {field === 'status'
-                                            ? getStatusLabel(values.new)
-                                            : values.new}
-                                        </div>
-                                      );
-                                    } else {
-                                      return null;
-                                    }
-                                  }
-                                );
-                              } else if (log.action === 'create') {
-                                const displayFields = [
-                                  'name',
-                                  'description',
-                                  'status',
-                                ];
-                                return (
-                                  <div>
-                                    {Object.entries(data).map(
-                                      ([field, value]) => {
-                                        if (displayFields.includes(field)) {
-                                          return (
-                                            <div key={field}>
-                                              <strong>
-                                                {fieldLabels[field] || field}
-                                              </strong>
-                                              :{' '}
-                                              {field === 'status'
-                                                ? getStatusLabel(value)
-                                                : value}
-                                            </div>
-                                          );
-                                        } else {
-                                          return null;
-                                        }
-                                      }
-                                    )}
-                                  </div>
-                                );
-                              } else if (log.action === 'delete') {
-                                return <div>Объект был удален.</div>;
-                              } else {
-                                return 'Нет данных об изменениях.';
-                              }
-                            } catch (error) {
-                              console.error(
-                                'Ошибка парсинга данных лога:',
-                                error
-                              );
-                              return 'Нет данных об изменениях.';
-                            }
-                          } else {
-                            return 'Нет данных об изменениях.';
-                          }
-                        })()}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Paper>
+          <ChangeHistoryTab changeLogs={changeLogs} setSnackbar={setSnackbar} />
         )}
       </Container>
 
-      {/* Компонент для печати отчета */}
+      {/* Report Print Component */}
       <div style={{ display: 'none' }}>
         <div
           ref={reportRef}
@@ -1081,7 +421,7 @@ const CaseDetailPage = () => {
                           <strong>Описание</strong>
                         </TableCell>
                         <TableCell style={{ width: '20%' }}>
-                          <strong>Тип ВД</strong> {/* Добавлено */}
+                          <strong>Тип ВД</strong>
                         </TableCell>
                         <TableCell style={{ width: '30%' }}>
                           <strong>Статус</strong>
@@ -1118,7 +458,7 @@ const CaseDetailPage = () => {
                                 whiteSpace: 'normal',
                               }}
                             >
-                              {getTypeLabel(evidence.type)} {/* Добавлено */}
+                              {getTypeLabel(evidence.type)}
                             </TableCell>
                             <TableCell
                               style={{
@@ -1194,7 +534,7 @@ const CaseDetailPage = () => {
                                     'name',
                                     'description',
                                     'status',
-                                    'type', // Добавлено
+                                    'type',
                                   ];
                                   return Object.entries(data).map(
                                     ([field, values]) => {
@@ -1208,14 +548,14 @@ const CaseDetailPage = () => {
                                             {field === 'status'
                                               ? getStatusLabel(values.old)
                                               : field === 'type'
-                                                ? getTypeLabel(values.old)
-                                                : values.old}{' '}
+                                              ? getTypeLabel(values.old)
+                                              : values.old}{' '}
                                             →{' '}
                                             {field === 'status'
                                               ? getStatusLabel(values.new)
                                               : field === 'type'
-                                                ? getTypeLabel(values.new)
-                                                : values.new}
+                                              ? getTypeLabel(values.new)
+                                              : values.new}
                                           </div>
                                         );
                                       } else {
@@ -1228,7 +568,7 @@ const CaseDetailPage = () => {
                                     'name',
                                     'description',
                                     'status',
-                                    'type', // Добавлено
+                                    'type',
                                   ];
                                   return (
                                     <div>
@@ -1244,8 +584,8 @@ const CaseDetailPage = () => {
                                                 {field === 'status'
                                                   ? getStatusLabel(value)
                                                   : field === 'type'
-                                                    ? getTypeLabel(value)
-                                                    : value}
+                                                  ? getTypeLabel(value)
+                                                  : value}
                                               </div>
                                             );
                                           } else {
@@ -1290,40 +630,7 @@ const CaseDetailPage = () => {
         </div>
       </div>
 
-      {/* Диалоговое окно для отображения штрихкода */}
-      <Dialog
-        open={openBarcodeDialog}
-        onClose={() => setOpenBarcodeDialog(false)}
-        maxWidth="xs"
-        fullWidth
-      >
-        <DialogTitle>Штрихкод</DialogTitle>
-        <DialogContent
-          sx={{
-            textAlign: 'center',
-            padding: theme.spacing(2),
-          }}
-        >
-          {barcodeValueToDisplay && (
-            <div id="barcode-container" ref={barcodeRef}>
-              <div id="barcode">
-                <Barcode
-                  value={barcodeValueToDisplay}
-                  format="EAN13"
-                  displayValue={false}
-                  margin={0}
-                />
-              </div>
-            </div>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenBarcodeDialog(false)}>Закрыть</Button>
-          <StyledButton onClick={handlePrintBarcode}>Печать</StyledButton>
-        </DialogActions>
-      </Dialog>
-
-      {/* Snackbar для уведомлений */}
+      {/* Snackbar */}
       <Snackbar
         open={snackbar.open}
         autoHideDuration={6000}
@@ -1343,8 +650,629 @@ const CaseDetailPage = () => {
 };
 
 export default CaseDetailPage;
+// // src/pages/CaseDetailPage.js
+//
+// import React, { useEffect, useState, useContext, useRef } from 'react';
+// import {
+//   Typography,
+//   Container,
+//   Box,
+//   IconButton,
+//   Tabs,
+//   Tab,
+//   Snackbar,
+//   Alert,
+// } from '@mui/material';
+// import {
+//   ArrowBack as ArrowBackIcon,
+//   Print as PrintIcon,
+//   Close as CloseIcon,
+//   CheckCircle as CheckCircleIcon,
+// } from '@mui/icons-material';
+// import { useTheme } from '@mui/material/styles';
+// import { useParams, useNavigate } from 'react-router-dom';
+// import axios from '../axiosConfig';
+// import { AuthContext } from '../contexts/AuthContext';
+// import Header from '../components/Header';
+// import { useReactToPrint } from 'react-to-print';
+//
+// // Import custom components
+// import { StyledButton } from '../components/StyledComponents';
+// import CaseInformationTab from '../components/CaseInformationTab';
+// import EvidenceTab from '../components/EvidenceTab';
+// import ChangeHistoryTab from '../components/ChangeHistoryTab';
+//
+// const CaseDetailPage = () => {
+//   const { id } = useParams(); // Получаем ID дела из URL
+//   const { user } = useContext(AuthContext);
+//   const navigate = useNavigate();
+//   const theme = useTheme();
+//   const [caseItem, setCaseItem] = useState(null);
+//   const [groups, setGroups] = useState([]);
+//   const [changeLogs, setChangeLogs] = useState([]);
+//   const [tabValue, setTabValue] = useState(0);
+//   const [snackbar, setSnackbar] = useState({
+//     open: false,
+//     message: '',
+//     severity: 'success',
+//   });
+//   const reportRef = useRef();
+//
+//   // Права доступа
+//   const isCreatorOrInvestigator =
+//     user && (user.id === caseItem?.creator || user.id === caseItem?.investigator);
+//   const canView =
+//     isCreatorOrInvestigator ||
+//     user.role === 'DEPARTMENT_HEAD' ||
+//     user.role === 'REGION_HEAD';
+//   const canEdit = isCreatorOrInvestigator && user.role !== 'REGION_HEAD';
+//   const canAddGroup = isCreatorOrInvestigator && user.role !== 'REGION_HEAD';
+//   const canViewHistory =
+//     (user.role === 'DEPARTMENT_HEAD' ||
+//       user.role === 'REGION_HEAD' ||
+//       isCreatorOrInvestigator) &&
+//     canView;
+//
+//   useEffect(() => {
+//     // Получаем детали дела
+//     axios
+//       .get(`/api/cases/${id}/`)
+//       .then((response) => {
+//         setCaseItem(response.data);
+//       })
+//       .catch((error) => {
+//         console.error('Ошибка при получении деталей дела:', error);
+//         setSnackbar({
+//           open: true,
+//           message: 'Ошибка при загрузке дела.',
+//           severity: 'error',
+//         });
+//       });
+//
+//     // Получаем группы и вещественные доказательства
+//     axios
+//       .get(`/api/evidence-groups/?case=${id}`)
+//       .then((response) => {
+//         setGroups(response.data);
+//       })
+//       .catch((error) => {
+//         console.error('Ошибка при получении групп:', error);
+//         setSnackbar({
+//           open: true,
+//           message: 'Ошибка при загрузке групп.',
+//           severity: 'error',
+//         });
+//       });
+//
+//     // Получаем историю изменений, если пользователь имеет право на просмотр
+//     if (canViewHistory) {
+//       axios
+//         .get(`/api/audit-entries/?case_id=${id}`)
+//         .then((response) => {
+//           setChangeLogs(response.data);
+//         })
+//         .catch((error) => {
+//           console.error('Ошибка при получении истории изменений:', error);
+//           setSnackbar({
+//             open: true,
+//             message: 'Ошибка при загрузке истории изменений.',
+//             severity: 'error',
+//           });
+//         });
+//     }
+//   }, [id, canViewHistory]);
+//
+//   // Обработчик изменения вкладки
+//   const handleTabChange = (event, newValue) => {
+//     setTabValue(newValue);
+//   };
+//
+//   // Обработчик переключения статуса дела
+//   const handleStatusToggle = () => {
+//     const updatedStatus = !caseItem.active;
+//     axios
+//       .patch(`/api/cases/${id}/`, {
+//         active: updatedStatus,
+//       })
+//       .then((response) => {
+//         setCaseItem(response.data);
+//         setSnackbar({
+//           open: true,
+//           message: `Дело ${updatedStatus ? 'активировано' : 'закрыто'}.`,
+//           severity: 'success',
+//         });
+//       })
+//       .catch((error) => {
+//         console.error('Ошибка при изменении статуса дела:', error);
+//         setSnackbar({
+//           open: true,
+//           message: 'Ошибка при изменении статуса дела.',
+//           severity: 'error',
+//         });
+//       });
+//   };
+//
+//   // Обработчик печати отчёта
+//   const handlePrintReport = useReactToPrint({
+//     contentRef: reportRef,
+//     documentTitle: `Отчет по делу ${caseItem?.name}`,
+//     pageStyle: `
+//       @media print {
+//         body {
+//           -webkit-print-color-adjust: exact;
+//         }
+//       }
+//     `,
+//   });
+//
+//   // Закрытие Snackbar
+//   const handleSnackbarClose = () => {
+//     setSnackbar({ ...snackbar, open: false });
+//   };
+//
+//   if (!caseItem) {
+//     return (
+//       <Container>
+//         <Typography variant="h6">Загрузка...</Typography>
+//       </Container>
+//     );
+//   }
+//
+//   if (!canView) {
+//     return (
+//       <Container>
+//         <Typography variant="h6" color="error">
+//           У вас нет прав для просмотра этого дела.
+//         </Typography>
+//       </Container>
+//     );
+//   }
+//
+//   return (
+//     <Box sx={{ backgroundColor: '#e9edf5', minHeight: '100vh' }}>
+//       {/* Header */}
+//       <Header onLogout={() => navigate('/login')} />
+//
+//       {/* Main Content */}
+//       <Container sx={{ marginTop: theme.spacing(12), pb: theme.spacing(4) }}>
+//         {/* Back Button and Title */}
+//         <Box
+//           sx={{
+//             display: 'flex',
+//             alignItems: 'center',
+//             mb: theme.spacing(2),
+//           }}
+//         >
+//           <IconButton
+//             edge="start"
+//             color="inherit"
+//             onClick={() => navigate(-1)}
+//             sx={{ mr: 1 }}
+//           >
+//             <ArrowBackIcon />
+//           </IconButton>
+//           <Typography variant="h5">Детали дела</Typography>
+//           <Box sx={{ flexGrow: 1 }} />
+//           {/* Export Button */}
+//           {canView && (
+//             <StyledButton
+//               onClick={handlePrintReport}
+//               startIcon={<PrintIcon />}
+//               sx={{ mr: 2 }}
+//             >
+//               Экспорт
+//             </StyledButton>
+//           )}
+//           {/* Activate/Close Button */}
+//           {canEdit && (
+//             <StyledButton
+//               onClick={handleStatusToggle}
+//               sx={{
+//                 backgroundColor: caseItem.active
+//                   ? theme.palette.error.main
+//                   : theme.palette.success.main,
+//                 '&:hover': {
+//                   backgroundColor: caseItem.active
+//                     ? theme.palette.error.dark
+//                     : theme.palette.success.dark,
+//                 },
+//               }}
+//               startIcon={caseItem.active ? <CloseIcon /> : <CheckCircleIcon />}
+//             >
+//               {caseItem.active ? 'Закрыть' : 'Активировать'}
+//             </StyledButton>
+//           )}
+//         </Box>
+//
+//         {/* Tabs */}
+//         <Tabs
+//           value={tabValue}
+//           onChange={handleTabChange}
+//           sx={{ marginBottom: theme.spacing(3) }}
+//           TabIndicatorProps={{ style: { backgroundColor: '#3d4785' } }}
+//           textColor="inherit"
+//         >
+//           <Tab label="Информация" value={0} />
+//           <Tab label="Вещдоки" value={1} />
+//           {canViewHistory && <Tab label="История изменений" value={2} />}
+//         </Tabs>
+//
+//         {/* Tab Content */}
+//         {tabValue === 0 && (
+//           <CaseInformationTab
+//             caseItem={caseItem}
+//             canEdit={canEdit}
+//             setCaseItem={setCaseItem}
+//             setSnackbar={setSnackbar}
+//           />
+//         )}
+//         {tabValue === 1 && (
+//           <EvidenceTab
+//             caseId={id}
+//             user={user}
+//             groups={groups}
+//             setGroups={setGroups}
+//             canAddGroup={canAddGroup}
+//             canEdit={canEdit}
+//             setSnackbar={setSnackbar}
+//             setChangeLogs={setChangeLogs}
+//           />
+//         )}
+//         {canViewHistory && tabValue === 2 && (
+//           <ChangeHistoryTab changeLogs={changeLogs} setSnackbar={setSnackbar} />
+//         )}
+//       </Container>
+//
+//       {/* Report Print Component */}
+//       <div style={{ display: 'none' }}>
+//         <div ref={reportRef}>
+//           {/* Контент отчёта */}
+//           <Typography variant="h4">{caseItem.name}</Typography>
+//           <Typography variant="body1">{caseItem.description}</Typography>
+//           <Typography variant="h6">Группы вещественных доказательств:</Typography>
+//           {groups.map((group) => (
+//             <div key={group.id}>
+//               <Typography variant="h5">{group.name}</Typography>
+//               {group.material_evidences.map((evidence) => (
+//                 <div key={evidence.id}>
+//                   <Typography variant="h6">{evidence.name}</Typography>
+//                   <Typography>{evidence.description}</Typography>
+//                 </div>
+//               ))}
+//             </div>
+//           ))}
+//         </div>
+//       </div>
+//
+//       {/* Snackbar */}
+//       <Snackbar
+//         open={snackbar.open}
+//         autoHideDuration={6000}
+//         onClose={handleSnackbarClose}
+//         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+//       >
+//         <Alert
+//           onClose={handleSnackbarClose}
+//           severity={snackbar.severity}
+//           sx={{ width: '100%' }}
+//         >
+//           {snackbar.message}
+//         </Alert>
+//       </Snackbar>
+//     </Box>
+//   );
+// };
+//
+// export default CaseDetailPage;
 
-
+// // src/pages/CaseDetailPage.js
+//
+// import React, { useEffect, useState, useContext, useRef } from 'react';
+// import {
+//   Typography,
+//   Container,
+//   Box,
+//   Button,
+//   Tabs,
+//   Tab,
+//   IconButton,
+//   Snackbar,
+//   Alert,
+// } from '@mui/material';
+// import {
+//   ArrowBack as ArrowBackIcon,
+//   Print as PrintIcon,
+//   Close as CloseIcon,
+//   CheckCircle as CheckCircleIcon,
+// } from '@mui/icons-material';
+// import { useTheme } from '@mui/material/styles';
+// import { useParams, useNavigate } from 'react-router-dom';
+// import axios from '../axiosConfig';
+// import { AuthContext } from '../contexts/AuthContext';
+// import Header from '../components/Header';
+// import LogoMVDKZ from '../assets/Logo_MVD_KZ.png';
+// import { useReactToPrint } from 'react-to-print';
+//
+// // Import custom components
+// import { StyledButton } from '../components/StyledComponents';
+// import CaseInformationTab from '../components/CaseInformationTab';
+// import EvidenceTab from '../components/EvidenceTab';
+// import ChangeHistoryTab from '../components/ChangeHistoryTab';
+//
+// const CaseDetailPage = () => {
+//   const { id } = useParams(); // Get case ID from URL
+//   const { user } = useContext(AuthContext);
+//   const navigate = useNavigate();
+//   const theme = useTheme();
+//   const [caseItem, setCaseItem] = useState(null);
+//   const [groups, setGroups] = useState([]);
+//   const [changeLogs, setChangeLogs] = useState([]);
+//   const [tabValue, setTabValue] = useState(0);
+//   const [snackbar, setSnackbar] = useState({
+//     open: false,
+//     message: '',
+//     severity: 'success',
+//   });
+//   const reportRef = useRef();
+//
+//   // Permissions
+//   const isCreatorOrInvestigator =
+//     user &&
+//     (user.id === caseItem?.creator || user.id === caseItem?.investigator);
+//   const canView =
+//     isCreatorOrInvestigator ||
+//     user.role === 'DEPARTMENT_HEAD' ||
+//     user.role === 'REGION_HEAD';
+//   const canEdit = isCreatorOrInvestigator && user.role !== 'REGION_HEAD';
+//   const canAddGroup = isCreatorOrInvestigator && user.role !== 'REGION_HEAD';
+//   const canViewHistory =
+//     (user.role === 'DEPARTMENT_HEAD' ||
+//       user.role === 'REGION_HEAD' ||
+//       isCreatorOrInvestigator) &&
+//     canView;
+//
+//   useEffect(() => {
+//     // Fetch case details
+//     axios
+//       .get(`/api/cases/${id}/`)
+//       .then((response) => {
+//         setCaseItem(response.data);
+//       })
+//       .catch((error) => {
+//         console.error('Ошибка при получении деталей дела:', error);
+//         setSnackbar({
+//           open: true,
+//           message: 'Ошибка при загрузке дела.',
+//           severity: 'error',
+//         });
+//       });
+//
+//     // Fetch groups and evidences
+//     axios
+//       .get(`/api/evidence-groups/?case=${id}`)
+//       .then((response) => {
+//         setGroups(response.data);
+//       })
+//       .catch((error) => {
+//         console.error('Ошибка при получении групп:', error);
+//         setSnackbar({
+//           open: true,
+//           message: 'Ошибка при загрузке групп.',
+//           severity: 'error',
+//         });
+//       });
+//
+//     // Fetch change logs if user can view history
+//     if (canViewHistory) {
+//       axios
+//         .get(`/api/audit-entries/?case_id=${id}`)
+//         .then((response) => {
+//           setChangeLogs(response.data);
+//         })
+//         .catch((error) => {
+//           console.error('Ошибка при получении истории изменений:', error);
+//           setSnackbar({
+//             open: true,
+//             message: 'Ошибка при загрузке истории изменений.',
+//             severity: 'error',
+//           });
+//         });
+//     }
+//   }, [id, canViewHistory]);
+//
+//   // Handle tab change
+//   const handleTabChange = (event, newValue) => {
+//     setTabValue(newValue);
+//   };
+//
+//   // Handle case status toggle
+//   const handleStatusToggle = () => {
+//     const updatedStatus = !caseItem.active;
+//     axios
+//       .patch(`/api/cases/${id}/`, {
+//         active: updatedStatus,
+//       })
+//       .then((response) => {
+//         setCaseItem(response.data);
+//         setSnackbar({
+//           open: true,
+//           message: `Дело ${updatedStatus ? 'активировано' : 'закрыто'}.`,
+//           severity: 'success',
+//         });
+//       })
+//       .catch((error) => {
+//         console.error('Ошибка при изменении статуса дела:', error);
+//         setSnackbar({
+//           open: true,
+//           message: 'Ошибка при изменении статуса дела.',
+//           severity: 'error',
+//         });
+//       });
+//   };
+//
+//   // Print report
+//   const handlePrintReport = useReactToPrint({
+//     content: () => reportRef.current,
+//     documentTitle: `Отчет по делу ${caseItem?.name}`,
+//     pageStyle: `
+//       @media print {
+//         body {
+//           -webkit-print-color-adjust: exact;
+//         }
+//       }
+//     `,
+//   });
+//
+//   // Snackbar close
+//   const handleSnackbarClose = () => {
+//     setSnackbar({ ...snackbar, open: false });
+//   };
+//
+//   if (!caseItem) {
+//     return (
+//       <Container>
+//         <Typography variant="h6">Загрузка...</Typography>
+//       </Container>
+//     );
+//   }
+//
+//   if (!canView) {
+//     return (
+//       <Container>
+//         <Typography variant="h6" color="error">
+//           У вас нет прав для просмотра этого дела.
+//         </Typography>
+//       </Container>
+//     );
+//   }
+//
+//   return (
+//     <Box sx={{ backgroundColor: '#e9edf5', minHeight: '100vh' }}>
+//       {/* Header */}
+//       <Header onLogout={() => navigate('/login')} />
+//
+//       {/* Main Content */}
+//       <Container sx={{ marginTop: theme.spacing(12), pb: theme.spacing(4) }}>
+//         {/* Back Button and Title */}
+//         <Box
+//           sx={{
+//             display: 'flex',
+//             alignItems: 'center',
+//             mb: theme.spacing(2),
+//           }}
+//         >
+//           <IconButton
+//             edge="start"
+//             color="inherit"
+//             onClick={() => navigate(-1)}
+//             sx={{ mr: 1 }}
+//           >
+//             <ArrowBackIcon />
+//           </IconButton>
+//           <Typography variant="h5">Детали дела</Typography>
+//           <Box sx={{ flexGrow: 1 }} />
+//           {/* Export Button */}
+//           {canView && (
+//             <StyledButton
+//               onClick={handlePrintReport}
+//               startIcon={<PrintIcon />}
+//               sx={{ mr: 2 }}
+//             >
+//               Экспорт
+//             </StyledButton>
+//           )}
+//           {/* Activate/Close Button */}
+//           {canEdit && (
+//             <StyledButton
+//               onClick={handleStatusToggle}
+//               sx={{
+//                 backgroundColor: caseItem.active
+//                   ? theme.palette.error.main
+//                   : theme.palette.success.main,
+//                 '&:hover': {
+//                   backgroundColor: caseItem.active
+//                     ? theme.palette.error.dark
+//                     : theme.palette.success.dark,
+//                 },
+//               }}
+//               startIcon={caseItem.active ? <CloseIcon /> : <CheckCircleIcon />}
+//             >
+//               {caseItem.active ? 'Закрыть' : 'Активировать'}
+//             </StyledButton>
+//           )}
+//         </Box>
+//
+//         {/* Tabs */}
+//         <Tabs
+//           value={tabValue}
+//           onChange={handleTabChange}
+//           sx={{ marginBottom: theme.spacing(3) }}
+//           TabIndicatorProps={{ style: { backgroundColor: '#3d4785' } }}
+//           textColor="inherit"
+//         >
+//           <Tab label="Информация" value={0} />
+//           <Tab label="Вещдоки" value={1} />
+//           {canViewHistory && <Tab label="История изменений" value={2} />}
+//         </Tabs>
+//
+//         {/* Tab Content */}
+//         {tabValue === 0 && (
+//           <CaseInformationTab
+//             caseItem={caseItem}
+//             canEdit={canEdit}
+//             setCaseItem={setCaseItem}
+//             setSnackbar={setSnackbar}
+//           />
+//         )}
+//         {tabValue === 1 && (
+//           <EvidenceTab
+//             caseId={id}
+//             user={user}
+//             groups={groups}
+//             setGroups={setGroups}
+//             canAddGroup={canAddGroup}
+//             canEdit={canEdit}
+//             setSnackbar={setSnackbar}
+//           />
+//         )}
+//         {canViewHistory && tabValue === 2 && (
+//           <ChangeHistoryTab
+//             changeLogs={changeLogs}
+//             setSnackbar={setSnackbar}
+//           />
+//         )}
+//       </Container>
+//
+//       {/* Report Print Component */}
+//       <div style={{ display: 'none' }}>
+//         {/* Include your report content here */}
+//         <div ref={reportRef}>
+//           {/* ... Report Content ... */}
+//         </div>
+//       </div>
+//
+//       {/* Snackbar */}
+//       <Snackbar
+//         open={snackbar.open}
+//         autoHideDuration={6000}
+//         onClose={handleSnackbarClose}
+//         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+//       >
+//         <Alert
+//           onClose={handleSnackbarClose}
+//           severity={snackbar.severity}
+//           sx={{ width: '100%' }}
+//         >
+//           {snackbar.message}
+//         </Alert>
+//       </Snackbar>
+//     </Box>
+//   );
+// };
+//
+// export default CaseDetailPage;
+//
+//
 // // src/pages/CaseDetailPage.js
 //
 // import React, { useEffect, useState, useContext, useRef } from 'react';
@@ -1380,6 +1308,7 @@ export default CaseDetailPage;
 //   Select,
 //   MenuItem,
 //   FormControl,
+//   InputLabel, // Добавлено
 // } from '@mui/material';
 // import {
 //   Add as AddIcon,
@@ -1395,6 +1324,7 @@ export default CaseDetailPage;
 // import { useReactToPrint } from 'react-to-print';
 // import Header from '../components/Header';
 // import LogoMVDKZ from '../assets/Logo_MVD_KZ.png';
+// import { EVIDENCE_TYPES } from '../constants/evidenceTypes'; // Добавлено
 //
 // const StyledButton = styled(Button)(({ theme }) => ({
 //   borderRadius: '5px',
@@ -1427,6 +1357,7 @@ export default CaseDetailPage;
 //   const [newEvidence, setNewEvidence] = useState({
 //     name: '',
 //     description: '',
+//     type: 'OTHER', // Добавлено
 //   });
 //   const [openGroupDialog, setOpenGroupDialog] = useState(false);
 //   const [openEvidenceDialog, setOpenEvidenceDialog] = useState(false);
@@ -1461,7 +1392,7 @@ export default CaseDetailPage;
 //
 //   // Функция для печати только штрихкода
 //   const handlePrintBarcode = useReactToPrint({
-//     contentRef: barcodeRef,
+//     contentRef:barcodeRef,
 //     documentTitle: 'Штрихкод',
 //     pageStyle: `
 //       @page {
@@ -1690,7 +1621,7 @@ export default CaseDetailPage;
 //
 //   const handleCloseEvidenceDialog = () => {
 //     setOpenEvidenceDialog(false);
-//     setNewEvidence({ name: '', description: '' });
+//     setNewEvidence({ name: '', description: '', type: 'OTHER' }); // Добавлено сброс type
 //   };
 //
 //   const handleEvidenceInputChange = (event) => {
@@ -1707,6 +1638,7 @@ export default CaseDetailPage;
 //         description: newEvidence.description,
 //         case_id: id,
 //         group_id: selectedGroupId,
+//         type: newEvidence.type, // Добавлено
 //       })
 //       .then((response) => {
 //         // Обновляем список доказательств в группе
@@ -1871,11 +1803,18 @@ export default CaseDetailPage;
 //     return status ? status.label : value;
 //   };
 //
+//   // Получение отображаемого типа
+//   const getTypeLabel = (value) => {
+//     const type = EVIDENCE_TYPES.find((type) => type.value === value);
+//     return type ? type.label : value;
+//   };
+//
 //   // Отображаемые названия полей
 //   const fieldLabels = {
 //     name: 'Название',
 //     description: 'Описание',
 //     status: 'Статус',
+//     type: 'Тип ВД', // Добавлено
 //     updated: 'Обновлено',
 //     created: 'Создано',
 //     case: 'Дело',
@@ -2069,6 +2008,7 @@ export default CaseDetailPage;
 //                           <TableRow>
 //                             <StyledTableCell>Название</StyledTableCell>
 //                             <StyledTableCell>Описание</StyledTableCell>
+//                             <StyledTableCell>Тип ВД</StyledTableCell> {/* Добавлено */}
 //                             <StyledTableCell>Статус</StyledTableCell>
 //                             <StyledTableCell>Действия</StyledTableCell>
 //                           </TableRow>
@@ -2080,6 +2020,9 @@ export default CaseDetailPage;
 //                               <TableRow key={evidence.id}>
 //                                 <TableCell>{evidence.name}</TableCell>
 //                                 <TableCell>{evidence.description}</TableCell>
+//                                 <TableCell>
+//                                   {getTypeLabel(evidence.type)} {/* Добавлено */}
+//                                 </TableCell>
 //                                 <TableCell>
 //                                   {canEdit ? (
 //                                     <FormControl fullWidth variant="standard">
@@ -2133,7 +2076,7 @@ export default CaseDetailPage;
 //                             ))
 //                           ) : (
 //                             <TableRow>
-//                               <TableCell colSpan={4} align="center">
+//                               <TableCell colSpan={5} align="center"> {/* Обновлено colSpan */}
 //                                 Нет вещественных доказательств.
 //                               </TableCell>
 //                             </TableRow>
@@ -2196,6 +2139,22 @@ export default CaseDetailPage;
 //                   multiline
 //                   rows={4}
 //                 />
+//                 <FormControl fullWidth margin="dense" required> {/* Добавлено */}
+//                   <InputLabel id="evidence-type-label">Тип ВД</InputLabel>
+//                   <Select
+//                     labelId="evidence-type-label"
+//                     label="Тип ВД"
+//                     name="type"
+//                     value={newEvidence.type}
+//                     onChange={handleEvidenceInputChange}
+//                   >
+//                     {EVIDENCE_TYPES.map((type) => (
+//                       <MenuItem key={type.value} value={type.value}>
+//                         {type.label}
+//                       </MenuItem>
+//                     ))}
+//                   </Select>
+//                 </FormControl>
 //               </DialogContent>
 //               <DialogActions>
 //                 <Button onClick={handleCloseEvidenceDialog}>Отмена</Button>
@@ -2390,13 +2349,16 @@ export default CaseDetailPage;
 //                   >
 //                     <TableHead>
 //                       <TableRow>
-//                         <TableCell style={{ width: '30%' }}>
+//                         <TableCell style={{ width: '25%' }}>
 //                           <strong>Название</strong>
 //                         </TableCell>
-//                         <TableCell style={{ width: '50%' }}>
+//                         <TableCell style={{ width: '25%' }}>
 //                           <strong>Описание</strong>
 //                         </TableCell>
 //                         <TableCell style={{ width: '20%' }}>
+//                           <strong>Тип ВД</strong> {/* Добавлено */}
+//                         </TableCell>
+//                         <TableCell style={{ width: '30%' }}>
 //                           <strong>Статус</strong>
 //                         </TableCell>
 //                       </TableRow>
@@ -2408,7 +2370,7 @@ export default CaseDetailPage;
 //                           <TableRow key={evidence.id}>
 //                             <TableCell
 //                               style={{
-//                                 width: '30%',
+//                                 width: '25%',
 //                                 wordBreak: 'break-word',
 //                                 whiteSpace: 'normal',
 //                               }}
@@ -2417,7 +2379,7 @@ export default CaseDetailPage;
 //                             </TableCell>
 //                             <TableCell
 //                               style={{
-//                                 width: '50%',
+//                                 width: '25%',
 //                                 wordBreak: 'break-word',
 //                                 whiteSpace: 'normal',
 //                               }}
@@ -2431,13 +2393,22 @@ export default CaseDetailPage;
 //                                 whiteSpace: 'normal',
 //                               }}
 //                             >
+//                               {getTypeLabel(evidence.type)} {/* Добавлено */}
+//                             </TableCell>
+//                             <TableCell
+//                               style={{
+//                                 width: '30%',
+//                                 wordBreak: 'break-word',
+//                                 whiteSpace: 'normal',
+//                               }}
+//                             >
 //                               {getStatusLabel(evidence.status)}
 //                             </TableCell>
 //                           </TableRow>
 //                         ))
 //                       ) : (
 //                         <TableRow>
-//                           <TableCell colSpan={3} align="center">
+//                           <TableCell colSpan={4} align="center">
 //                             Нет вещественных доказательств.
 //                           </TableCell>
 //                         </TableRow>
@@ -2474,57 +2445,21 @@ export default CaseDetailPage;
 //                 >
 //                   <TableHead>
 //                     <TableRow>
-//                       <TableCell style={{ width: '20%' }}>
-//                         <strong>Дата и время</strong>
-//                       </TableCell>
-//                       <TableCell style={{ width: '20%' }}>
-//                         <strong>Пользователь</strong>
-//                       </TableCell>
-//                       <TableCell style={{ width: '20%' }}>
-//                         <strong>Действие</strong>
-//                       </TableCell>
-//                       <TableCell style={{ width: '40%' }}>
-//                         <strong>Изменения</strong>
-//                       </TableCell>
+//                       <StyledTableCell>Дата и время</StyledTableCell>
+//                       <StyledTableCell>Пользователь</StyledTableCell>
+//                       <StyledTableCell>Действие</StyledTableCell>
+//                       <StyledTableCell>Изменения</StyledTableCell>
 //                     </TableRow>
 //                   </TableHead>
 //                   <TableBody>
 //                     {changeLogs.map((log) => (
 //                       <TableRow key={log.id}>
-//                         <TableCell
-//                           style={{
-//                             width: '20%',
-//                             wordBreak: 'break-word',
-//                             whiteSpace: 'normal',
-//                           }}
-//                         >
-//                           {formatDate(log.created)}
-//                         </TableCell>
-//                         <TableCell
-//                           style={{
-//                             width: '20%',
-//                             wordBreak: 'break-word',
-//                             whiteSpace: 'normal',
-//                           }}
-//                         >
+//                         <TableCell>{formatDate(log.created)}</TableCell>
+//                         <TableCell>
 //                           {log.user ? log.user.full_name : 'Система'}
 //                         </TableCell>
-//                         <TableCell
-//                           style={{
-//                             width: '20%',
-//                             wordBreak: 'break-word',
-//                             whiteSpace: 'normal',
-//                           }}
-//                         >
-//                           {getActionMessage(log)}
-//                         </TableCell>
-//                         <TableCell
-//                           style={{
-//                             width: '40%',
-//                             wordBreak: 'break-word',
-//                             whiteSpace: 'normal',
-//                           }}
-//                         >
+//                         <TableCell>{getActionMessage(log)}</TableCell>
+//                         <TableCell>
 //                           {(() => {
 //                             if (log.data && log.data.trim() !== '') {
 //                               try {
@@ -2534,6 +2469,7 @@ export default CaseDetailPage;
 //                                     'name',
 //                                     'description',
 //                                     'status',
+//                                     'type', // Добавлено
 //                                   ];
 //                                   return Object.entries(data).map(
 //                                     ([field, values]) => {
@@ -2546,11 +2482,15 @@ export default CaseDetailPage;
 //                                             :{' '}
 //                                             {field === 'status'
 //                                               ? getStatusLabel(values.old)
-//                                               : values.old}{' '}
+//                                               : field === 'type'
+//                                                 ? getTypeLabel(values.old)
+//                                                 : values.old}{' '}
 //                                             →{' '}
 //                                             {field === 'status'
 //                                               ? getStatusLabel(values.new)
-//                                               : values.new}
+//                                               : field === 'type'
+//                                                 ? getTypeLabel(values.new)
+//                                                 : values.new}
 //                                           </div>
 //                                         );
 //                                       } else {
@@ -2563,6 +2503,7 @@ export default CaseDetailPage;
 //                                     'name',
 //                                     'description',
 //                                     'status',
+//                                     'type', // Добавлено
 //                                   ];
 //                                   return (
 //                                     <div>
@@ -2577,7 +2518,9 @@ export default CaseDetailPage;
 //                                                 :{' '}
 //                                                 {field === 'status'
 //                                                   ? getStatusLabel(value)
-//                                                   : value}
+//                                                   : field === 'type'
+//                                                     ? getTypeLabel(value)
+//                                                     : value}
 //                                               </div>
 //                                             );
 //                                           } else {

@@ -442,19 +442,19 @@ class MaterialEvidenceViewSet(viewsets.ModelViewSet):
                 if old_value != new_value:
                     changes[field] = {'old': old_value, 'new': new_value}
 
-        if changes:
-            # Создаем запись в AuditEntry
-            AuditEntry.objects.create(
-                object_id=instance.id,
-                object_name=instance.name,
-                table_name='materialevidence',
-                class_name='MaterialEvidence',
-                action='update',
-                fields=', '.join(changes.keys()),
-                data=json.dumps(changes, ensure_ascii=False, default=str),
-                user=user,
-                case=case  # Ссылка на дело
-            )
+        # if changes:
+        #     # Создаем запись в AuditEntry
+        #     AuditEntry.objects.create(
+        #         object_id=instance.id,
+        #         object_name=instance.name,
+        #         table_name='materialevidence',
+        #         class_name='MaterialEvidence',
+        #         action='update',
+        #         fields=', '.join(changes.keys()),
+        #         data=json.dumps(changes, ensure_ascii=False, default=str),
+        #         user=user,
+        #         case=case  # Ссылка на дело
+        #     )
 
         return Response(serializer.data)
 
@@ -642,6 +642,9 @@ class AuditEntryViewSet(viewsets.ModelViewSet):
             case = Case.objects.get(id=case_id)
         except Case.DoesNotExist:
             raise PermissionDenied("Дело не найдено.")
+
+        # Сортировка по возрастанию даты создания
+        queryset = queryset.order_by('created')
 
         # Проверка прав доступа на основе роли пользователя и принадлежности дела
         if user.role == "REGION_HEAD":
