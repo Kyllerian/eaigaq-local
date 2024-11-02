@@ -1,35 +1,6 @@
 import Header from './Header';
 import {
-  Typography,
   Container,
-  Box,
-  Button,
-  Tabs,
-  Tab,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Snackbar,
-  Alert,
-  IconButton,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
-  Grid,
-  Tooltip,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel, // Добавлено
 } from '@mui/material';
 
 import { useTheme } from '@mui/material/styles';

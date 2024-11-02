@@ -10,12 +10,6 @@ import {
   Button,
   Tabs,
   Tab,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Snackbar,
-  Alert,
   Tooltip,
 } from '@mui/material';
 import {
@@ -25,7 +19,6 @@ import {
 } from '@mui/icons-material';
 import { styled, useTheme } from '@mui/material/styles';
 import { AuthContext } from '../contexts/AuthContext';
-import Barcode from 'react-barcode';
 import { useReactToPrint } from 'react-to-print';
 import { EVIDENCE_TYPES } from '../constants/evidenceTypes'; // Добавлено
 import Layout from '../components/Layout';
@@ -35,6 +28,8 @@ import History from '../components/CaseDetailComponents/History';
 import BackButton from '../components/Buttons/Back';
 import PrintReport from '../components/CaseDetailComponents/PrintReport';
 import Loading from '../components/Loading';
+import DialogSeenBarcode from '../components/CaseDetailComponents/DialogSeenBarcode';
+import Notifyer from '../components/Notifyer';
 
 const StyledButton = styled(Button)(({ theme }) => ({
   borderRadius: '5px',
@@ -380,10 +375,6 @@ const CaseDetailPage = () => {
       });
   };
 
-  const handleSnackbarClose = () => {
-    setSnackbar({ ...snackbar, open: false });
-  };
-
   // Функции для отображения и печати штрихкодов
   const handleOpenBarcodeDialog = (barcodeValue) => {
     if (!barcodeValue) {
@@ -655,53 +646,15 @@ const CaseDetailPage = () => {
         canViewHistory={canViewHistory}
       />
       {/* Диалоговое окно для отображения штрихкода */}
-      <Dialog
-        open={openBarcodeDialog}
-        onClose={() => setOpenBarcodeDialog(false)}
-        maxWidth="xs"
-        fullWidth
-      >
-        <DialogTitle>Штрихкод</DialogTitle>
-        <DialogContent
-          sx={{
-            textAlign: 'center',
-            padding: theme.spacing(2),
-          }}
-        >
-          {barcodeValueToDisplay && (
-            <div id="barcode-container" ref={barcodeRef}>
-              <div id="barcode">
-                <Barcode
-                  value={barcodeValueToDisplay}
-                  format="EAN13"
-                  displayValue={false}
-                  margin={0}
-                />
-              </div>
-            </div>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenBarcodeDialog(false)}>Закрыть</Button>
-          <StyledButton onClick={handlePrintBarcode}>Печать</StyledButton>
-        </DialogActions>
-      </Dialog>
+      <DialogSeenBarcode openBarcodeDialog={openBarcodeDialog}
+        setOpenBarcodeDialog={setOpenBarcodeDialog}
+        barcodeValueToDisplay={barcodeValueToDisplay}
+        barcodeRef={barcodeRef}
+        handlePrintBarcode={handlePrintBarcode}
+      />
 
       {/* Snackbar для уведомлений */}
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={6000}
-        onClose={handleSnackbarClose}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-      >
-        <Alert
-          onClose={handleSnackbarClose}
-          severity={snackbar.severity}
-          sx={{ width: '100%' }}
-        >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
+      <Notifyer snackbarOpened={snackbar.open} setSnackbarOpen={setSnackbar} message={snackbar.message} severity={snackbar.severity} />
     </Box>
   );
 };

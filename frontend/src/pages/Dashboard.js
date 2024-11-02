@@ -5,7 +5,6 @@ import axios from '../axiosConfig';
 import { useNavigate } from 'react-router-dom';
 import {
   Typography,
-  Container,
   Box,
   Tabs,
   Tab,
@@ -16,7 +15,6 @@ import {
   TableHead,
   TableRow,
   Paper,
-  Snackbar,
   Alert,
   Dialog,
   DialogTitle,
@@ -47,6 +45,7 @@ import LogoMVDKZ from '../assets/Logo_MVD_KZ.png';
 import { EVIDENCE_TYPES } from '../constants/evidenceTypes';
 import Barcode from 'react-barcode';
 import Layout from '../components/Layout';
+import Notifyer from '../components/Notifyer';
 
 const StyledButton = styled(Button)(({ theme }) => ({
   borderRadius: '5px',
@@ -303,7 +302,7 @@ const Dashboard = () => {
     }, 500); // Задержка 500ms
 
     return () => clearTimeout(delayDebounceFn);
-  }, [evidenceSearchQuery, evidenceTypeFilter, dateAddedFrom, dateAddedTo, fetchEvidences]);
+  }, [evidenceSearchQuery, evidenceTypeFilter, dateAddedFrom, dateAddedTo, fetchEvidences, tabValue]);
 
   const handleLogout = async () => {
     await logout();
@@ -549,11 +548,6 @@ const Dashboard = () => {
   const handleDepartmentChange = (event) => {
     const value = event.target.value;
     setSelectedDepartment(value);
-  };
-
-  // Обработка закрытия Snackbar
-  const handleSnackbarClose = () => {
-    setSnackbar({ ...snackbar, open: false });
   };
 
   // Обработчики для сканирования штрихкода
@@ -2079,20 +2073,8 @@ const Dashboard = () => {
         </Dialog>
 
         {/* Snackbar для уведомлений */}
-        <Snackbar
-          open={snackbar.open}
-          autoHideDuration={6000}
-          onClose={handleSnackbarClose}
-          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-        >
-          <Alert
-            onClose={handleSnackbarClose}
-            severity={snackbar.severity}
-            sx={{ width: '100%' }}
-          >
-            {snackbar.message}
-          </Alert>
-        </Snackbar>
+        <Notifyer snackbarOpened={snackbar.open} setSnackbarOpen={setSnackbar} message={snackbar.message} severity={snackbar.severity} />
+        
       </Layout>
     </Box>
   );

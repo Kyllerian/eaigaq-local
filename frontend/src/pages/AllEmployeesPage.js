@@ -14,11 +14,10 @@ import {
   TableHead,
   TableRow,
   Paper,
-  Snackbar,
-  Alert,
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../contexts/AuthContext';
+import Notifyer from '../components/Notifyer';
 
 const AllEmployeesPage = () => {
   const { user } = useContext(AuthContext);
@@ -68,10 +67,6 @@ const AllEmployeesPage = () => {
 
   const handleBack = () => {
     navigate(-1);
-  };
-
-  const handleSnackbarClose = () => {
-    setSnackbar({ ...snackbar, open: false });
   };
 
   return (
@@ -131,16 +126,7 @@ const AllEmployeesPage = () => {
       </TableContainer>
 
       {/* Snackbar для уведомлений */}
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={6000}
-        onClose={handleSnackbarClose}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-      >
-        <Alert onClose={handleSnackbarClose} severity={snackbar.severity} sx={{ width: '100%' }}>
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
+      <Notifyer snackbarOpened={snackbar.open} setSnackbarOpen={setSnackbar} message={snackbar.message} severity={snackbar.severity} />
     </Container>
   );
 };
