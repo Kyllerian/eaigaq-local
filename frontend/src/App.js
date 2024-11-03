@@ -1,11 +1,14 @@
 // src/App.js
 
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import PrivateRoute from './components/PrivateRoute';
+import BiometricRoute from './components/BiometricRoute'; // Новый импорт
 import LoginPage from './pages/LoginPage';
 import Dashboard from './pages/Dashboard';
-import CaseDetailPage from './pages/CaseDetailPage'; // Обновили импорт
-import AllEmployeesPage from './pages/AllEmployeesPage'; // Новый импорт
+import CaseDetailPage from './pages/CaseDetailPage';
+import AllEmployeesPage from './pages/AllEmployeesPage';
+import BiometricRegistrationPage from './pages/BiometricRegistrationPage'; // Новый импорт
+import BiometricAuthenticationPage from './pages/BiometricAuthenticationPage'; // Убедитесь, что этот компонент существует
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 
@@ -21,6 +24,26 @@ function App() {
           <Routes>
             {/* Маршрут для страницы входа */}
             <Route path="/login" element={<LoginPage />} />
+
+            {/* Маршрут для регистрации биометрии */}
+            <Route
+              path="/register-biometric"
+              element={
+                <BiometricRoute type="registration">
+                  <BiometricRegistrationPage />
+                </BiometricRoute>
+              }
+            />
+
+            {/* Маршрут для биометрической аутентификации */}
+            <Route
+              path="/biometric-authentication"
+              element={
+                <BiometricRoute type="authentication">
+                  <BiometricAuthenticationPage />
+                </BiometricRoute>
+              }
+            />
 
             {/* Защищённые маршруты */}
             <Route
@@ -50,7 +73,8 @@ function App() {
               }
             />
 
-            {/* Добавьте другие маршруты здесь */}
+            {/* Маршрут по умолчанию */}
+            <Route path="*" element={<Navigate to="/" />} />
           </Routes>
         </Router>
       </ThemeProvider>

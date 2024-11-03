@@ -1,6 +1,6 @@
 // src/pages/LoginPage.js
 
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../contexts/AuthContext';
 import {
@@ -17,7 +17,6 @@ import {
 import { styled } from '@mui/material/styles';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import MailOutlineIcon from '@mui/icons-material/MailOutline';
-import LockOutlined from '@mui/icons-material/LockOutlined';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import LogoMVDKZ from '../assets/Logo_MVD_KZ.png';
@@ -48,18 +47,36 @@ const InputField = styled(TextField)(({ theme }) => ({
 }));
 
 function LoginPage() {
-  const { login } = useContext(AuthContext);
+  const { login, biometricRequired, biometricRegistrationRequired } = useContext(AuthContext);
   const navigate = useNavigate();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState(null);
 
+  useEffect(() => {
+    if (biometricRequired && !biometricRegistrationRequired) {
+      // Если требуется биометрическая аутентификация
+      navigate('/biometric-authentication');
+    } else if (biometricRegistrationRequired) {
+      // Если требуется регистрация биометрии
+      navigate('/register-biometric');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [biometricRequired, biometricRegistrationRequired]);
+
   const handleLogin = async (e) => {
     e.preventDefault();
+    setError(null);
     const result = await login(username, password);
     if (result.success) {
-      navigate('/');
+      if (result.biometricRequired) {
+        navigate('/biometric-authentication');
+      } else if (result.biometricRegistrationRequired) {
+        navigate('/register-biometric');
+      } else {
+        navigate('/');
+      }
     } else {
       setError(result.message);
     }
@@ -134,7 +151,7 @@ function LoginPage() {
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
-                  <LockOutlined color="action" />
+                  <LockOutlinedIcon color="action" />
                 </InputAdornment>
               ),
               endAdornment: (
@@ -166,7 +183,7 @@ function LoginPage() {
             Войти
           </Button>
         </Box>
-        {/* Дополнительные ссылки */}
+
         <Box
           sx={{
             display: 'flex',

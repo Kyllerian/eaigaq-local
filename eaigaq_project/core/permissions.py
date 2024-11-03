@@ -1,4 +1,4 @@
-# core/permissions.py
+# eaigaq_project/core/permissions.py
 
 from rest_framework.permissions import BasePermission, SAFE_METHODS
 

@@ -1,13 +1,16 @@
-# core/views.py
+# eaigaq_project/core/views.py
 
 from django.contrib.auth import authenticate, login, logout
 from django.http import JsonResponse
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.db.models import Q
 from django.forms.models import model_to_dict
-import json
+from django.contrib.auth import login
 
-from .permissions import IsCreator, IsRegionHead, IsDepartmentHead
+from rest_framework import viewsets, filters
+from django_filters.rest_framework import DjangoFilterBackend
+
+import json
 
 from rest_framework.exceptions import PermissionDenied
 from rest_framework import viewsets, permissions, status
@@ -20,6 +23,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.filters import SearchFilter
 
+from .permissions import IsCreator, IsRegionHead, IsDepartmentHead
 from .models import (
     User,
     Department,
@@ -30,6 +34,7 @@ from .models import (
     Camera,
     AuditEntry,
     EvidenceGroup,
+    FaceEncoding,
 )
 from .serializers import (
     UserSerializer,
@@ -183,8 +188,12 @@ class DepartmentViewSet(viewsets.ModelViewSet):
 class CaseViewSet(viewsets.ModelViewSet):
     queryset = Case.objects.all()
     serializer_class = CaseSerializer
-    filter_backends = [SearchFilter]
-    search_fields = ["name", "creator__username"]
+    permission_classes = [IsAuthenticated]
+
+    # Добавляем фильтры
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+    filterset_fields = ['department']  # Фильтрация по отделению
+    search_fields = ['name', 'creator__username']  # Поиск по названию дела и имени создателя
 
     def get_permissions(self):
         if self.action in ["update", "partial_update", "destroy"]:
@@ -196,7 +205,7 @@ class CaseViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
 
-        # Получаем параметры поиска
+        # Получаем параметры поиска и фильтрации
         search_query = self.request.query_params.get("search", "").strip()
         department_id = self.request.query_params.get("department")
 
@@ -334,9 +343,9 @@ class CaseViewSet(viewsets.ModelViewSet):
         elif user.role == "DEPARTMENT_HEAD" and case.department != user.department:
             raise PermissionDenied("У вас нет прав для доступа к этому делу.")
         elif (
-            user.role == "USER"
-            and case.creator != user
-            and case.investigator != user
+                user.role == "USER"
+                and case.creator != user
+                and case.investigator != user
         ):
             raise PermissionDenied("У вас нет прав для доступа к этому делу.")
 
@@ -345,10 +354,19 @@ class CaseViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
+
 class MaterialEvidenceViewSet(viewsets.ModelViewSet):
     queryset = MaterialEvidence.objects.all()
     serializer_class = MaterialEvidenceSerializer
     permission_classes = [IsAuthenticated]
+
+    # Добавляем фильтры
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+    filterset_fields = {
+        'type': ['exact'],  # Фильтрация по типу ВД
+        'created': ['gte', 'lte'],  # Фильтрация по дате создания
+    }
+    search_fields = ['name', 'description']  # Поиск по названию и описанию
 
     def get_queryset(self):
         user = self.request.user
@@ -361,18 +379,16 @@ class MaterialEvidenceViewSet(viewsets.ModelViewSet):
 
         # Фильтрация на основе роли пользователя
         if user.role == "REGION_HEAD":
-            return queryset.filter(
-                case__department__region=user.region
-            ).select_related("case", "created_by")
+            queryset = queryset.filter(case__department__region=user.region)
         elif user.role == "DEPARTMENT_HEAD":
-            return queryset.filter(
-                case__department=user.department
-            ).select_related("case", "created_by")
+            queryset = queryset.filter(case__department=user.department)
         else:
             # Пользователь видит вещественные доказательства дел, где он является создателем или следователем
-            return queryset.filter(
+            queryset = queryset.filter(
                 Q(case__creator=user) | Q(case__investigator=user)
-            ).select_related("case", "created_by")
+            )
+
+        return queryset.select_related("case", "created_by")
 
     def perform_create(self, serializer):
         user = self.request.user
@@ -426,25 +442,27 @@ class MaterialEvidenceViewSet(viewsets.ModelViewSet):
                 if old_value != new_value:
                     changes[field] = {'old': old_value, 'new': new_value}
 
-        if changes:
-            # Создаем запись в AuditEntry
-            AuditEntry.objects.create(
-                object_id=instance.id,
-                object_name=instance.name,
-                table_name='materialevidence',
-                class_name='MaterialEvidence',
-                action='update',
-                fields=', '.join(changes.keys()),
-                data=json.dumps(changes, ensure_ascii=False, default=str),
-                user=user,
-                case=case  # Ссылка на дело
-            )
+        # if changes:
+        #     # Создаем запись в AuditEntry
+        #     AuditEntry.objects.create(
+        #         object_id=instance.id,
+        #         object_name=instance.name,
+        #         table_name='materialevidence',
+        #         class_name='MaterialEvidence',
+        #         action='update',
+        #         fields=', '.join(changes.keys()),
+        #         data=json.dumps(changes, ensure_ascii=False, default=str),
+        #         user=user,
+        #         case=case  # Ссылка на дело
+        #     )
 
         return Response(serializer.data)
 
     def partial_update(self, request, *args, **kwargs):
         kwargs["partial"] = True
         return self.update(request, *args, **kwargs)
+
+
 
 
 class MaterialEvidenceEventViewSet(viewsets.ModelViewSet):
@@ -625,6 +643,9 @@ class AuditEntryViewSet(viewsets.ModelViewSet):
         except Case.DoesNotExist:
             raise PermissionDenied("Дело не найдено.")
 
+        # Сортировка по возрастанию даты создания
+        queryset = queryset.order_by('created')
+
         # Проверка прав доступа на основе роли пользователя и принадлежности дела
         if user.role == "REGION_HEAD":
             # Главы регионов видят дела в своем регионе
@@ -648,14 +669,6 @@ class AuditEntryViewSet(viewsets.ModelViewSet):
 # Authentication and CSRF Views
 # ---------------------------
 
-# Заглушка для биометрической аутентификации
-@api_view(["POST"])
-@permission_classes([AllowAny])
-def biometric_auth(request):
-    # TODO: Реализовать биометрическую аутентификацию позже
-    return Response({"message": "Biometric authentication placeholder"})
-
-
 @ensure_csrf_cookie
 @api_view(["GET"])
 @permission_classes([AllowAny])
@@ -668,16 +681,46 @@ def get_csrf_token(request):
 def login_view(request):
     username = request.data.get("username")
     password = request.data.get("password")
-    print(f"Попытка входа: {username}")
+    # logger.info(f"Попытка входа: {username}")
     user = authenticate(request, username=username, password=password)
     if user is not None:
-        print(f"Успешная аутентификация для пользователя: {user.username}")
-        login(request, user)
-        # Сессия будет создана автоматически сигналом user_logged_in
-        return JsonResponse({"detail": "Authentication successful"})
+        # logger.info(f"Успешная аутентификация для пользователя: {user.username}")
+        request.session['temp_user_id'] = user.id
+
+        if 'archive' in username:
+            # Прямо логиним пользователя без биометрической аутентификации
+            login(request, user)
+            return JsonResponse({"detail": "Успешный вход в систему", "login_successful": True})
+
+        if user.biometric_registered:
+            # Требуется биометрическая аутентификация через WebSocket
+            return JsonResponse({"detail": "Требуется биометрическая аутентификация", "biometric_required": True})
+        else:
+            # Требуется регистрация биометрии через WebSocket
+            return JsonResponse({"detail": "Требуется регистрация биометрии", "biometric_registration_required": True})
     else:
-        print(f"Аутентификация не удалась для пользователя: {username}")
-        return JsonResponse({"detail": "Invalid credentials"}, status=401)
+        # logger.warning(f"Аутентификация не удалась для пользователя: {username}")
+        return JsonResponse({"detail": "Неверные учетные данные"}, status=401)
+
+# @api_view(["POST"])
+# @permission_classes([AllowAny])
+# def login_view(request):
+#     username = request.data.get("username")
+#     password = request.data.get("password")
+#     # logger.info(f"Попытка входа: {username}")
+#     user = authenticate(request, username=username, password=password)
+#     if user is not None:
+#         # logger.info(f"Успешная аутентификация для пользователя: {user.username}")
+#         request.session['temp_user_id'] = user.id
+#         if user.biometric_registered:
+#             # Требуется биометрическая аутентификация через WebSocket
+#             return JsonResponse({"detail": "Требуется биометрическая аутентификация", "biometric_required": True})
+#         else:
+#             # Требуется регистрация биометрии через WebSocket
+#             return JsonResponse({"detail": "Требуется регистрация биометрии", "biometric_registration_required": True})
+#     else:
+#         # logger.warning(f"Аутентификация не удалась для пользователя: {username}")
+#         return JsonResponse({"detail": "Неверные учетные данные"}, status=401)
 
 
 
@@ -685,12 +728,10 @@ def login_view(request):
 def logout_view(request):
     user = request.user
     if user.is_authenticated:
-        # Сессия будет обновлена автоматически сигналом user_logged_out
         logout(request)
-        return JsonResponse({"detail": "Logout successful"})
+        return JsonResponse({"detail": "Вы успешно вышли из системы"})
     else:
-        return JsonResponse({"detail": "User is not authenticated"}, status=400)
-
+        return JsonResponse({"detail": "Пользователь не аутентифицирован"}, status=400)
 
 
 @api_view(["GET"])

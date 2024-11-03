@@ -42,15 +42,22 @@ CORS_ALLOW_ALL_ORIGINS = False
 
 # Определение приложений
 INSTALLED_APPS = [
+    # Приложения Django
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'core',              # Ваше основное приложение
-    'corsheaders',       # Для обработки CORS
-    'rest_framework',    # Django REST Framework
+    'django_filters',
+    # Ваше основное приложение
+    'core',
+    # Для обработки CORS
+    'corsheaders',
+    # Django REST Framework
+    'rest_framework',
+    # Django Channels
+    'channels',
 ]
 
 # Настройки REST Framework
@@ -61,6 +68,11 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
     ],
+    'DEFAULT_FILTER_BACKENDS': (
+        'django_filters.rest_framework.DjangoFilterBackend',
+        'rest_framework.filters.SearchFilter',
+        'rest_framework.filters.OrderingFilter',
+    ),
 }
 
 # Middleware
@@ -95,8 +107,32 @@ TEMPLATES = [
     },
 ]
 
+# ASGI приложение для поддержки WebSocket и Channels
+ASGI_APPLICATION = 'eaigaq_project.routing.application'
+
 # WSGI приложение
 WSGI_APPLICATION = 'eaigaq_project.wsgi.application'
+
+# Настройки Channels (используем Redis как бэкенд)
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            'hosts': [('redis', 6379)],
+        },
+    },
+}
+
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': os.environ.get('DB_NAME', 'eaigaq_db'),
+#         'USER': os.environ.get('DB_USER'),
+#         'PASSWORD': os.environ.get('DB_PASSWORD'),
+#         'HOST': os.environ.get('DB_HOST', 'db'),
+#         'PORT': os.environ.get('DB_PORT', '5432'),
+#     }
+# }
 
 # Настройки базы данных
 if DOCKER:
@@ -183,5 +219,10 @@ LOGGING = {
     },
 }
 
-# Дополнительные настройки (если необходимо)
-# Например, настройка разрешенных MIME-типов или дополнительных параметров безопасности
+# Настройки Celery
+CELERY_BROKER_URL = 'redis://redis:6379/0'
+CELERY_RESULT_BACKEND = 'redis://redis:6379/0'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_WORKER_POOL = 'solo'
