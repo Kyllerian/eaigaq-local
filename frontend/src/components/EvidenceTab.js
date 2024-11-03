@@ -76,7 +76,7 @@ const EvidenceTab = ({
 
   // Функция для печати штрихкода
   const handlePrintBarcode = useReactToPrint({
-    content: () => barcodeRef.current,
+    contentRef: barcodeRef,
     documentTitle: 'Штрихкод',
     pageStyle: `
       @page {

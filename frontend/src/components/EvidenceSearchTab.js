@@ -143,7 +143,7 @@ const EvidenceSearchTab = ({ snackbar, setSnackbar, setError }) => {
   };
 
   const handlePrintEvidenceReport = useReactToPrint({
-    content: () => evidenceReportRef.current,
+    contentRef: evidenceReportRef,
     documentTitle: 'Отчет по вещественным доказательствам',
   });
 
@@ -174,7 +174,7 @@ const EvidenceSearchTab = ({ snackbar, setSnackbar, setError }) => {
   };
 
   const handlePrintBarcode = useReactToPrint({
-    content: () => barcodeRef.current,
+    contentRef: barcodeRef,
     documentTitle: 'Штрихкод Вещдока',
     pageStyle: `
       @page {
