@@ -37,7 +37,7 @@ class BiometricConsumer(AsyncWebsocketConsumer):
         self.recognized = False
         self.stopped = False
         self.start_time = None
-        self.max_duration = 15  # Максимальная длительность попытки распознавания (секунды)
+        self.max_duration = 40  # Максимальная длительность попытки распознавания (секунды)
 
         self.stage = None  # 'registration' or 'authentication'
 
