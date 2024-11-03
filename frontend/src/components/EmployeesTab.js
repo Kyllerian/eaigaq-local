@@ -41,6 +41,7 @@ const EmployeesTab = ({
   snackbar,
   setSnackbar,
   setError,
+  setEmployees,
 }) => {
   const theme = useTheme();
   const [employeeSearchQuery, setEmployeeSearchQuery] = useState('');
@@ -180,51 +181,108 @@ const EmployeesTab = ({
     delete employeeData.confirm_password;
 
     axios
-      .post('/api/users/', employeeData)
-      .then((response) => {
-        setNewEmployeeCreated(response.data);
-        setOpenPrintDialog(true);
-        setSnackbar({
-          open: true,
-          message: 'Сотрудник успешно добавлен.',
-          severity: 'success',
+        .post('/api/users/', employeeData)
+        .then((response) => {
+          // Обновляем список сотрудников
+          setEmployees([...employees, response.data]);
+
+          setNewEmployeeCreated(response.data);
+          setOpenPrintDialog(true);
+          setSnackbar({
+            open: true,
+            message: 'Сотрудник успешно добавлен.',
+            severity: 'success',
+          });
+          handleCloseEmployeeDialog();
+        })
+        .catch((error) => {
+          console.error(
+              'Ошибка при добавлении сотрудника:',
+              error.response?.data || error
+          );
+          setSnackbar({
+            open: true,
+            message: 'Ошибка при добавлении сотрудника.',
+            severity: 'error',
+          });
         });
-        handleCloseEmployeeDialog();
-      })
-      .catch((error) => {
-        console.error(
-          'Ошибка при добавлении сотрудника:',
-          error.response?.data || error
-        );
-        setSnackbar({
-          open: true,
-          message: 'Ошибка при добавлении сотрудника.',
-          severity: 'error',
-        });
-      });
   };
 
   const handleToggleActive = () => {
-    axios
-      .patch(`/api/users/${selectedEmployee.id}/`, {
-        is_active: !selectedEmployee.is_active,
-      })
-      .then((response) => {
-        setSnackbar({
-          open: true,
-          message: 'Статус сотрудника изменен.',
-          severity: 'success',
-        });
-        setSelectedEmployee(null);
-      })
-      .catch((error) => {
-        setSnackbar({
-          open: true,
-          message: 'Ошибка при изменении статуса сотрудника.',
-          severity: 'error',
-        });
+    if (selectedEmployee.id === user.id) {
+      setSnackbar({
+        open: true,
+        message: 'Вы не можете деактивировать свой собственный аккаунт.',
+        severity: 'error',
       });
+      return;
+    }
+
+    axios
+        .patch(`/api/users/${selectedEmployee.id}/`, {
+          is_active: !selectedEmployee.is_active,
+        })
+        .then((response) => {
+          // Обновляем состояние employees
+          const updatedEmployees = employees.map((emp) =>
+              emp.id === selectedEmployee.id ? response.data : emp
+          );
+          setEmployees(updatedEmployees); // Теперь эта функция определена
+
+          setSnackbar({
+            open: true,
+            message: 'Статус сотрудника изменен.',
+            severity: 'success',
+          });
+          setSelectedEmployee(null);
+        })
+        .catch((error) => {
+          setSnackbar({
+            open: true,
+            message: 'Ошибка при изменении статуса сотрудника.',
+            severity: 'error',
+          });
+        });
   };
+
+
+
+  // const handleToggleActive = () => {
+  //   if (selectedEmployee.id === user.id) {
+  //     setSnackbar({
+  //       open: true,
+  //       message: 'Вы не можете деактивировать свой собственный аккаунт.',
+  //       severity: 'error',
+  //     });
+  //     return;
+  //   }
+  //
+  //   axios
+  //       .patch(`/api/users/${selectedEmployee.id}/`, {
+  //         is_active: !selectedEmployee.is_active,
+  //       })
+  //       .then((response) => {
+  //         // Обновляем состояние employees
+  //         const updatedEmployees = employees.map((emp) =>
+  //             emp.id === selectedEmployee.id ? response.data : emp
+  //         );
+  //         setSelectedEmployee(null);
+  //
+  //         setSnackbar({
+  //           open: true,
+  //           message: 'Статус сотрудника изменен.',
+  //           severity: 'success',
+  //         });
+  //         setSelectedEmployee(null);
+  //       })
+  //       .catch((error) => {
+  //         setSnackbar({
+  //           open: true,
+  //           message: 'Ошибка при изменении статуса сотрудника.',
+  //           severity: 'error',
+  //         });
+  //       });
+  // };
 
   // Export Handlers
   const handleOpenExportDialog = () => {
@@ -340,54 +398,57 @@ const EmployeesTab = ({
   return (
     <>
       {/* Search and Filter */}
-      {user.role === 'REGION_HEAD' && (
-        <Box
-          sx={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            alignItems: 'center',
-            gap: theme.spacing(2),
-            mb: theme.spacing(2),
-          }}
-        >
-          <TextField
-            label="Поиск по имени или фамилии"
-            variant="outlined"
-            value={employeeSearchQuery}
-            onChange={handleEmployeeSearchChange}
-            size="small"
-            sx={{ flexGrow: 1 }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon color="action" />
-                </InputAdornment>
-              ),
-            }}
-          />
-          <FormControl sx={{ minWidth: 200 }} variant="outlined" size="small">
-            <InputLabel id="employee-department-filter-label">
-              Отделение
-            </InputLabel>
-            <Select
-              labelId="employee-department-filter-label"
-              name="department"
-              value={selectedEmployeeDepartment}
-              onChange={handleEmployeeDepartmentChange}
-              label="Отделение"
-            >
-              <MenuItem value="">
-                <em>Все отделения</em>
-              </MenuItem>
-              {departments.map((dept) => (
-                <MenuItem key={dept.id} value={dept.id}>
-                  {dept.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </Box>
+      {(user.role === 'REGION_HEAD' || user.role === 'DEPARTMENT_HEAD') && (
+          <Box
+              sx={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                gap: theme.spacing(2),
+                mb: theme.spacing(2),
+              }}
+          >
+            <TextField
+                label="Поиск по имени или фамилии"
+                variant="outlined"
+                value={employeeSearchQuery}
+                onChange={handleEmployeeSearchChange}
+                size="small"
+                sx={{flexGrow: 1}}
+                InputProps={{
+                  startAdornment: (
+                      <InputAdornment position="start">
+                        <SearchIcon color="action"/>
+                      </InputAdornment>
+                  ),
+                }}
+            />
+            {user.role === 'REGION_HEAD' && (
+                <FormControl sx={{minWidth: 200}} variant="outlined" size="small">
+                  <InputLabel id="employee-department-filter-label">
+                    Отделение
+                  </InputLabel>
+                  <Select
+                      labelId="employee-department-filter-label"
+                      name="department"
+                      value={selectedEmployeeDepartment}
+                      onChange={handleEmployeeDepartmentChange}
+                      label="Отделение"
+                  >
+                    <MenuItem value="">
+                      <em>Все отделения</em>
+                    </MenuItem>
+                    {departments.map((dept) => (
+                        <MenuItem key={dept.id} value={dept.id}>
+                          {dept.name}
+                        </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+            )}
+          </Box>
       )}
+
 
       {/* Buttons */}
       <Box
@@ -458,45 +519,54 @@ const EmployeesTab = ({
             </TableHead>
             <TableBody>
               {employees
-                .filter((employee) => {
-                  if (selectedEmployeeDepartment) {
-                    return (
-                      employee.department &&
-                      employee.department.id ===
-                        parseInt(selectedEmployeeDepartment)
-                    );
-                  }
-                  return true;
-                })
-                .filter((employee) => {
-                  if (employeeSearchQuery) {
-                    const fullName = `${employee.first_name} ${employee.last_name}`.toLowerCase();
-                    const reverseFullName = `${employee.last_name} ${employee.first_name}`.toLowerCase();
-                    return (
-                      employee.first_name
-                        .toLowerCase()
-                        .includes(employeeSearchQuery.toLowerCase()) ||
-                      employee.last_name
-                        .toLowerCase()
-                        .includes(employeeSearchQuery.toLowerCase()) ||
-                      fullName.includes(employeeSearchQuery.toLowerCase()) ||
-                      reverseFullName.includes(
-                        employeeSearchQuery.toLowerCase()
-                      )
-                    );
-                  }
-                  return true;
-                })
-                .map((employee) => (
-                  <TableRow
-                    key={employee.id}
-                    hover
-                    selected={
-                      selectedEmployee && selectedEmployee.id === employee.id
+                  .filter((employee) => {
+                    // Фильтрация по отделению
+                    if (user.role === 'REGION_HEAD') {
+                      if (selectedEmployeeDepartment) {
+                        return (
+                            employee.department &&
+                            employee.department.id === parseInt(selectedEmployeeDepartment)
+                        );
+                      }
+                      return true; // Если отделение не выбрано, показываем всех
+                    } else if (user.role === 'DEPARTMENT_HEAD') {
+                      // Для главы отделения показываем только сотрудников своего отделения
+                      return (
+                          employee.department &&
+                          employee.department.id === user.department.id
+                      );
+                    } else {
+                      return false; // Другие роли не имеют доступа
                     }
-                    onClick={() => handleEmployeeSelect(employee)}
-                    style={{ cursor: 'pointer' }}
-                  >
+                  })
+                  .filter((employee) => {
+                    // Фильтрация по поисковому запросу
+                    if (employeeSearchQuery) {
+                      const fullName = `${employee.first_name} ${employee.last_name}`.toLowerCase();
+                      const reverseFullName = `${employee.last_name} ${employee.first_name}`.toLowerCase();
+                      return (
+                          employee.first_name
+                              .toLowerCase()
+                              .includes(employeeSearchQuery.toLowerCase()) ||
+                          employee.last_name
+                              .toLowerCase()
+                              .includes(employeeSearchQuery.toLowerCase()) ||
+                          fullName.includes(employeeSearchQuery.toLowerCase()) ||
+                          reverseFullName.includes(employeeSearchQuery.toLowerCase())
+                      );
+                    }
+                    return true;
+                  })
+                  .map((employee) => (
+                      <TableRow
+                          key={employee.id}
+                          hover
+                          selected={
+                              selectedEmployee && selectedEmployee.id === employee.id
+                          }
+                          onClick={() => handleEmployeeSelect(employee)}
+                          style={{cursor: 'pointer'}}
+                      >
                     <TableCell
                       sx={{
                         whiteSpace: 'nowrap',

@@ -140,6 +140,7 @@ const Dashboard = () => {
               user={user}
               employees={employees}
               departments={departments}
+              setEmployees={setEmployees} // Добавляем это
               snackbar={snackbar}
               setSnackbar={setSnackbar}
               setError={setError}
