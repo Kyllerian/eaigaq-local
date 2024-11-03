@@ -363,8 +363,9 @@ class MaterialEvidenceViewSet(viewsets.ModelViewSet):
     # Добавляем фильтры
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     filterset_fields = {
-        'type': ['exact'],  # Фильтрация по типу ВД
-        'created': ['gte', 'lte'],  # Фильтрация по дате создания
+        'type': ['exact'],        # Фильтрация по типу ВД
+        'created': ['gte', 'lte'],# Фильтрация по дате создания
+        'barcode': ['exact'],     # Добавляем возможность фильтрации по штрихкоду
     }
     search_fields = ['name', 'description']  # Поиск по названию и описанию
 
@@ -376,6 +377,11 @@ class MaterialEvidenceViewSet(viewsets.ModelViewSet):
         case_id = self.request.query_params.get("case")
         if case_id:
             queryset = queryset.filter(case_id=case_id)
+
+        # Фильтрация по штрихкоду, если указан параметр 'barcode'
+        barcode = self.request.query_params.get("barcode")
+        if barcode:
+            queryset = queryset.filter(barcode=barcode)
 
         # Фильтрация на основе роли пользователя
         if user.role == "REGION_HEAD":
@@ -442,20 +448,6 @@ class MaterialEvidenceViewSet(viewsets.ModelViewSet):
                 if old_value != new_value:
                     changes[field] = {'old': old_value, 'new': new_value}
 
-        # if changes:
-        #     # Создаем запись в AuditEntry
-        #     AuditEntry.objects.create(
-        #         object_id=instance.id,
-        #         object_name=instance.name,
-        #         table_name='materialevidence',
-        #         class_name='MaterialEvidence',
-        #         action='update',
-        #         fields=', '.join(changes.keys()),
-        #         data=json.dumps(changes, ensure_ascii=False, default=str),
-        #         user=user,
-        #         case=case  # Ссылка на дело
-        #     )
-
         return Response(serializer.data)
 
     def partial_update(self, request, *args, **kwargs):
@@ -508,23 +500,40 @@ class EvidenceGroupViewSet(viewsets.ModelViewSet):
     serializer_class = EvidenceGroupSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+    # Добавляем фильтры
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+    filterset_fields = {
+        'barcode': ['exact'],  # Добавляем возможность фильтрации по штрихкоду
+        'case': ['exact'],
+    }
+    search_fields = ['name']
+
     def get_queryset(self):
         user = self.request.user
-        case_id = self.request.query_params.get("case")
-        queryset = self.queryset
+        queryset = super().get_queryset()
 
+        # Фильтрация по штрихкоду, если указан параметр 'barcode'
+        barcode = self.request.query_params.get("barcode")
+        if barcode:
+            queryset = queryset.filter(barcode=barcode)
+
+        # Фильтрация по ID дела, если указан параметр 'case'
+        case_id = self.request.query_params.get("case")
         if case_id:
             queryset = queryset.filter(case_id=case_id)
 
+        # Фильтрация на основе роли пользователя
         if user.role == "REGION_HEAD":
-            return queryset.filter(case__department__region=user.region)
+            queryset = queryset.filter(case__department__region=user.region)
         elif user.role == "DEPARTMENT_HEAD":
-            return queryset.filter(case__department=user.department)
+            queryset = queryset.filter(case__department=user.department)
         else:
             # Пользователь видит группы в делах, где он является создателем или следователем
-            return queryset.filter(
+            queryset = queryset.filter(
                 Q(case__creator=user) | Q(case__investigator=user)
             )
+
+        return queryset
 
     def perform_create(self, serializer):
         user = self.request.user

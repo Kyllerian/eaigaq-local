@@ -1,6 +1,6 @@
 // src/components/CasesTab.js
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   Box,
   TextField,
@@ -19,7 +19,6 @@ import {
   Button,
   Tooltip,
   IconButton,
-  Typography,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -150,33 +149,91 @@ const CasesTab = ({
       return;
     }
 
+    // Функция для обработки результата поиска
+    const handleSearchResult = (caseId) => {
+      if (caseId) {
+        navigate(`/cases/${caseId}/`);
+      } else {
+        setSnackbar({
+          open: true,
+          message: 'Дело не найдено.',
+          severity: 'error',
+        });
+      }
+    };
+
+    // Ищем по вещественным доказательствам
     axios
       .get(`/api/material-evidences/?barcode=${scannedBarcode}`)
       .then((response) => {
         if (response.data.length > 0) {
           const evidence = response.data[0];
-          if (evidence.case) {
-            navigate(`/cases/${evidence.case.id}/`);
+          console.log('Найдено вещественное доказательство:', evidence);
+
+          // Проверяем, есть ли дело
+          const caseId = evidence.case?.id;
+
+          if (caseId) {
+            handleSearchResult(caseId);
           } else {
             setSnackbar({
               open: true,
-              message: 'Вещдок не связан с делом.',
+              message: 'Вещественное доказательство не связано с делом.',
               severity: 'info',
             });
           }
         } else {
-          setSnackbar({
-            open: true,
-            message: 'Вещдок не найден.',
-            severity: 'error',
-          });
+          // Если не найдено, ищем по группам
+          axios
+            .get(`/api/evidence-groups/?barcode=${scannedBarcode}`)
+            .then((response) => {
+              if (response.data.length > 0) {
+                const group = response.data[0];
+                console.log('Найдена группа:', group);
+
+                // Проверяем, есть ли дело
+                const caseId = group.case;
+
+                if (caseId) {
+                  handleSearchResult(caseId);
+                } else {
+                  setSnackbar({
+                    open: true,
+                    message:
+                      'Группа вещественных доказательств не связана с делом.',
+                    severity: 'info',
+                  });
+                }
+              } else {
+                setSnackbar({
+                  open: true,
+                  message:
+                    'Вещественное доказательство или группа не найдены.',
+                  severity: 'error',
+                });
+              }
+            })
+            .catch((error) => {
+              console.error(
+                'Ошибка при поиске группы по штрихкоду:',
+                error
+              );
+              setSnackbar({
+                open: true,
+                message: 'Ошибка при поиске группы.',
+                severity: 'error',
+              });
+            });
         }
       })
       .catch((error) => {
-        console.error('Ошибка при поиске вещдока по штрихкоду:', error);
+        console.error(
+          'Ошибка при поиске вещественного доказательства по штрихкоду:',
+          error
+        );
         setSnackbar({
           open: true,
-          message: 'Ошибка при поиске вещдока.',
+          message: 'Ошибка при поиске вещественного доказательства.',
           severity: 'error',
         });
       })
@@ -250,10 +307,7 @@ const CasesTab = ({
         }}
       >
         {user.role !== 'REGION_HEAD' && (
-          <StyledButton
-            onClick={handleOpenCaseDialog}
-            startIcon={<AddIcon />}
-          >
+          <StyledButton onClick={handleOpenCaseDialog} startIcon={<AddIcon />}>
             Добавить дело
           </StyledButton>
         )}
@@ -377,7 +431,10 @@ const CasesTab = ({
               ))}
               {filteredCases.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={user && user.role === 'REGION_HEAD' ? 4 : 3} align="center">
+                  <TableCell
+                    colSpan={user && user.role === 'REGION_HEAD' ? 4 : 3}
+                    align="center"
+                  >
                     Нет результатов.
                   </TableCell>
                 </TableRow>
