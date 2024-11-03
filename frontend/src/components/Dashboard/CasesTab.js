@@ -1,37 +1,6 @@
 // src/components/CasesTab.js
 
-import React, { useState, useRef } from 'react';
-import {
-    Box,
-    TextField,
-    InputAdornment,
-    Paper,
-    TableContainer,
-    Table,
-    TableHead,
-    TableRow,
-    TableBody,
-    TableCell,
-    Dialog,
-    DialogTitle,
-    DialogContent,
-    DialogActions,
-    Button,
-    Tooltip,
-    IconButton,
-    FormControl,
-    InputLabel,
-    Select,
-    MenuItem,
-} from '@mui/material';
-import {
-    Add as AddIcon,
-    Search as SearchIcon,
-    OpenInNew as OpenInNewIcon,
-    Circle as CircleIcon,
-} from '@mui/icons-material';
-import { useTheme } from '@mui/material/styles';
-import { StyledButton, StyledTableCell } from '../ui/StyledComponents';
+import { useState, useRef } from 'react';
 import axios from '../../axiosConfig';
 import { useNavigate } from 'react-router-dom';
 import AffairsToolbar from './Affairs/Toolbar';
@@ -44,20 +13,12 @@ const CasesTab = ({
     cases,
     setCases,
     departments,
-    fetchCases,
-    snackbar,
     setSnackbar,
-    setError,
 }) => {
-    const theme = useTheme();
     const navigate = useNavigate();
     const [selectedCase, setSelectedCase] = useState(null);
     const [selectedDepartment, setSelectedDepartment] = useState('');
     const [openCaseDialog, setOpenCaseDialog] = useState(false);
-    const [newCase, setNewCase] = useState({
-        name: '',
-        description: '',
-    });
 
     // Обработка выбора отделения для фильтрации
     const handleDepartmentChange = (event) => {
@@ -82,50 +43,6 @@ const CasesTab = ({
 
     const handleOpenCaseDialog = () => {
         setOpenCaseDialog(true);
-    };
-
-    const handleCloseCaseDialog = () => {
-        setOpenCaseDialog(false);
-        setNewCase({
-            name: '',
-            description: '',
-        });
-    };
-
-    const handleCaseInputChange = (event) => {
-        const { name, value } = event.target;
-        setNewCase({ ...newCase, [name]: value });
-    };
-
-    const handleCaseFormSubmit = (event) => {
-        event.preventDefault();
-
-        const caseData = {
-            ...newCase,
-        };
-
-        axios
-            .post('/api/cases/', caseData)
-            .then((response) => {
-                setSnackbar({
-                    open: true,
-                    message: 'Дело успешно добавлено.',
-                    severity: 'success',
-                });
-                fetchCases();
-                handleCloseCaseDialog();
-            })
-            .catch((error) => {
-                console.error(
-                    'Ошибка при добавлении дела:',
-                    error.response?.data || error
-                );
-                setSnackbar({
-                    open: true,
-                    message: 'Ошибка при добавлении дела.',
-                    severity: 'error',
-                });
-            });
     };
 
     const handleOpenCaseDetails = () => {
@@ -235,7 +152,7 @@ const CasesTab = ({
             />
 
             {/* Таблица дел */}
-            <AffairsTable user={user} cases={cases} handleCaseSelect={handleCaseSelect} selectedCase={selectedCase} />
+            <AffairsTable user={user} cases={cases} handleCaseSelect={handleCaseSelect} selectedCase={selectedCase} filteredCases={filteredCases} />
 
             {/* Диалоги */}
             {user.role !== 'REGION_HEAD' && (

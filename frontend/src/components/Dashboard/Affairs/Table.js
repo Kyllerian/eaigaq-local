@@ -11,7 +11,7 @@ import {
 import { StyledTableCell } from '../../ui/StyledComponents';
 
 
-export default function AffairsTable({ user, cases, handleCaseSelect, selectedCase }) {
+export default function AffairsTable({ user, cases, handleCaseSelect, selectedCase, filteredCases }) {
 
     return (
         <>
@@ -41,13 +41,11 @@ export default function AffairsTable({ user, cases, handleCaseSelect, selectedCa
                             </TableRow>
                         </TableHead>
                         <TableBody>
-                            {cases.map((caseItem) => (
+                            {filteredCases.map((caseItem) => (
                                 <TableRow
                                     key={caseItem.id}
                                     hover
-                                    selected={
-                                        selectedCase && selectedCase.id === caseItem.id
-                                    }
+                                    selected={selectedCase && selectedCase.id === caseItem.id}
                                     onClick={() => handleCaseSelect(caseItem)}
                                     style={{ cursor: 'pointer' }}
                                 >
@@ -89,17 +87,24 @@ export default function AffairsTable({ user, cases, handleCaseSelect, selectedCa
                                             }}
                                         >
                                             {caseItem.department_name ||
-                                                (caseItem.department &&
-                                                    caseItem.department.name) ||
+                                                (caseItem.department && caseItem.department.name) ||
                                                 'Не указано'}
                                         </TableCell>
                                     )}
                                 </TableRow>
                             ))}
+                            {filteredCases.length === 0 && (
+                                <TableRow>
+                                    <TableCell colSpan={user && user.role === 'REGION_HEAD' ? 4 : 3} align="center">
+                                        Нет результатов.
+                                    </TableCell>
+                                </TableRow>
+                            )}
                         </TableBody>
                     </Table>
                 </TableContainer>
             </Paper>
+
         </>
     );
 }
