@@ -1,30 +1,44 @@
 import {
-    Button,
     Paper,
     TextField,
     Grid,
 } from '@mui/material';
 
-import { styled, useTheme } from '@mui/material/styles';
+import { useTheme } from '@mui/material/styles';
+import axios from '../../axiosConfig';
+import { StyledButton } from '../ui/StyledComponents';
 
-const StyledButton = styled(Button)(({ theme }) => ({
-    borderRadius: '5px',
-    textTransform: 'none',
-    backgroundColor: '#1976d2',
-    color: '#ffffff',
-    '&:hover': {
-        backgroundColor: '#0d47a1',
-    },
-    '&.Mui-disabled': {
-        backgroundColor: '#cfd8dc',
-        color: '#ffffff',
-        opacity: 0.7,
-    },
-}));
-
-export default function CaseDetailInfromation({ caseItem, handleInfoChange, canEdit, handleInfoSave }) {
+export default function CaseDetailInfromation({ id, caseItem, canEdit, setCaseItem, setSnackbar }) {
     const theme = useTheme();
+    const handleInfoChange = (event) => {
+        const { name, value } = event.target;
+        setCaseItem((prev) => ({ ...prev, [name]: value }));
+    };
 
+    const handleInfoSave = () => {
+        axios
+            .put(`/api/cases/${id}/`, {
+                name: caseItem.name,
+                description: caseItem.description,
+                active: caseItem.active,
+            })
+            .then((response) => {
+                setCaseItem(response.data);
+                setSnackbar({
+                    open: true,
+                    message: 'Дело успешно обновлено.',
+                    severity: 'success',
+                });
+            })
+            .catch((error) => {
+                console.error('Ошибка при обновлении дела:', error);
+                setSnackbar({
+                    open: true,
+                    message: 'Ошибка при обновлении дела.',
+                    severity: 'error',
+                });
+            });
+    };
     return (
         <>
             <Paper elevation={1} sx={{ padding: theme.spacing(3) }}>

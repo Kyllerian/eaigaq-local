@@ -9,27 +9,11 @@ import {
     Paper,
 } from '@mui/material';
 
-import { styled, useTheme } from '@mui/material/styles';
+import { useTheme } from '@mui/material/styles';
 import { fieldLabels } from '../../constants/fieldsLabels';
 import { evidenceStatuses } from '../../constants/evidenceStatuses';
-
-const StyledTableCell = styled(TableCell)(({ theme }) => ({
-    fontWeight: 'bold',
-}));
-
-// Форматирование даты
-const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    const options = {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-    };
-    return date.toLocaleDateString('ru-RU', options);
-};
+import { StyledTableCell } from '../ui/StyledComponents';
+import { formatDate } from '../../constants/formatDate';
 
 export default function History({ changeLogs, }) {
     const theme = useTheme();

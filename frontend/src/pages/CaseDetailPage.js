@@ -7,7 +7,6 @@ import {
   Typography,
   Container,
   Box,
-  Button,
   Tabs,
   Tab,
   Tooltip,
@@ -15,9 +14,8 @@ import {
 import {
   Close as CloseIcon,
   CheckCircle as CheckCircleIcon,
-  Print as PrintIcon,
 } from '@mui/icons-material';
-import { styled, useTheme } from '@mui/material/styles';
+import { useTheme } from '@mui/material/styles';
 import { AuthContext } from '../contexts/AuthContext';
 import { useReactToPrint } from 'react-to-print';
 import Layout from '../components/Layout';
@@ -28,21 +26,8 @@ import BackButton from '../components/Buttons/Back';
 import PrintReport from '../components/CaseDetailComponents/PrintReport';
 import Loading from '../components/Loading';
 import Notifyer from '../components/Notifyer';
-
-const StyledButton = styled(Button)(({ theme }) => ({
-  borderRadius: '5px',
-  textTransform: 'none',
-  backgroundColor: '#1976d2',
-  color: '#ffffff',
-  '&:hover': {
-    backgroundColor: '#0d47a1',
-  },
-  '&.Mui-disabled': {
-    backgroundColor: '#cfd8dc',
-    color: '#ffffff',
-    opacity: 0.7,
-  },
-}));
+import { StyledButton } from '../components/ui/StyledComponents';
+import PrintButton from '../components/ui/PrintButton';
 
 const CaseDetailPage = () => {
   const { id } = useParams(); // Получаем ID дела из URL
@@ -157,37 +142,7 @@ const CaseDetailPage = () => {
     setTabValue(newValue);
   };
 
-  // Вкладка "Информация"
-  const handleInfoChange = (event) => {
-    const { name, value } = event.target;
-    setCaseItem((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleInfoSave = () => {
-    axios
-      .put(`/api/cases/${id}/`, {
-        name: caseItem.name,
-        description: caseItem.description,
-        active: caseItem.active,
-      })
-      .then((response) => {
-        setCaseItem(response.data);
-        setSnackbar({
-          open: true,
-          message: 'Дело успешно обновлено.',
-          severity: 'success',
-        });
-      })
-      .catch((error) => {
-        console.error('Ошибка при обновлении дела:', error);
-        setSnackbar({
-          open: true,
-          message: 'Ошибка при обновлении дела.',
-          severity: 'error',
-        });
-      });
-  };
-
+// открытие/закрытие дела
   const handleStatusToggle = () => {
     const updatedStatus = !caseItem.active;
     axios
@@ -245,13 +200,7 @@ const CaseDetailPage = () => {
           <Box sx={{ flexGrow: 1 }} />
           {/* Кнопка "Экспорт" */}
           {canView && (
-            <StyledButton
-              onClick={handlePrintReport}
-              startIcon={<PrintIcon />}
-              sx={{ mr: 2 }}
-            >
-              Экспорт
-            </StyledButton>
+            <PrintButton handlePrint={handlePrintReport} text={"Экспорт"}/>
           )}
           {/* Кнопка "Активировать/Закрыть" */}
           {canEdit && (
@@ -293,7 +242,7 @@ const CaseDetailPage = () => {
 
         {/* Вкладка "Информация" */}
         {tabValue === 0 && (
-          <CaseDetailInfromation caseItem={caseItem} handleInfoChange={handleInfoChange} handleInfoSave={handleInfoSave} canEdit={canEdit} />
+          <CaseDetailInfromation id={id} caseItem={caseItem} setSnackbar={setSnackbar} setCaseItem={setCaseItem} canEdit={canEdit} />
         )}
 
         {/* Вкладка "Вещдоки" */}

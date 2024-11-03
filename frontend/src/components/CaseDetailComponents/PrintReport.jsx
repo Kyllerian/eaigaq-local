@@ -10,29 +10,12 @@ import {
     Paper,
 } from '@mui/material';
 
-import { styled } from '@mui/material/styles';
 import LogoMVDKZ from '../../assets/Logo_MVD_KZ.png';
 import { fieldLabels } from '../../constants/fieldsLabels';
 import { EVIDENCE_TYPES } from '../../constants/evidenceTypes';
 import { evidenceStatuses } from '../../constants/evidenceStatuses';
-
-const StyledTableCell = styled(TableCell)(({ theme }) => ({
-    fontWeight: 'bold',
-}));
-
-// Форматирование даты
-const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    const options = {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-    };
-    return date.toLocaleDateString('ru-RU', options);
-};
+import { StyledTableCell } from '../ui/StyledComponents';
+import { formatDate } from '../../constants/formatDate';
 
 export default function PrintReport({ caseItem, changeLogs, reportRef, groups, canViewHistory }) {
     // Получение отображаемого типа
