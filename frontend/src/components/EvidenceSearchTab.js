@@ -100,7 +100,7 @@ const EvidenceSearchTab = ({ snackbar, setSnackbar, setError }) => {
           severity: 'error',
         });
       });
-  }, [evidenceSearchQuery, evidenceTypeFilter, dateAddedFrom, dateAddedTo]);
+  }, [evidenceSearchQuery, evidenceTypeFilter, dateAddedFrom, dateAddedTo, setSnackbar]);
 
   useEffect(() => {
     fetchEvidences();
@@ -444,19 +444,19 @@ const EvidenceSearchTab = ({ snackbar, setSnackbar, setError }) => {
             >
               <TableHead>
                 <TableRow>
-                  <TableCell>
+                  <TableCell style={{ width: '20%' }}>
                     <strong>Название ВД</strong>
                   </TableCell>
-                  <TableCell>
+                  <TableCell style={{ width: '35%' }}>
                     <strong>Описание ВД</strong>
                   </TableCell>
-                  <TableCell>
+                  <TableCell style={{ width: '15%' }}>
                     <strong>Тип ВД</strong>
                   </TableCell>
-                  <TableCell>
+                  <TableCell style={{ width: '15%' }}>
                     <strong>Дело</strong>
                   </TableCell>
-                  <TableCell>
+                  <TableCell style={{ width: '15%' }}>
                     <strong>Дата создания</strong>
                   </TableCell>
                 </TableRow>
@@ -464,17 +464,63 @@ const EvidenceSearchTab = ({ snackbar, setSnackbar, setError }) => {
               <TableBody>
                 {evidenceExportData.map((evidence) => (
                   <TableRow key={evidence.id}>
-                    <TableCell>{evidence.name}</TableCell>
-                    <TableCell>{evidence.description}</TableCell>
-                    <TableCell>
+                    <TableCell
+                      style={{
+                        width: '20%',
+                        maxWidth: '20%',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}
+                    >
+                      {evidence.name}
+                    </TableCell>
+                    <TableCell
+                      style={{
+                        width: '35%',
+                        maxWidth: '35%',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}
+                    >
+                      {evidence.description}
+                    </TableCell>
+                    <TableCell
+                      style={{
+                        width: '15%',
+                        maxWidth: '15%',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}
+                    >
                       {EVIDENCE_TYPES.find(
                         (type) => type.value === evidence.type
                       )?.label || evidence.type}
                     </TableCell>
-                    <TableCell>
+                    <TableCell
+                      style={{
+                        width: '15%',
+                        maxWidth: '15%',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}
+                    >
                       {evidence.case ? evidence.case.name : 'Не назначено'}
                     </TableCell>
-                    <TableCell>{formatDate(evidence.created)}</TableCell>
+                    <TableCell
+                      style={{
+                        width: '15%',
+                        maxWidth: '15%',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}
+                    >
+                      {formatDate(evidence.created)}
+                    </TableCell>
                   </TableRow>
                 ))}
                 {evidenceExportData.length === 0 && (
