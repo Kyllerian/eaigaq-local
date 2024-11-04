@@ -77,7 +77,7 @@ const EmployeesTab = ({
   const loginDetailsRef = useRef();
 
   const handlePrintLoginDetails = useReactToPrint({
-    content: loginDetailsRef,
+    content: () => loginDetailsRef.current,
     documentTitle: 'Данные для входа сотрудника',
     onAfterPrint: () => {
       handleClosePrintDialog();
@@ -181,31 +181,31 @@ const EmployeesTab = ({
     delete employeeData.confirm_password;
 
     axios
-        .post('/api/users/', employeeData)
-        .then((response) => {
-          // Обновляем список сотрудников
-          setEmployees([...employees, response.data]);
+      .post('/api/users/', employeeData)
+      .then((response) => {
+        // Обновляем список сотрудников
+        setEmployees([...employees, response.data]);
 
-          setNewEmployeeCreated(response.data);
-          setOpenPrintDialog(true);
-          setSnackbar({
-            open: true,
-            message: 'Сотрудник успешно добавлен.',
-            severity: 'success',
-          });
-          handleCloseEmployeeDialog();
-        })
-        .catch((error) => {
-          console.error(
-              'Ошибка при добавлении сотрудника:',
-              error.response?.data || error
-          );
-          setSnackbar({
-            open: true,
-            message: 'Ошибка при добавлении сотрудника.',
-            severity: 'error',
-          });
+        setNewEmployeeCreated(response.data);
+        setOpenPrintDialog(true);
+        setSnackbar({
+          open: true,
+          message: 'Сотрудник успешно добавлен.',
+          severity: 'success',
         });
+        handleCloseEmployeeDialog();
+      })
+      .catch((error) => {
+        console.error(
+          'Ошибка при добавлении сотрудника:',
+          error.response?.data || error
+        );
+        setSnackbar({
+          open: true,
+          message: 'Ошибка при добавлении сотрудника.',
+          severity: 'error',
+        });
+      });
   };
 
   const handleToggleActive = () => {
@@ -219,70 +219,63 @@ const EmployeesTab = ({
     }
 
     axios
-        .patch(`/api/users/${selectedEmployee.id}/`, {
-          is_active: !selectedEmployee.is_active,
-        })
-        .then((response) => {
-          // Обновляем состояние employees
-          const updatedEmployees = employees.map((emp) =>
-              emp.id === selectedEmployee.id ? response.data : emp
-          );
-          setEmployees(updatedEmployees); // Теперь эта функция определена
+      .patch(`/api/users/${selectedEmployee.id}/`, {
+        is_active: !selectedEmployee.is_active,
+      })
+      .then((response) => {
+        // Обновляем состояние employees
+        const updatedEmployees = employees.map((emp) =>
+          emp.id === selectedEmployee.id ? response.data : emp
+        );
+        setEmployees(updatedEmployees);
 
-          setSnackbar({
-            open: true,
-            message: 'Статус сотрудника изменен.',
-            severity: 'success',
-          });
-          setSelectedEmployee(null);
-        })
-        .catch((error) => {
-          setSnackbar({
-            open: true,
-            message: 'Ошибка при изменении статуса сотрудника.',
-            severity: 'error',
-          });
+        setSnackbar({
+          open: true,
+          message: 'Статус сотрудника изменен.',
+          severity: 'success',
         });
+        setSelectedEmployee(null);
+      })
+      .catch((error) => {
+        setSnackbar({
+          open: true,
+          message: 'Ошибка при изменении статуса сотрудника.',
+          severity: 'error',
+        });
+      });
   };
 
+  // State для хранения количества дел по каждому сотруднику
+  const [caseCounts, setCaseCounts] = useState({});
 
+  useEffect(() => {
+    // Получаем список дел и вычисляем количество дел для каждого сотрудника
+    axios
+      .get('/api/cases/')
+      .then((response) => {
+        const casesData = response.data;
+        const counts = {};
 
-  // const handleToggleActive = () => {
-  //   if (selectedEmployee.id === user.id) {
-  //     setSnackbar({
-  //       open: true,
-  //       message: 'Вы не можете деактивировать свой собственный аккаунт.',
-  //       severity: 'error',
-  //     });
-  //     return;
-  //   }
-  //
-  //   axios
-  //       .patch(`/api/users/${selectedEmployee.id}/`, {
-  //         is_active: !selectedEmployee.is_active,
-  //       })
-  //       .then((response) => {
-  //         // Обновляем состояние employees
-  //         const updatedEmployees = employees.map((emp) =>
-  //             emp.id === selectedEmployee.id ? response.data : emp
-  //         );
-  //         setSelectedEmployee(null);
-  //
-  //         setSnackbar({
-  //           open: true,
-  //           message: 'Статус сотрудника изменен.',
-  //           severity: 'success',
-  //         });
-  //         setSelectedEmployee(null);
-  //       })
-  //       .catch((error) => {
-  //         setSnackbar({
-  //           open: true,
-  //           message: 'Ошибка при изменении статуса сотрудника.',
-  //           severity: 'error',
-  //         });
-  //       });
-  // };
+        casesData.forEach((caseItem) => {
+          const investigatorId = caseItem.investigator
+            ? caseItem.investigator.id
+            : null;
+          if (investigatorId) {
+            counts[investigatorId] = (counts[investigatorId] || 0) + 1;
+          }
+        });
+
+        setCaseCounts(counts);
+      })
+      .catch((error) => {
+        console.error('Ошибка при получении списка дел:', error);
+        setSnackbar({
+          open: true,
+          message: 'Ошибка при получении списка дел.',
+          severity: 'error',
+        });
+      });
+  }, [setSnackbar]);
 
   // Export Handlers
   const handleOpenExportDialog = () => {
@@ -356,11 +349,11 @@ const EmployeesTab = ({
   });
 
   useEffect(() => {
-  if (shouldPrint && exportData.length > 0) {
-    handlePrintReport();
-    setShouldPrint(false);
-  }
-}, [shouldPrint, exportData]); // Удалили handlePrintReport из зависимостей
+    if (shouldPrint && exportData.length > 0) {
+      handlePrintReport();
+      setShouldPrint(false);
+    }
+  }, [shouldPrint, exportData]);
 
   const handleClosePrintDialog = () => {
     setOpenPrintDialog(false);
@@ -399,56 +392,65 @@ const EmployeesTab = ({
     <>
       {/* Search and Filter */}
       {(user.role === 'REGION_HEAD' || user.role === 'DEPARTMENT_HEAD') && (
-          <Box
-              sx={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                alignItems: 'center',
-                gap: theme.spacing(2),
-                mb: theme.spacing(2),
-              }}
+        <Box
+          sx={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            gap: theme.spacing(2),
+            mb: theme.spacing(2),
+          }}
+        >
+          <TextField
+            label="Поиск по имени или фамилии"
+            variant="outlined"
+            value={employeeSearchQuery}
+            onChange={handleEmployeeSearchChange}
+            size="small"
+            sx={{ flexGrow: 1 }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon color="action" />
+                </InputAdornment>
+              ),
+            }}
+          />
+          {user.role === 'REGION_HEAD' && (
+            <FormControl sx={{ minWidth: 200 }} variant="outlined" size="small">
+              <InputLabel id="employee-department-filter-label">
+                Отделение
+              </InputLabel>
+              <Select
+                labelId="employee-department-filter-label"
+                name="department"
+                value={selectedEmployeeDepartment}
+                onChange={handleEmployeeDepartmentChange}
+                label="Отделение"
+              >
+                <MenuItem value="">
+                  <em>Все отделения</em>
+                </MenuItem>
+                {departments.map((dept) => (
+                  <MenuItem key={dept.id} value={dept.id}>
+                    {dept.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          )}
+          <StyledButton
+            onClick={handleOpenExportDialog}
+            startIcon={<PrintIcon />}
+            size="small"
+            sx={{
+              height: '40px',
+            }}
           >
-            <TextField
-                label="Поиск по имени или фамилии"
-                variant="outlined"
-                value={employeeSearchQuery}
-                onChange={handleEmployeeSearchChange}
-                size="small"
-                sx={{flexGrow: 1}}
-                InputProps={{
-                  startAdornment: (
-                      <InputAdornment position="start">
-                        <SearchIcon color="action"/>
-                      </InputAdornment>
-                  ),
-                }}
-            />
-            {user.role === 'REGION_HEAD' && (
-                <FormControl sx={{minWidth: 200}} variant="outlined" size="small">
-                  <InputLabel id="employee-department-filter-label">
-                    Отделение
-                  </InputLabel>
-                  <Select
-                      labelId="employee-department-filter-label"
-                      name="department"
-                      value={selectedEmployeeDepartment}
-                      onChange={handleEmployeeDepartmentChange}
-                      label="Отделение"
-                  >
-                    <MenuItem value="">
-                      <em>Все отделения</em>
-                    </MenuItem>
-                    {departments.map((dept) => (
-                        <MenuItem key={dept.id} value={dept.id}>
-                          {dept.name}
-                        </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-            )}
-          </Box>
+            Экспорт отчета
+          </StyledButton>
+        </Box>
       )}
-
 
       {/* Buttons */}
       <Box
@@ -461,21 +463,12 @@ const EmployeesTab = ({
           gap: theme.spacing(2),
         }}
       >
-        <Box>
-          <StyledButton
-            onClick={handleOpenEmployeeDialog}
-            startIcon={<AddIcon />}
-            sx={{ mr: 2 }}
-          >
-            Добавить сотрудника
-          </StyledButton>
-          <StyledButton
-            onClick={handleOpenExportDialog}
-            startIcon={<PrintIcon />}
-          >
-            Экспорт отчета
-          </StyledButton>
-        </Box>
+        <StyledButton
+          onClick={handleOpenEmployeeDialog}
+          startIcon={<AddIcon />}
+        >
+          Добавить сотрудника
+        </StyledButton>
         {selectedEmployee && (
           <StyledButton
             onClick={handleToggleActive}
@@ -504,69 +497,75 @@ const EmployeesTab = ({
           >
             <TableHead>
               <TableRow>
-                <StyledTableCell sx={{ width: '15%' }}>Фамилия</StyledTableCell>
-                <StyledTableCell sx={{ width: '15%' }}>Имя</StyledTableCell>
+                <StyledTableCell sx={{ width: '12%' }}>
+                  Фамилия
+                </StyledTableCell>
+                <StyledTableCell sx={{ width: '12%' }}>Имя</StyledTableCell>
                 <StyledTableCell sx={{ width: '10%' }}>Звание</StyledTableCell>
-                <StyledTableCell sx={{ width: '15%' }}>Роль</StyledTableCell>
-                <StyledTableCell sx={{ width: '20%' }}>
+                <StyledTableCell sx={{ width: '12%' }}>Роль</StyledTableCell>
+                <StyledTableCell sx={{ width: '15%' }}>
                   Электронная почта
                 </StyledTableCell>
                 <StyledTableCell sx={{ width: '15%' }}>
                   Отделение
                 </StyledTableCell>
                 <StyledTableCell sx={{ width: '10%' }}>Статус</StyledTableCell>
+                <StyledTableCell sx={{ width: '14%' }}>
+                  Количество дел
+                </StyledTableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {employees
-                  .filter((employee) => {
-                    // Фильтрация по отделению
-                    if (user.role === 'REGION_HEAD') {
-                      if (selectedEmployeeDepartment) {
-                        return (
-                            employee.department &&
-                            employee.department.id === parseInt(selectedEmployeeDepartment)
-                        );
-                      }
-                      return true; // Если отделение не выбрано, показываем всех
-                    } else if (user.role === 'DEPARTMENT_HEAD') {
-                      // Для главы отделения показываем только сотрудников своего отделения
+                .filter((employee) => {
+                  // Фильтрация по отделению
+                  if (user.role === 'REGION_HEAD') {
+                    if (selectedEmployeeDepartment) {
                       return (
-                          employee.department &&
-                          employee.department.id === user.department.id
-                      );
-                    } else {
-                      return false; // Другие роли не имеют доступа
-                    }
-                  })
-                  .filter((employee) => {
-                    // Фильтрация по поисковому запросу
-                    if (employeeSearchQuery) {
-                      const fullName = `${employee.first_name} ${employee.last_name}`.toLowerCase();
-                      const reverseFullName = `${employee.last_name} ${employee.first_name}`.toLowerCase();
-                      return (
-                          employee.first_name
-                              .toLowerCase()
-                              .includes(employeeSearchQuery.toLowerCase()) ||
-                          employee.last_name
-                              .toLowerCase()
-                              .includes(employeeSearchQuery.toLowerCase()) ||
-                          fullName.includes(employeeSearchQuery.toLowerCase()) ||
-                          reverseFullName.includes(employeeSearchQuery.toLowerCase())
+                        employee.department &&
+                        employee.department.id ===
+                          parseInt(selectedEmployeeDepartment)
                       );
                     }
-                    return true;
-                  })
-                  .map((employee) => (
-                      <TableRow
-                          key={employee.id}
-                          hover
-                          selected={
-                              selectedEmployee && selectedEmployee.id === employee.id
-                          }
-                          onClick={() => handleEmployeeSelect(employee)}
-                          style={{cursor: 'pointer'}}
-                      >
+                    return true; // Если отделение не выбрано, показываем всех
+                  } else if (user.role === 'DEPARTMENT_HEAD') {
+                    // Для главы отделения показываем только сотрудников своего отделения
+                    return (
+                      employee.department &&
+                      employee.department.id === user.department.id
+                    );
+                  } else {
+                    return false; // Другие роли не имеют доступа
+                  }
+                })
+                .filter((employee) => {
+                  // Фильтрация по поисковому запросу
+                  if (employeeSearchQuery) {
+                    const fullName = `${employee.first_name} ${employee.last_name}`.toLowerCase();
+                    const reverseFullName = `${employee.last_name} ${employee.first_name}`.toLowerCase();
+                    return (
+                      employee.first_name
+                        .toLowerCase()
+                        .includes(employeeSearchQuery.toLowerCase()) ||
+                      employee.last_name
+                        .toLowerCase()
+                        .includes(employeeSearchQuery.toLowerCase()) ||
+                      fullName.includes(employeeSearchQuery.toLowerCase()) ||
+                      reverseFullName.includes(employeeSearchQuery.toLowerCase())
+                    );
+                  }
+                  return true;
+                })
+                .map((employee) => (
+                  <TableRow
+                    key={employee.id}
+                    hover
+                    selected={
+                      selectedEmployee && selectedEmployee.id === employee.id
+                    }
+                    onClick={() => handleEmployeeSelect(employee)}
+                    style={{ cursor: 'pointer' }}
+                  >
                     <TableCell
                       sx={{
                         whiteSpace: 'nowrap',
@@ -631,6 +630,16 @@ const EmployeesTab = ({
                       }}
                     >
                       {employee.is_active ? 'Активен' : 'Неактивен'}
+                    </TableCell>
+                    {/* Новый столбец с количеством дел */}
+                    <TableCell
+                      sx={{
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}
+                    >
+                      {caseCounts[employee.id] || 0}
                     </TableCell>
                   </TableRow>
                 ))}

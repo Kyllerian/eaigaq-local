@@ -192,7 +192,10 @@ class CaseViewSet(viewsets.ModelViewSet):
 
     # Добавляем фильтры
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
-    filterset_fields = ['department']  # Фильтрация по отделению
+    filterset_fields = {
+        'department': ['exact'],     # Фильтрация по отделению
+        'created': ['gte', 'lte'],   # Фильтрация по дате создания
+    }
     search_fields = ['name', 'creator__username']  # Поиск по названию дела и имени создателя
 
     def get_permissions(self):
@@ -214,6 +217,14 @@ class CaseViewSet(viewsets.ModelViewSet):
 
         if department_id:
             base_q_filter &= Q(department_id=department_id)
+
+        # Фильтрация по дате создания
+        created_gte = self.request.query_params.get("created__gte")
+        created_lte = self.request.query_params.get("created__lte")
+        if created_gte:
+            base_q_filter &= Q(created__gte=created_gte)
+        if created_lte:
+            base_q_filter &= Q(created__lte=created_lte)
 
         # Инициализируем объект Q для поиска
         q_objects = Q()
