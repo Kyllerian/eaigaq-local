@@ -1213,7 +1213,7 @@ const EmployeesTab = ({
   const loginDetailsRef = useRef();
 
   const handlePrintLoginDetails = useReactToPrint({
-    content: () => loginDetailsRef.current,
+    contentRef: loginDetailsRef,
     documentTitle: 'Данные для входа сотрудника',
     onAfterPrint: () => {
       handleClosePrintDialog();
