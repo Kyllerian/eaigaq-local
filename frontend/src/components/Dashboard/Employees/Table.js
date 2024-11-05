@@ -9,6 +9,7 @@ import {
 } from '@mui/material';
 
 import { StyledTableCell } from '../../ui/StyledComponents';
+import { TableCellSx } from '../../ui/TableCell';
 
 
 export default function EmpolyeesTable({ user, employees, selectedEmployeeDepartment, employeeSearchQuery, selectedEmployee, handleEmployeeSelect }) {
@@ -87,7 +88,10 @@ export default function EmpolyeesTable({ user, employees, selectedEmployeeDepart
                                         onClick={() => handleEmployeeSelect(employee)}
                                         style={{ cursor: 'pointer' }}
                                     >
-                                        <TableCell
+                                        <TableCellSx>
+                                            {employee.last_name}
+                                        </TableCellSx>
+                                        {/* <TableCell
                                             sx={{
                                                 whiteSpace: 'nowrap',
                                                 overflow: 'hidden',
@@ -95,8 +99,11 @@ export default function EmpolyeesTable({ user, employees, selectedEmployeeDepart
                                             }}
                                         >
                                             {employee.last_name}
-                                        </TableCell>
-                                        <TableCell
+                                        </TableCell> */}
+                                        <TableCellSx>
+                                            {employee.first_name}
+                                        </TableCellSx>
+                                        {/* <TableCell
                                             sx={{
                                                 whiteSpace: 'nowrap',
                                                 overflow: 'hidden',
@@ -104,8 +111,11 @@ export default function EmpolyeesTable({ user, employees, selectedEmployeeDepart
                                             }}
                                         >
                                             {employee.first_name}
-                                        </TableCell>
-                                        <TableCell
+                                        </TableCell> */}
+                                        <TableCellSx>
+                                            {employee.rank}
+                                        </TableCellSx>
+                                        {/* <TableCell
                                             sx={{
                                                 whiteSpace: 'nowrap',
                                                 overflow: 'hidden',
@@ -113,8 +123,11 @@ export default function EmpolyeesTable({ user, employees, selectedEmployeeDepart
                                             }}
                                         >
                                             {employee.rank}
-                                        </TableCell>
-                                        <TableCell
+                                        </TableCell> */}
+                                        <TableCellSx>
+                                            {employee.role_display}
+                                        </TableCellSx>
+                                        {/* <TableCell
                                             sx={{
                                                 whiteSpace: 'nowrap',
                                                 overflow: 'hidden',
@@ -122,8 +135,11 @@ export default function EmpolyeesTable({ user, employees, selectedEmployeeDepart
                                             }}
                                         >
                                             {employee.role_display}
-                                        </TableCell>
-                                        <TableCell
+                                        </TableCell> */}
+                                        <TableCellSx>
+                                            {employee.email}
+                                        </TableCellSx>
+                                        {/* <TableCell
                                             sx={{
                                                 whiteSpace: 'nowrap',
                                                 overflow: 'hidden',
@@ -131,8 +147,13 @@ export default function EmpolyeesTable({ user, employees, selectedEmployeeDepart
                                             }}
                                         >
                                             {employee.email}
-                                        </TableCell>
-                                        <TableCell
+                                        </TableCell> */}
+                                        <TableCellSx>
+                                            {employee.department
+                                                ? employee.department.name
+                                                : 'Не указано'}
+                                        </TableCellSx>
+                                        {/* <TableCell
                                             sx={{
                                                 whiteSpace: 'nowrap',
                                                 overflow: 'hidden',
@@ -142,8 +163,11 @@ export default function EmpolyeesTable({ user, employees, selectedEmployeeDepart
                                             {employee.department
                                                 ? employee.department.name
                                                 : 'Не указано'}
-                                        </TableCell>
-                                        <TableCell
+                                        </TableCell> */}
+                                        <TableCellSx>
+                                            {employee.is_active ? 'Активен' : 'Неактивен'}
+                                        </TableCellSx>
+                                        {/* <TableCell
                                             sx={{
                                                 whiteSpace: 'nowrap',
                                                 overflow: 'hidden',
@@ -151,7 +175,7 @@ export default function EmpolyeesTable({ user, employees, selectedEmployeeDepart
                                             }}
                                         >
                                             {employee.is_active ? 'Активен' : 'Неактивен'}
-                                        </TableCell>
+                                        </TableCell> */}
                                     </TableRow>
                                 ))}
                         </TableBody>

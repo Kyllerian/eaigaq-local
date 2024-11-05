@@ -7,6 +7,7 @@ import axios from '../../../axiosConfig';
 import { StyledButton } from '../../ui/StyledComponents';
 import DashboardDialog from '../../ui/DashboardDialog';
 import { useState } from 'react';
+import { StyledTextField } from '../../ui/StyledTextfield';
 
 
 export default function DialogNewAffairs({ openCaseDialog, setOpenCaseDialog, setSnackbar, setCases, cases }) {
@@ -52,7 +53,15 @@ export default function DialogNewAffairs({ openCaseDialog, setOpenCaseDialog, se
                 {{
                     content: (
                         <>
-                            <TextField
+                            <StyledTextField autoFocus 
+                                label="Название дела"
+                                name="name"
+                                value={newCase.name}
+                                onChange={handleCaseInputChange}    
+                                required
+                                inputProps={{ maxLength: 255 }}
+                            />
+                            {/* <TextField
                                 autoFocus
                                 margin="dense"
                                 label="Название дела"
@@ -62,8 +71,19 @@ export default function DialogNewAffairs({ openCaseDialog, setOpenCaseDialog, se
                                 fullWidth
                                 required
                                 inputProps={{ maxLength: 255 }}
+                            /> */}
+                            
+                            <StyledTextField
+                                label="Описание дела"
+                                name="description"
+                                value={newCase.description}
+                                onChange={handleCaseInputChange}
+                                required
+                                multiline
+                                rows={4}
+                                inputProps={{ maxLength: 1000 }}
                             />
-                            <TextField
+                            {/* <TextField
                                 margin="dense"
                                 label="Описание дела"
                                 name="description"
@@ -74,7 +94,7 @@ export default function DialogNewAffairs({ openCaseDialog, setOpenCaseDialog, se
                                 multiline
                                 rows={4}
                                 inputProps={{ maxLength: 1000 }}
-                            />
+                            /> */}
                         </>
                     ),
                     actions: (

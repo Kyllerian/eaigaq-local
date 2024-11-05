@@ -8,6 +8,7 @@ import axios from '../axiosConfig';
 import { StyledButton } from '../ui/StyledComponents';
 import DashboardDialog from '../ui/DashboardDialog';
 import { useNavigate } from 'react-router-dom';
+import { StyledTextField } from '../ui/StyledTextfield';
 
 export default function DialogSeenBarcode({ open, setOpenBarcodeDialog, barcodeInputRef, scannedBarcode, setSnackbar, setScannedBarcode }) {
     const navigate = useNavigate();
@@ -57,7 +58,19 @@ export default function DialogSeenBarcode({ open, setOpenBarcodeDialog, barcodeI
                 {{
                     content: (
                         <>
-                            <TextField
+                            <StyledTextField
+                                autoFocus
+                                inputRef={barcodeInputRef}
+                                label="Штрихкод"
+                                value={scannedBarcode}
+                                onChange={handleBarcodeInputChange}
+                                onKeyDown={(event) => {
+                                    if (event.key === 'Enter') {
+                                        handleBarcodeSubmit(event);
+                                    }
+                                }}
+                            />
+                            {/* <TextField
                                 autoFocus
                                 inputRef={barcodeInputRef}
                                 margin="dense"
@@ -70,7 +83,7 @@ export default function DialogSeenBarcode({ open, setOpenBarcodeDialog, barcodeI
                                         handleBarcodeSubmit(event);
                                     }
                                 }}
-                            />
+                            /> */}
                         </>
                     ),
                     actions: (

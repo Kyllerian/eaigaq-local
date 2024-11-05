@@ -45,20 +45,16 @@ export default function CaseDetailInfromation({ id, caseItem, canEdit, setCaseIt
             <Paper elevation={1} sx={{ padding: theme.spacing(3) }}>
                 <Grid container spacing={2}>
                     <Grid item xs={12}>
-                        <StyledTextFieldWithoutMargin 
-                            label="Название дела"
-                            name="name"
-                            
-                        <TextField
-                            label="Название дела"
-                            name="name"
-                            value={caseItem.name}
-                            onChange={handleInfoChange}
-                            fullWidth
-                            disabled={!canEdit}
-                        />
+                        <StyledTextFieldWithoutMargin label="Название дела" name="name" value={caseItem.name} onChange={handleInfoChange} disabled={!canEdit} />
+
                     </Grid>
                     <Grid item xs={12}>
+                        <StyledTextFieldWithoutMargin label="Описание дела" name="description" value={caseItem.description} onChange={handleInfoChange}
+                            multiline
+                            rows={4}
+                            disabled={!canEdit}
+                        />
+                        {/* 
                         <TextField
                             label="Описание дела"
                             name="description"
@@ -68,7 +64,7 @@ export default function CaseDetailInfromation({ id, caseItem, canEdit, setCaseIt
                             multiline
                             rows={4}
                             disabled={!canEdit}
-                        />
+                        /> */}
                     </Grid>
                     {canEdit && (
                         <Grid item xs={12} sx={{ textAlign: 'right' }}>

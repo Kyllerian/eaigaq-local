@@ -1,39 +1,40 @@
 // src/pages/Dashboard.js
 
 import React, { useEffect, useState, useContext } from 'react';
-import { Typography, Container, Box, Tabs, Tab, Snackbar, Alert } from '@mui/material';
+import axios from '../axiosConfig';
+import {
+  Typography,
+  Box,
+  Tabs,
+  Tab,
+  Alert,
+} from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { AuthContext } from '../contexts/AuthContext';
-import Header from '../components/Header';
-import CasesTab from '../components/CasesTab';
-import EmployeesTab from '../components/EmployeesTab';
-import EvidenceSearchTab from '../components/EvidenceSearchTab';
-import axios from '../axiosConfig';
+import Layout from '../components/Layout';
+import Notifyer from '../components/Notifyer';
+import EmployeesTab from '../components/Dashboard/Employees/EmployeesTab';
+import EvidenceSearchTab from '../components/Dashboard/EvidenceSearchTab';
+import CasesTab from '../components/Dashboard/CasesTab';
 
 const Dashboard = () => {
-  const { user, logout } = useContext(AuthContext);
+  const { user } = useContext(AuthContext);
   const theme = useTheme();
+
+  const [cases, setCases] = useState([]);
+  const [employees, setEmployees] = useState([]);
+  const [departments, setDepartments] = useState([]);
+  const [error, setError] = useState(null);
   const [tabValue, setTabValue] = useState(0);
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: '',
     severity: 'success',
   });
-  const [cases, setCases] = useState([]);
-  const [departments, setDepartments] = useState([]);
-  const [employees, setEmployees] = useState([]);
-  const [error, setError] = useState(null);
 
-  const handleLogout = async () => {
-    await logout();
-  };
-
+  // Обработка вкладок
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
-  };
-
-  const handleSnackbarClose = () => {
-    setSnackbar({ ...snackbar, open: false });
   };
 
   // Fetch Cases
@@ -81,20 +82,15 @@ const Dashboard = () => {
         });
     }
   }, [user]);
-
   return (
     <Box sx={{ backgroundColor: '#e9edf5', minHeight: '100vh' }}>
-      <Header onLogout={handleLogout} />
 
-      <Container
-        sx={{
-          marginTop: theme.spacing(12),
-          paddingTop: theme.spacing(4),
-          pb: theme.spacing(4),
-        }}
-      >
+
+      {/* Основной контент */}
+      <Layout>
+        {/* Вкладки */}
         {user &&
-        (user.role === 'DEPARTMENT_HEAD' || user.role === 'REGION_HEAD') ? (
+          (user.role === 'DEPARTMENT_HEAD' || user.role === 'REGION_HEAD') ? (
           <Tabs
             value={tabValue}
             onChange={handleTabChange}
@@ -118,69 +114,286 @@ const Dashboard = () => {
           </Alert>
         )}
 
+        {/* Вкладка "Дела" */}
         {(tabValue === 0 ||
           (user &&
             user.role !== 'DEPARTMENT_HEAD' &&
             user.role !== 'REGION_HEAD')) && (
-          <CasesTab
+            // <>
+            //   {/* Поля поиска и фильтрации */}
+            //   <AffairsToolbar user={user}
+            //     departments={departments}
+            //     searchQuery={searchQuery}
+            //     handleSearchChange={handleSearchChange}
+            //     handleOpenBarcodeDialog={handleOpenBarcodeDialog}
+            //     handleDepartmentChange={handleDepartmentChange}
+            //     handleOpenCaseDialog={handleOpenCaseDialog}
+            //     selectedDepartment={selectedDepartment}
+            //     selectedCase={selectedCase}
+            //     handleOpenCaseDetails={handleOpenCaseDetails}
+            //   />
+
+            //   {/* Таблица с делами */}
+            //   <AffairsTable user={user} cases={cases} handleCaseSelect={handleCaseSelect} selectedCase={selectedCase} />
+
+            //   {/* Диалоговое окно для добавления нового дела */}
+            //   {user.role !== 'REGION_HEAD' && (
+            //     <DialogNewAffairs openCaseDialog={openCaseDialog} setOpenCaseDialog={setOpenCaseDialog} setSnackbar={setSnackbar} setCases={setCases} cases={cases} />
+            //   )}
+
+            //   {/* Диалоговое окно для сканирования штрихкода */}
+            //   <Dialog
+            //     open={openBarcodeDialog}
+            //     onClose={handleCloseBarcodeDialog}
+            //   >
+            //     <DialogTitle>Сканирование штрихкода</DialogTitle>
+            //     <DialogContent>
+            //       <TextField
+            //         autoFocus
+            //         inputRef={barcodeInputRef}
+            //         margin="dense"
+            //         label="Штрихкод"
+            //         value={scannedBarcode}
+            //         onChange={handleBarcodeInputChange}
+            //         fullWidth
+            //         onKeyPress={(event) => {
+            //           if (event.key === 'Enter') {
+            //             handleBarcodeSubmit(event);
+            //           }
+            //         }}
+            //       />
+            //     </DialogContent>
+            //     <DialogActions>
+            //       <Button onClick={handleCloseBarcodeDialog}>Отмена</Button>
+            //       <StyledButton onClick={handleBarcodeSubmit}>
+            //         Найти
+            //       </StyledButton>
+            //     </DialogActions>
+            //   </Dialog>
+            // </>
+            <>
+            <CasesTab
             user={user}
             cases={cases}
+            setCases={setCases}
             departments={departments}
             fetchCases={fetchCases}
             snackbar={snackbar}
             setSnackbar={setSnackbar}
             setError={setError}
           />
-        )}
-
-        {tabValue === 1 &&
-          (user.role === 'DEPARTMENT_HEAD' ||
-            user.role === 'REGION_HEAD') && (
-            <EmployeesTab
-              user={user}
-              employees={employees}
-              departments={departments}
-              setEmployees={setEmployees} // Добавляем это
-              snackbar={snackbar}
-              setSnackbar={setSnackbar}
-              setError={setError}
-            />
+          </>
           )}
 
+        {/* Вкладка "Сотрудники" */}
+        {tabValue === 1 &&
+          (user.role === 'DEPARTMENT_HEAD' || user.role === 'REGION_HEAD') && (
+            <>
+              <EmployeesTab
+                user={user}
+                employees={employees}
+                departments={departments}
+                setSnackbar={setSnackbar}
+                setEmployees={setEmployees}
+              />
+            </>
+          )}
+
+        {/* Вкладка "Поиск Вещдоков" */}
         {tabValue === 2 && (
-          <EvidenceSearchTab
-            snackbar={snackbar}
-            setSnackbar={setSnackbar}
-            setError={setError}
-          />
+          // <Box>
+          //   {/* Поля поиска и фильтрации */}
+          //   <Box sx={{ mb: theme.spacing(3) }}>
+          //     <Box
+          //       sx={{
+          //         display: 'flex',
+          //         flexWrap: 'wrap',
+          //         alignItems: 'center',
+          //         gap: theme.spacing(2),
+          //         mb: theme.spacing(2),
+          //       }}
+          //     >
+          //       <TextField
+          //         label="Поиск по названию или описанию"
+          //         variant="outlined"
+          //         value={evidenceSearchQuery}
+          //         onChange={handleEvidenceSearchChange}
+          //         size="small"
+          //         sx={{ flexGrow: 1 }}
+          //         InputProps={{
+          //           startAdornment: (
+          //             <InputAdornment position="start">
+          //               <SearchIcon color="action" />
+          //             </InputAdornment>
+          //           ),
+          //         }}
+          //       />
+          //       <FormControl variant="outlined" size="small" sx={{ minWidth: 200 }}>
+          //         <InputLabel id="evidence-type-filter-label">Тип ВД</InputLabel>
+          //         <Select
+          //           labelId="evidence-type-filter-label"
+          //           value={evidenceTypeFilter}
+          //           onChange={handleEvidenceTypeFilterChange}
+          //           label="Тип ВД"
+          //         >
+          //           <MenuItem value="">
+          //             <em>Все типы</em>
+          //           </MenuItem>
+          //           {EVIDENCE_TYPES.map((type) => (
+          //             <MenuItem key={type.value} value={type.value}>
+          //               {type.label}
+          //             </MenuItem>
+          //           ))}
+          //         </Select>
+          //       </FormControl>
+          //       <TextField
+          //         label="Дата добавления от"
+          //         type="date"
+          //         variant="outlined"
+          //         value={dateAddedFrom}
+          //         onChange={handleDateAddedFromChange}
+          //         size="small"
+          //         InputLabelProps={{
+          //           shrink: true,
+          //         }}
+          //       />
+          //       <TextField
+          //         label="Дата добавления до"
+          //         type="date"
+          //         variant="outlined"
+          //         value={dateAddedTo}
+          //         onChange={handleDateAddedToChange}
+          //         size="small"
+          //         InputLabelProps={{
+          //           shrink: true,
+          //         }}
+          //       />
+          //       {/* Кнопка "Экспорт" */}
+          //       <StyledButton
+          //         onClick={handleEvidenceExport}
+          //         startIcon={<PrintIcon />}
+          //         sx={{ ml: 'auto' }}
+          //       >
+          //         Экспорт отчета
+          //       </StyledButton>
+          //     </Box>
+
+          //     {/* Таблица с вещдоками */}
+          //     <Paper elevation={1}>
+          //       <TableContainer>
+          //         <Table
+          //           aria-label="Таблица вещдоков"
+          //           sx={{ tableLayout: 'fixed', minWidth: 650 }}
+          //         >
+          //           <TableHead>
+          //             <TableRow>
+          //               <StyledTableCell sx={{ width: '15%' }}>
+          //                 Название ВД
+          //               </StyledTableCell>
+          //               <StyledTableCell sx={{ width: '35%' }}>
+          //                 Описание ВД
+          //               </StyledTableCell>
+          //               <StyledTableCell sx={{ width: '15%' }}>
+          //                 Тип ВД
+          //               </StyledTableCell>
+          //               <StyledTableCell sx={{ width: '15%' }}>
+          //                 Дело
+          //               </StyledTableCell>
+          //               <StyledTableCell sx={{ width: '20%' }}>
+          //                 Действия
+          //               </StyledTableCell>
+          //             </TableRow>
+          //           </TableHead>
+          //           <TableBody>
+          //             {evidences.length > 0 ? (
+          //               evidences.map((evidence) => (
+          //                 <TableRow key={evidence.id} hover>
+          //                   <TableCell
+          //                     sx={{
+          //                       whiteSpace: 'nowrap',
+          //                       overflow: 'hidden',
+          //                       textOverflow: 'ellipsis',
+          //                     }}
+          //                   >
+          //                     {evidence.name}
+          //                   </TableCell>
+          //                   <TableCell
+          //                     sx={{
+          //                       whiteSpace: 'nowrap',
+          //                       overflow: 'hidden',
+          //                       textOverflow: 'ellipsis',
+          //                     }}
+          //                   >
+          //                     {evidence.description}
+          //                   </TableCell>
+          //                   <TableCell>
+          //                     {EVIDENCE_TYPES.find(
+          //                       (type) => type.value === evidence.type
+          //                     )?.label || evidence.type}
+          //                   </TableCell>
+          //                   <TableCell>
+          //                     {evidence.case ? (
+          //                       <Button
+          //                         variant="text"
+          //                         color="primary"
+          //                         onClick={() =>
+          //                           navigate(`/cases/${evidence.case.id}/`)
+          //                         }
+          //                         startIcon={<OpenInNewIcon />}
+          //                       >
+          //                         {evidence.case.name || 'Дело'}
+          //                       </Button>
+          //                     ) : (
+          //                       'Не назначено'
+          //                     )}
+          //                   </TableCell>
+          //                   <TableCell>
+          //                     <Tooltip title="Печать штрихкода">
+          //                       <IconButton
+          //                         color="primary"
+          //                         onClick={() =>
+          //                           handlePrintEvidenceBarcode(evidence)
+          //                         }
+          //                       >
+          //                         <PrintIcon />
+          //                       </IconButton>
+          //                     </Tooltip>
+          //                   </TableCell>
+          //                 </TableRow>
+          //               ))
+          //             ) : (
+          //               <TableRow>
+          //                 <TableCell colSpan={5} align="center">
+          //                   Нет результатов.
+          //                 </TableCell>
+          //               </TableRow>
+          //             )}
+          //           </TableBody>
+          //         </Table>
+          //       </TableContainer>
+          //     </Paper>
+          //   </Box>
+          // </Box>
+          <EvidenceSearchTab setSnackbar={setSnackbar} />
         )}
 
-        {/* Snackbar for notifications */}
-        <Snackbar
-          open={snackbar.open}
-          autoHideDuration={6000}
-          onClose={handleSnackbarClose}
-          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-        >
-          <Alert
-            onClose={handleSnackbarClose}
-            severity={snackbar.severity}
-            sx={{ width: '100%' }}
-          >
-            {snackbar.message}
-          </Alert>
-        </Snackbar>
-      </Container>
+        
+        {/* Snackbar для уведомлений */}
+        <Notifyer snackbarOpened={snackbar.open} setSnackbarOpen={setSnackbar} message={snackbar.message} severity={snackbar.severity} />
+
+      </Layout>
     </Box>
   );
 };
 
 export default Dashboard;
 
-//
+
+
+// НЕ ТРОГАТЬ!
 // // src/pages/Dashboard.js
 //
-// import React, { useEffect, useState, useContext, useRef, useCallback } from 'react';
+// import React, { useEffect, useState, useContext, useRef } from 'react';
 // import axios from '../axiosConfig';
 // import { useNavigate } from 'react-router-dom';
 // import {
@@ -224,8 +437,6 @@ export default Dashboard;
 // import { useReactToPrint } from 'react-to-print';
 // import Header from '../components/Header';
 // import LogoMVDKZ from '../assets/Logo_MVD_KZ.png';
-// import { EVIDENCE_TYPES } from '../constants/evidenceTypes';
-// import Barcode from 'react-barcode';
 //
 // const StyledButton = styled(Button)(({ theme }) => ({
 //   borderRadius: '5px',
@@ -249,7 +460,6 @@ export default Dashboard;
 // const Dashboard = () => {
 //   const { user, logout } = useContext(AuthContext);
 //   const theme = useTheme();
-//   const navigate = useNavigate();
 //   const [cases, setCases] = useState([]);
 //   const [searchQuery, setSearchQuery] = useState('');
 //   const [selectedDepartment, setSelectedDepartment] = useState('');
@@ -259,7 +469,6 @@ export default Dashboard;
 //   const [newEmployee, setNewEmployee] = useState({
 //     username: '',
 //     password: '',
-//     confirm_password: '',
 //     first_name: '',
 //     last_name: '',
 //     email: '',
@@ -268,12 +477,9 @@ export default Dashboard;
 //     department: '',
 //     phone_number: '',
 //   });
-//   const [employeePassword, setEmployeePassword] = useState(''); // Сохраняем пароль для печати
-//   const [newEmployeeCreated, setNewEmployeeCreated] = useState(null); // Сохранение данных созданного сотрудника
 //   const [error, setError] = useState(null);
 //   const [openCaseDialog, setOpenCaseDialog] = useState(false);
 //   const [openEmployeeDialog, setOpenEmployeeDialog] = useState(false);
-//   const [openPrintDialog, setOpenPrintDialog] = useState(false); // Диалоговое окно для печати
 //   const [selectedEmployee, setSelectedEmployee] = useState(null);
 //   const [selectedCase, setSelectedCase] = useState(null);
 //   const [tabValue, setTabValue] = useState(0);
@@ -282,20 +488,18 @@ export default Dashboard;
 //     message: '',
 //     severity: 'success',
 //   });
+//   const navigate = useNavigate();
 //
-//   // Состояния для поиска и фильтрации сотрудников
+//   // Новые состояния для поиска и фильтрации сотрудников
 //   const [employeeSearchQuery, setEmployeeSearchQuery] = useState('');
 //   const [selectedEmployeeDepartment, setSelectedEmployeeDepartment] = useState('');
 //
 //   // Состояния и рефы для сканирования штрихкода
 //   const [openBarcodeDialog, setOpenBarcodeDialog] = useState(false);
-//   const [openBarcodeDisplayDialog, setOpenBarcodeDisplayDialog] = useState(false);
-//
 //   const [scannedBarcode, setScannedBarcode] = useState('');
 //   const barcodeInputRef = useRef(null);
 //
-//
-//   // Состояния для экспорта отчета по сессиям сотрудников
+//   // Состояния для экспорта отчета
 //   const [openExportDialog, setOpenExportDialog] = useState(false);
 //   const [exportFilters, setExportFilters] = useState({
 //     department: '',
@@ -305,80 +509,18 @@ export default Dashboard;
 //   const reportRef = useRef();
 //   const [shouldPrint, setShouldPrint] = useState(false);
 //
-//   // Состояния для экспорта отчета по вещественным доказательствам
-//   const [evidenceExportData, setEvidenceExportData] = useState([]);
-//   const evidenceReportRef = useRef();
-//   const [evidenceShouldPrint, setEvidenceShouldPrint] = useState(false);
-//
-//   // Реф для печати штрихкода
-//   const barcodeRef = useRef();
-//
-//   // Реф для печати данных сотрудника
-//   const loginDetailsRef = useRef();
-//
-//   // Функция для печати отчета по сессиям сотрудников
+//   // Функция для печати отчета
 //   const handlePrintReport = useReactToPrint({
 //     contentRef: reportRef,
 //     documentTitle: 'Отчет по сессиям сотрудников',
 //   });
-//
-//   // Функция для печати отчета по вещественным доказательствам
-//   const handlePrintEvidenceReport = useReactToPrint({
-//     contentRef: evidenceReportRef,
-//     documentTitle: 'Отчет по вещественным доказательствам',
-//   });
-//
-//   // Функция для печати штрихкода (исправлено)
-//   const handlePrintBarcode = useReactToPrint({
-//     contentRef: barcodeRef,
-//     documentTitle: 'Штрихкод Вещдока',
-//     pageStyle: `
-//       @page {
-//         size: 58mm 40mm;
-//         margin: 0;
-//       }
-//       @media print {
-//         body {
-//           margin: 0;
-//         }
-//         #barcode-container {
-//           width: 58mm;
-//           height: 40mm;
-//           padding: 6.36mm;
-//           box-sizing: border-box;
-//           display: flex;
-//           justify-content: center;
-//           align-items: center;
-//         }
-//         #barcode svg {
-//           width: auto;
-//           height: 70%;
-//         }
-//       }
-//     `,
-//   });
-//
-//   // Функция для печати данных сотрудника
-//   const handlePrintLoginDetails = useReactToPrint({
-//     contentRef: loginDetailsRef,
-//     documentTitle: 'Данные для входа сотрудника',
-//     onAfterPrint: () => {
-//       handleClosePrintDialog();
-//     },
-//   });
-//
-//   // Состояния для поиска ВД
-//   const [evidenceSearchQuery, setEvidenceSearchQuery] = useState('');
-//   const [evidenceTypeFilter, setEvidenceTypeFilter] = useState('');
-//   const [dateAddedFrom, setDateAddedFrom] = useState('');
-//   const [dateAddedTo, setDateAddedTo] = useState('');
-//   const [evidences, setEvidences] = useState([]);
 //
 //   useEffect(() => {
 //     if (!user) return;
 //
 //     // Функция для загрузки дел с учетом параметров поиска и фильтрации
 //     const fetchCases = () => {
+//       let casesUrl = '/api/cases/';
 //       const params = {};
 //
 //       if (searchQuery) {
@@ -390,7 +532,7 @@ export default Dashboard;
 //       }
 //
 //       axios
-//         .get('/api/cases/', { params })
+//         .get(casesUrl, { params })
 //         .then((response) => {
 //           console.log('Полученные дела:', response.data);
 //           setCases(response.data);
@@ -445,69 +587,6 @@ export default Dashboard;
 //     }
 //   }, [exportData, shouldPrint, handlePrintReport]);
 //
-//   useEffect(() => {
-//     if (evidenceShouldPrint && evidenceExportData.length > 0) {
-//       handlePrintEvidenceReport();
-//       setEvidenceShouldPrint(false);
-//     }
-//   }, [evidenceExportData, evidenceShouldPrint, handlePrintEvidenceReport]);
-//
-//   // Функция для поиска ВД
-//   const fetchEvidences = useCallback(() => {
-//     const params = {};
-//
-//     if (evidenceSearchQuery) {
-//       params.search = evidenceSearchQuery;
-//     }
-//
-//     if (evidenceTypeFilter) {
-//       params.type = evidenceTypeFilter;
-//     }
-//
-//     if (dateAddedFrom) {
-//       params['created__gte'] = dateAddedFrom;
-//     }
-//
-//     if (dateAddedTo) {
-//       params['created__lte'] = dateAddedTo;
-//     }
-//
-//     console.log('Отправка запроса с параметрами:', params);
-//
-//     axios
-//       .get('/api/material-evidences/', { params })
-//       .then((response) => {
-//         console.log('Полученные вещдоки:', response.data);
-//         setEvidences(response.data);
-//       })
-//       .catch((error) => {
-//         console.error('Ошибка при поиске вещдоков:', error);
-//         setSnackbar({
-//           open: true,
-//           message: 'Ошибка при поиске вещдоков.',
-//           severity: 'error',
-//         });
-//       });
-//   }, [evidenceSearchQuery, evidenceTypeFilter, dateAddedFrom, dateAddedTo]);
-//
-//   // useEffect для загрузки ВД при переключении на вкладку
-//   useEffect(() => {
-//     if (tabValue === 2) {
-//       fetchEvidences();
-//     }
-//   }, [tabValue, fetchEvidences]);
-//
-//   // useEffect с debounce для поиска ВД
-//   useEffect(() => {
-//     if (tabValue !== 2) return; // Проверяем, что активна вкладка "Поиск Вещдоков"
-//
-//     const delayDebounceFn = setTimeout(() => {
-//       fetchEvidences();
-//     }, 500); // Задержка 500ms
-//
-//     return () => clearTimeout(delayDebounceFn);
-//   }, [evidenceSearchQuery, evidenceTypeFilter, dateAddedFrom, dateAddedTo, fetchEvidences]);
-//
 //   const handleLogout = async () => {
 //     await logout();
 //     navigate('/login');
@@ -518,14 +597,6 @@ export default Dashboard;
 //     setTabValue(newValue);
 //     setSelectedCase(null);
 //     setSelectedEmployee(null);
-//     if (newValue === 2) {
-//       // При переходе на вкладку поиска ВД, сбрасываем предыдущие параметры
-//       setEvidenceSearchQuery('');
-//       setEvidenceTypeFilter('');
-//       setDateAddedFrom('');
-//       setDateAddedTo('');
-//       setEvidences([]);
-//     }
 //   };
 //
 //   // Обработка добавления дела
@@ -578,9 +649,7 @@ export default Dashboard;
 //
 //   // Переход на страницу деталей дела
 //   const handleOpenCaseDetails = () => {
-//     if (selectedCase) {
-//       navigate(`/cases/${selectedCase.id}/`);
-//     }
+//     navigate(`/cases/${selectedCase.id}/`);
 //   };
 //
 //   // Обработка добавления сотрудника
@@ -593,7 +662,6 @@ export default Dashboard;
 //     setNewEmployee({
 //       username: '',
 //       password: '',
-//       confirm_password: '',
 //       first_name: '',
 //       last_name: '',
 //       email: '',
@@ -602,7 +670,6 @@ export default Dashboard;
 //       department: '',
 //       phone_number: '',
 //     });
-//     // setEmployeePassword('');
 //   };
 //
 //   const handleEmployeeInputChange = (event) => {
@@ -612,19 +679,6 @@ export default Dashboard;
 //
 //   const handleEmployeeFormSubmit = (event) => {
 //     event.preventDefault();
-//
-//     // Проверка совпадения паролей
-//     if (newEmployee.password !== newEmployee.confirm_password) {
-//       setSnackbar({
-//         open: true,
-//         message: 'Пароли не совпадают. Пожалуйста, попробуйте еще раз.',
-//         severity: 'error',
-//       });
-//       return;
-//     }
-//
-//     // Сохраняем пароль для печати
-//     setEmployeePassword(newEmployee.password);
 //
 //     // Копируем данные нового сотрудника
 //     let employeeData = { ...newEmployee };
@@ -667,17 +721,14 @@ export default Dashboard;
 //       return;
 //     }
 //
-//     // Удаляем department и confirm_password, чтобы не было конфликтов на сервере
+//     // Удаляем department, чтобы не было конфликтов на сервере
 //     delete employeeData.department;
-//     delete employeeData.confirm_password;
 //
 //     axios
 //       .post('/api/users/', employeeData)
 //       .then((response) => {
 //         setEmployees([...employees, response.data]);
 //         handleCloseEmployeeDialog();
-//         setNewEmployeeCreated(response.data); // Сохраняем данные созданного сотрудника
-//         setOpenPrintDialog(true); // Открываем диалоговое окно для печати
 //         setSnackbar({
 //           open: true,
 //           message: 'Сотрудник успешно добавлен.',
@@ -813,7 +864,7 @@ export default Dashboard;
 //     }
 //   };
 //
-//   // Обработчики для экспорта отчета по сессиям сотрудников
+//   // Обработчики для экспорта отчета
 //   const handleOpenExportDialog = () => {
 //     setOpenExportDialog(true);
 //     setExportFilters({
@@ -885,42 +936,6 @@ export default Dashboard;
 //       });
 //   };
 //
-//   // Обработчик экспорта отчета по вещественным доказательствам
-//   const handleEvidenceExport = () => {
-//     const params = {};
-//
-//     if (evidenceSearchQuery) {
-//       params.search = evidenceSearchQuery;
-//     }
-//
-//     if (evidenceTypeFilter) {
-//       params.type = evidenceTypeFilter;
-//     }
-//
-//     if (dateAddedFrom) {
-//       params['created__gte'] = dateAddedFrom;
-//     }
-//
-//     if (dateAddedTo) {
-//       params['created__lte'] = dateAddedTo;
-//     }
-//
-//     axios
-//       .get('/api/material-evidences/', { params })
-//       .then((response) => {
-//         setEvidenceExportData(response.data);
-//         setEvidenceShouldPrint(true);
-//       })
-//       .catch((error) => {
-//         console.error('Ошибка при экспорте вещественных доказательств:', error);
-//         setSnackbar({
-//           open: true,
-//           message: 'Ошибка при экспорте вещественных доказательств.',
-//           severity: 'error',
-//         });
-//       });
-//   };
-//
 //   // Функция форматирования даты
 //   const formatDate = (dateString) => {
 //     if (!dateString) return '';
@@ -945,7 +960,7 @@ export default Dashboard;
 //   // Получение полного имени сотрудника по ID
 //   const getEmployeeFullName = (employeeId) => {
 //     const employee = employees.find((e) => e.id === parseInt(employeeId));
-//     return employee ? `${employee.first_name} ${employee.last_name}` : '';
+//     return employee ? `${employee.last_name} ${employee.first_name}` : '';
 //   };
 //
 //   // Обработчики для поиска и фильтрации сотрудников
@@ -955,45 +970,6 @@ export default Dashboard;
 //
 //   const handleEmployeeDepartmentChange = (event) => {
 //     setSelectedEmployeeDepartment(event.target.value);
-//   };
-//
-//   // Обработчики для поиска ВД
-//   const handleEvidenceSearchChange = (event) => {
-//     setEvidenceSearchQuery(event.target.value);
-//   };
-//
-//   const handleEvidenceTypeFilterChange = (event) => {
-//     setEvidenceTypeFilter(event.target.value);
-//   };
-//
-//   // Функции для обработки изменения дат
-//   const handleDateAddedFromChange = (event) => {
-//     setDateAddedFrom(event.target.value);
-//   };
-//
-//   const handleDateAddedToChange = (event) => {
-//     setDateAddedTo(event.target.value);
-//   };
-//
-//   // Функция для печати штрихкода
-//   const handlePrintEvidenceBarcode = (evidence) => {
-//     if (evidence.barcode) {
-//       setScannedBarcode(evidence.barcode);
-//       setOpenBarcodeDisplayDialog(true);
-//     } else {
-//       setSnackbar({
-//         open: true,
-//         message: 'Штрихкод вещдока недоступен.',
-//         severity: 'error',
-//       });
-//     }
-//   };
-//
-//   // Обработчики для диалогового окна печати данных сотрудника
-//   const handleClosePrintDialog = () => {
-//     setOpenPrintDialog(false);
-//     setNewEmployeeCreated(null);
-//     setEmployeePassword('');
 //   };
 //
 //   return (
@@ -1021,7 +997,6 @@ export default Dashboard;
 //           >
 //             <Tab label="Дела" />
 //             <Tab label="Сотрудники" />
-//             <Tab label="Поиск Вещдоков" />
 //           </Tabs>
 //         ) : (
 //           <Typography variant="h4" gutterBottom>
@@ -1361,7 +1336,6 @@ export default Dashboard;
 //                     </InputLabel>
 //                     <Select
 //                       labelId="employee-department-filter-label"
-//                       name="department"
 //                       value={selectedEmployeeDepartment}
 //                       onChange={handleEmployeeDepartmentChange}
 //                       label="Отделение"
@@ -1607,16 +1581,6 @@ export default Dashboard;
 //                   />
 //                   <TextField
 //                     margin="dense"
-//                     label="Подтвердите пароль"
-//                     name="confirm_password"
-//                     type="password"
-//                     value={newEmployee.confirm_password}
-//                     onChange={handleEmployeeInputChange}
-//                     fullWidth
-//                     required
-//                   />
-//                   <TextField
-//                     margin="dense"
 //                     label="Имя"
 //                     name="first_name"
 //                     value={newEmployee.first_name}
@@ -1700,35 +1664,7 @@ export default Dashboard;
 //                 </DialogActions>
 //               </Dialog>
 //
-//               {/* Диалоговое окно для печати данных сотрудника */}
-//               <Dialog
-//                 open={openPrintDialog}
-//                 onClose={handleClosePrintDialog}
-//                 maxWidth="sm"
-//                 fullWidth
-//               >
-//                 <DialogTitle>Сотрудник успешно добавлен</DialogTitle>
-//                 <DialogContent>
-//                   <Typography variant="body1">
-//                     Сотрудник{' '}
-//                     {newEmployeeCreated
-//                       ? `${newEmployeeCreated.first_name} ${newEmployeeCreated.last_name}`
-//                       : ''}
-//                     {' '}успешно добавлен.
-//                   </Typography>
-//                   <Typography variant="body1" sx={{ mt: 2 }}>
-//                     Вы хотите распечатать данные для входа сотрудника?
-//                   </Typography>
-//                 </DialogContent>
-//                 <DialogActions>
-//                   <Button onClick={handleClosePrintDialog}>Нет</Button>
-//                   <StyledButton onClick={handlePrintLoginDetails}>
-//                     Да, распечатать
-//                   </StyledButton>
-//                 </DialogActions>
-//               </Dialog>
-//
-//               {/* Диалоговое окно для экспорта отчета по сессиям сотрудников */}
+//               {/* Диалоговое окно для экспорта отчета */}
 //               <Dialog
 //                 open={openExportDialog}
 //                 onClose={handleCloseExportDialog}
@@ -1803,499 +1739,126 @@ export default Dashboard;
 //               </Dialog>
 //             </>
 //           )}
-//
-//         {/* Вкладка "Поиск Вещдоков" */}
-//         {tabValue === 2 && (
-//           <Box>
-//             {/* Поля поиска и фильтрации */}
-//             <Box sx={{ mb: theme.spacing(3) }}>
-//               <Box
-//                 sx={{
-//                   display: 'flex',
-//                   flexWrap: 'wrap',
-//                   alignItems: 'center',
-//                   gap: theme.spacing(2),
-//                   mb: theme.spacing(2),
-//                 }}
-//               >
-//                 <TextField
-//                   label="Поиск по названию или описанию"
-//                   variant="outlined"
-//                   value={evidenceSearchQuery}
-//                   onChange={handleEvidenceSearchChange}
-//                   size="small"
-//                   sx={{ flexGrow: 1 }}
-//                   InputProps={{
-//                     startAdornment: (
-//                       <InputAdornment position="start">
-//                         <SearchIcon color="action" />
-//                       </InputAdornment>
-//                     ),
-//                   }}
-//                 />
-//                 <FormControl variant="outlined" size="small" sx={{ minWidth: 200 }}>
-//                   <InputLabel id="evidence-type-filter-label">Тип ВД</InputLabel>
-//                   <Select
-//                     labelId="evidence-type-filter-label"
-//                     value={evidenceTypeFilter}
-//                     onChange={handleEvidenceTypeFilterChange}
-//                     label="Тип ВД"
-//                   >
-//                     <MenuItem value="">
-//                       <em>Все типы</em>
-//                     </MenuItem>
-//                     {EVIDENCE_TYPES.map((type) => (
-//                       <MenuItem key={type.value} value={type.value}>
-//                         {type.label}
-//                       </MenuItem>
-//                     ))}
-//                   </Select>
-//                 </FormControl>
-//                 <TextField
-//                   label="Дата добавления от"
-//                   type="date"
-//                   variant="outlined"
-//                   value={dateAddedFrom}
-//                   onChange={handleDateAddedFromChange}
-//                   size="small"
-//                   InputLabelProps={{
-//                     shrink: true,
-//                   }}
-//                 />
-//                 <TextField
-//                   label="Дата добавления до"
-//                   type="date"
-//                   variant="outlined"
-//                   value={dateAddedTo}
-//                   onChange={handleDateAddedToChange}
-//                   size="small"
-//                   InputLabelProps={{
-//                     shrink: true,
-//                   }}
-//                 />
-//                 {/* Кнопка "Экспорт" */}
-//                 <StyledButton
-//                   onClick={handleEvidenceExport}
-//                   startIcon={<PrintIcon />}
-//                   sx={{ ml: 'auto' }}
-//                 >
-//                   Экспорт отчета
-//                 </StyledButton>
-//               </Box>
-//
-//               {/* Таблица с вещдоками */}
-//               <Paper elevation={1}>
-//                 <TableContainer>
-//                   <Table
-//                     aria-label="Таблица вещдоков"
-//                     sx={{ tableLayout: 'fixed', minWidth: 650 }}
-//                   >
-//                     <TableHead>
-//                       <TableRow>
-//                         <StyledTableCell sx={{ width: '15%' }}>
-//                           Название ВД
-//                         </StyledTableCell>
-//                         <StyledTableCell sx={{ width: '35%' }}>
-//                           Описание ВД
-//                         </StyledTableCell>
-//                         <StyledTableCell sx={{ width: '15%' }}>
-//                           Тип ВД
-//                         </StyledTableCell>
-//                         <StyledTableCell sx={{ width: '15%' }}>
-//                           Дело
-//                         </StyledTableCell>
-//                         <StyledTableCell sx={{ width: '20%' }}>
-//                           Действия
-//                         </StyledTableCell>
-//                       </TableRow>
-//                     </TableHead>
-//                     <TableBody>
-//                       {evidences.length > 0 ? (
-//                         evidences.map((evidence) => (
-//                           <TableRow key={evidence.id} hover>
-//                             <TableCell
-//                               sx={{
-//                                 whiteSpace: 'nowrap',
-//                                 overflow: 'hidden',
-//                                 textOverflow: 'ellipsis',
-//                               }}
-//                             >
-//                               {evidence.name}
-//                             </TableCell>
-//                             <TableCell
-//                               sx={{
-//                                 whiteSpace: 'nowrap',
-//                                 overflow: 'hidden',
-//                                 textOverflow: 'ellipsis',
-//                               }}
-//                             >
-//                               {evidence.description}
-//                             </TableCell>
-//                             <TableCell>
-//                               {EVIDENCE_TYPES.find(
-//                                 (type) => type.value === evidence.type
-//                               )?.label || evidence.type}
-//                             </TableCell>
-//                             <TableCell>
-//                               {evidence.case ? (
-//                                 <Button
-//                                   variant="text"
-//                                   color="primary"
-//                                   onClick={() =>
-//                                     navigate(`/cases/${evidence.case.id}/`)
-//                                   }
-//                                   startIcon={<OpenInNewIcon />}
-//                                 >
-//                                   {evidence.case.name || 'Дело'}
-//                                 </Button>
-//                               ) : (
-//                                 'Не назначено'
-//                               )}
-//                             </TableCell>
-//                             <TableCell>
-//                               <Tooltip title="Печать штрихкода">
-//                                 <IconButton
-//                                   color="primary"
-//                                   onClick={() =>
-//                                     handlePrintEvidenceBarcode(evidence)
-//                                   }
-//                                 >
-//                                   <PrintIcon />
-//                                 </IconButton>
-//                               </Tooltip>
-//                             </TableCell>
-//                           </TableRow>
-//                         ))
-//                       ) : (
-//                         <TableRow>
-//                           <TableCell colSpan={5} align="center">
-//                             Нет результатов.
-//                           </TableCell>
-//                         </TableRow>
-//                       )}
-//                     </TableBody>
-//                   </Table>
-//                 </TableContainer>
-//               </Paper>
-//             </Box>
-//           </Box>
-//         )}
-//
-//         {/* Компонент для печати отчета по сессиям сотрудников */}
-//         <div style={{ display: 'none' }}>
-//           <div
-//             ref={reportRef}
-//             style={{
-//               padding: '20px',
-//               fontFamily: 'Arial, sans-serif',
-//               color: '#000',
-//             }}
-//           >
-//             {/* Header */}
-//             <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-//               <img
-//                 src={LogoMVDKZ}
-//                 alt="Логотип"
-//                 style={{ maxWidth: '100px', marginBottom: '10px' }}
-//               />
-//               <Typography variant="h4" gutterBottom>
-//                 Отчет о сессиях сотрудников
-//               </Typography>
-//               <Typography variant="subtitle1">
-//                 Дата формирования отчета: {formatDate(new Date().toISOString())}
-//               </Typography>
-//             </div>
-//
-//             {/* Filters */}
-//             <div style={{ marginBottom: '20px' }}>
-//               {user.role === 'REGION_HEAD' && (
-//                 <Typography variant="h6">
-//                   Регион: {user.region_display}
-//                 </Typography>
-//               )}
-//               {exportFilters.department && (
-//                 <Typography variant="h6">
-//                   Отделение: {getDepartmentName(exportFilters.department)}
-//                 </Typography>
-//               )}
-//               {exportFilters.employee && (
-//                 <Typography variant="h6">
-//                   Сотрудник: {getEmployeeFullName(exportFilters.employee)}
-//                 </Typography>
-//               )}
-//             </div>
-//
-//             {/* Session Table */}
-//             <TableContainer component={Paper} style={{ boxShadow: 'none' }}>
-//               <Table
-//                 aria-label="Отчет по сессиям"
-//                 style={{
-//                   tableLayout: 'fixed',
-//                   width: '100%',
-//                   fontSize: '12px',
-//                 }}
-//               >
-//                 <TableHead>
-//                   <TableRow>
-//                     <TableCell>
-//                       <strong>Фамилия</strong>
-//                     </TableCell>
-//                     <TableCell>
-//                       <strong>Имя</strong>
-//                     </TableCell>
-//                     <TableCell>
-//                       <strong>Звание</strong>
-//                     </TableCell>
-//                     <TableCell>
-//                       <strong>Роль</strong>
-//                     </TableCell>
-//                     <TableCell>
-//                       <strong>Вход</strong>
-//                     </TableCell>
-//                     <TableCell>
-//                       <strong>Выход</strong>
-//                     </TableCell>
-//                   </TableRow>
-//                 </TableHead>
-//                 <TableBody>
-//                   {exportData.map((session) => (
-//                     <TableRow key={session.id}>
-//                       <TableCell>{session.user.last_name}</TableCell>
-//                       <TableCell>{session.user.first_name}</TableCell>
-//                       <TableCell>{session.user.rank}</TableCell>
-//                       <TableCell>{session.user.role_display}</TableCell>
-//                       <TableCell>{formatDate(session.login)}</TableCell>
-//                       <TableCell>
-//                         {session.logout ? formatDate(session.logout) : 'Активен'}
-//                       </TableCell>
-//                     </TableRow>
-//                   ))}
-//                   {exportData.length === 0 && (
-//                     <TableRow>
-//                       <TableCell colSpan={6} align="center">
-//                         Нет данных для отображения.
-//                       </TableCell>
-//                     </TableRow>
-//                   )}
-//                 </TableBody>
-//               </Table>
-//             </TableContainer>
-//
-//             {/* Footer */}
-//             <div style={{ marginTop: '40px', textAlign: 'center' }}>
-//               <Typography variant="body2">
-//                 © {new Date().getFullYear()} Министерство внутренних дел Республики
-//                 Казахстан.
-//               </Typography>
-//             </div>
-//           </div>
-//         </div>
-//
-//         {/* Компонент для печати отчета по вещественным доказательствам */}
-//         <div style={{ display: 'none' }}>
-//           <div
-//             ref={evidenceReportRef}
-//             style={{
-//               padding: '20px',
-//               fontFamily: 'Arial, sans-serif',
-//               color: '#000',
-//             }}
-//           >
-//             {/* Header */}
-//             <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-//               <img
-//                 src={LogoMVDKZ}
-//                 alt="Логотип"
-//                 style={{ maxWidth: '100px', marginBottom: '10px' }}
-//               />
-//               <Typography variant="h4" gutterBottom>
-//                 Отчет по вещественным доказательствам
-//               </Typography>
-//               <Typography variant="subtitle1">
-//                 Дата формирования отчета: {formatDate(new Date().toISOString())}
-//               </Typography>
-//             </div>
-//
-//             {/* Filters */}
-//             <div style={{ marginBottom: '20px' }}>
-//               {evidenceSearchQuery && (
-//                 <Typography variant="h6">
-//                   Поиск: {evidenceSearchQuery}
-//                 </Typography>
-//               )}
-//               {evidenceTypeFilter && (
-//                 <Typography variant="h6">
-//                   Тип ВД: {EVIDENCE_TYPES.find(type => type.value === evidenceTypeFilter)?.label || evidenceTypeFilter}
-//                 </Typography>
-//               )}
-//               {(dateAddedFrom || dateAddedTo) && (
-//                 <Typography variant="h6">
-//                   Дата добавления: {dateAddedFrom || '...'} - {dateAddedTo || '...'}
-//                 </Typography>
-//               )}
-//             </div>
-//
-//             {/* Evidence Table */}
-//             <TableContainer component={Paper} style={{ boxShadow: 'none' }}>
-//               <Table
-//                 aria-label="Отчет по вещественным доказательствам"
-//                 style={{
-//                   tableLayout: 'fixed',
-//                   width: '100%',
-//                   fontSize: '12px',
-//                 }}
-//               >
-//                 <TableHead>
-//                   <TableRow>
-//                     <TableCell>
-//                       <strong>Название ВД</strong>
-//                     </TableCell>
-//                     <TableCell>
-//                       <strong>Описание ВД</strong>
-//                     </TableCell>
-//                     <TableCell>
-//                       <strong>Тип ВД</strong>
-//                     </TableCell>
-//                     <TableCell>
-//                       <strong>Дело</strong>
-//                     </TableCell>
-//                     <TableCell>
-//                       <strong>Дата создания</strong>
-//                     </TableCell>
-//                   </TableRow>
-//                 </TableHead>
-//                 <TableBody>
-//                   {evidenceExportData.map((evidence) => (
-//                     <TableRow key={evidence.id}>
-//                       <TableCell>{evidence.name}</TableCell>
-//                       <TableCell>{evidence.description}</TableCell>
-//                       <TableCell>{EVIDENCE_TYPES.find(type => type.value === evidence.type)?.label || evidence.type}</TableCell>
-//                       <TableCell>{evidence.case ? evidence.case.name : 'Не назначено'}</TableCell>
-//                       <TableCell>{formatDate(evidence.created)}</TableCell>
-//                     </TableRow>
-//                   ))}
-//                   {evidenceExportData.length === 0 && (
-//                     <TableRow>
-//                       <TableCell colSpan={5} align="center">
-//                         Нет данных для отображения.
-//                       </TableCell>
-//                     </TableRow>
-//                   )}
-//                 </TableBody>
-//               </Table>
-//             </TableContainer>
-//
-//             {/* Footer */}
-//             <div style={{ marginTop: '40px', textAlign: 'center' }}>
-//               <Typography variant="body2">
-//                 © {new Date().getFullYear()} Министерство внутренних дел Республики Казахстан.
-//               </Typography>
-//             </div>
-//           </div>
-//         </div>
-//
-//         {/* Компонент для печати данных сотрудника */}
-//         <div style={{ display: 'none' }}>
-//           <div
-//             ref={loginDetailsRef}
-//             style={{
-//               padding: '20px',
-//               fontFamily: 'Arial, sans-serif',
-//               color: '#000',
-//             }}
-//           >
-//             {/* Header */}
-//             <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-//               <img
-//                 src={LogoMVDKZ}
-//                 alt="Логотип"
-//                 style={{ maxWidth: '100px', marginBottom: '10px' }}
-//               />
-//               <Typography variant="h4" gutterBottom>
-//                 Данные для входа сотрудника
-//               </Typography>
-//               <Typography variant="subtitle1">
-//                 Дата создания: {formatDate(new Date().toISOString())}
-//               </Typography>
-//             </div>
-//
-//             {/* Данные сотрудника */}
-//             <Typography variant="body1" gutterBottom>
-//               <strong>Имя пользователя:</strong> {newEmployeeCreated?.username}
-//             </Typography>
-//             <Typography variant="body1" gutterBottom>
-//               <strong>Пароль:</strong> {employeePassword}
-//             </Typography>
-//             <Typography variant="body1" gutterBottom>
-//               <strong>Имя:</strong> {newEmployeeCreated?.first_name} {newEmployeeCreated?.last_name}
-//             </Typography>
-//             <Typography variant="body1" gutterBottom>
-//               <strong>Роль:</strong> {newEmployeeCreated?.role_display}
-//             </Typography>
-//             {newEmployeeCreated?.department && (
-//               <Typography variant="body1" gutterBottom>
-//                 <strong>Отделение:</strong> {newEmployeeCreated.department.name}
-//               </Typography>
-//             )}
-//
-//             {/* Footer */}
-//             <div style={{ marginTop: '40px', textAlign: 'center' }}>
-//               <Typography variant="body2">
-//                 © {new Date().getFullYear()} Министерство внутренних дел Республики Казахстан.
-//               </Typography>
-//             </div>
-//           </div>
-//         </div>
-//
-//         {/* Диалоговое окно для отображения штрихкода */}
-//         <Dialog
-//             open={openBarcodeDisplayDialog}
-//             onClose={() => setOpenBarcodeDisplayDialog(false)}
-//             maxWidth="xs"
-//             fullWidth
-//         >
-//           <DialogTitle>Штрихкод</DialogTitle>
-//           <DialogContent
-//               sx={{
-//                 textAlign: 'center',
-//                 padding: theme.spacing(2),
-//               }}
-//           >
-//             {scannedBarcode && (
-//                 <div id="barcode-container" ref={barcodeRef}>
-//                   <div id="barcode">
-//                     <Barcode
-//                         value={scannedBarcode}
-//                         format="EAN13"
-//                         displayValue={false}
-//                         margin={0}
-//                     />
-//                   </div>
-//                 </div>
-//             )}
-//           </DialogContent>
-//           <DialogActions>
-//             <Button onClick={() => setOpenBarcodeDisplayDialog(false)}>Закрыть</Button>
-//             <StyledButton onClick={handlePrintBarcode}>Печать</StyledButton>
-//           </DialogActions>
-//         </Dialog>
-//
-//         {/* Snackbar для уведомлений */}
-//         <Snackbar
-//           open={snackbar.open}
-//           autoHideDuration={6000}
-//           onClose={handleSnackbarClose}
-//           anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-//         >
-//           <Alert
-//             onClose={handleSnackbarClose}
-//             severity={snackbar.severity}
-//             sx={{ width: '100%' }}
-//           >
-//             {snackbar.message}
-//           </Alert>
-//         </Snackbar>
 //       </Container>
+//
+//       {/* Компонент для печати отчета */}
+//       <div style={{ display: 'none' }}>
+//         <div
+//           ref={reportRef}
+//           style={{
+//             padding: '20px',
+//             fontFamily: 'Arial, sans-serif',
+//             color: '#000',
+//           }}
+//         >
+//           {/* Header */}
+//           <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+//             <img
+//               src={LogoMVDKZ}
+//               alt="Логотип"
+//               style={{ maxWidth: '100px', marginBottom: '10px' }}
+//             />
+//             <Typography variant="h4" gutterBottom>
+//               Отчет о сессиях сотрудников
+//             </Typography>
+//             <Typography variant="subtitle1">
+//               Дата формирования отчета: {formatDate(new Date().toISOString())}
+//             </Typography>
+//           </div>
+//
+//           {/* Filters */}
+//           <div style={{ marginBottom: '20px' }}>
+//             {user.role === 'REGION_HEAD' && (
+//               <Typography variant="h6">
+//                 Регион: {user.region_display}
+//               </Typography>
+//             )}
+//             {exportFilters.department && (
+//               <Typography variant="h6">
+//                 Отделение: {getDepartmentName(exportFilters.department)}
+//               </Typography>
+//             )}
+//             {exportFilters.employee && (
+//               <Typography variant="h6">
+//                 Сотрудник: {getEmployeeFullName(exportFilters.employee)}
+//               </Typography>
+//             )}
+//           </div>
+//
+//           {/* Session Table */}
+//           <TableContainer component={Paper} style={{ boxShadow: 'none' }}>
+//             <Table aria-label="Отчет по сессиям">
+//               <TableHead>
+//                 <TableRow>
+//                   <TableCell>
+//                     <strong>Фамилия</strong>
+//                   </TableCell>
+//                   <TableCell>
+//                     <strong>Имя</strong>
+//                   </TableCell>
+//                   <TableCell>
+//                     <strong>Звание</strong>
+//                   </TableCell>
+//                   <TableCell>
+//                     <strong>Роль</strong>
+//                   </TableCell>
+//                   <TableCell>
+//                     <strong>Вход</strong>
+//                   </TableCell>
+//                   <TableCell>
+//                     <strong>Выход</strong>
+//                   </TableCell>
+//                 </TableRow>
+//               </TableHead>
+//               <TableBody>
+//                 {exportData.map((session) => (
+//                   <TableRow key={session.id}>
+//                     <TableCell>{session.user.last_name}</TableCell>
+//                     <TableCell>{session.user.first_name}</TableCell>
+//                     <TableCell>{session.user.rank}</TableCell>
+//                     <TableCell>{session.user.role_display}</TableCell>
+//                     <TableCell>{formatDate(session.login)}</TableCell>
+//                     <TableCell>
+//                       {session.logout ? formatDate(session.logout) : 'Активен'}
+//                     </TableCell>
+//                   </TableRow>
+//                 ))}
+//                 {exportData.length === 0 && (
+//                   <TableRow>
+//                     <TableCell colSpan={6} align="center">
+//                       Нет данных для отображения.
+//                     </TableCell>
+//                   </TableRow>
+//                 )}
+//               </TableBody>
+//             </Table>
+//           </TableContainer>
+//
+//           {/* Footer */}
+//           <div style={{ marginTop: '40px', textAlign: 'center' }}>
+//             <Typography variant="body2">
+//               © {new Date().getFullYear()} Министерство внутренних дел Республики
+//               Казахстан.
+//             </Typography>
+//           </div>
+//         </div>
+//       </div>
+//
+//       {/* Snackbar для уведомлений */}
+//       <Snackbar
+//         open={snackbar.open}
+//         autoHideDuration={6000}
+//         onClose={handleSnackbarClose}
+//         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+//       >
+//         <Alert
+//           onClose={handleSnackbarClose}
+//           severity={snackbar.severity}
+//           sx={{ width: '100%' }}
+//         >
+//           {snackbar.message}
+//         </Alert>
+//       </Snackbar>
 //     </Box>
 //   );
 // };

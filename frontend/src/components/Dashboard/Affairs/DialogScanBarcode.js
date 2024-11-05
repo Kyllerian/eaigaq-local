@@ -5,6 +5,7 @@ import {
 
 import { StyledButton } from '../../ui/StyledComponents';
 import StyledDialog from '../../ui/StyledDialog';
+import { StyledTextField } from '../../ui/StyledTextfield';
 
 
 export default function DialogScanBarcode({ openBarcodeDialog, setOpenBarcodeDialog, barcodeInputRef, scannedBarcode, handleBarcodeInputChange,
@@ -20,7 +21,19 @@ export default function DialogScanBarcode({ openBarcodeDialog, setOpenBarcodeDia
                 {{
                     content: (
                         <>
-                            <TextField
+                            <StyledTextField
+                                autoFocus
+                                inputRef={barcodeInputRef}    
+                                label="Штрихкод"
+                                value={scannedBarcode}
+                                onChange={handleBarcodeInputChange}
+                                onKeyPress={(event) => {
+                                    if (event.key === 'Enter') {
+                                        handleBarcodeSubmit(event);
+                                    }
+                                }}
+                            />
+                            {/* <TextField
                                 autoFocus
                                 inputRef={barcodeInputRef}
                                 margin="dense"
@@ -33,7 +46,7 @@ export default function DialogScanBarcode({ openBarcodeDialog, setOpenBarcodeDia
                                         handleBarcodeSubmit(event);
                                     }
                                 }}
-                            />
+                            /> */}
                         </>
                     ),
                     actions: (

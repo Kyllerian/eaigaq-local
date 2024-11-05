@@ -9,6 +9,7 @@ import {
 } from '@mui/material';
 
 import { StyledTableCell } from '../../ui/StyledComponents';
+import { TableCellSx } from '../../ui/TableCell';
 
 
 export default function AffairsTable({ user, cases, handleCaseSelect, selectedCase, filteredCases }) {
@@ -49,47 +50,35 @@ export default function AffairsTable({ user, cases, handleCaseSelect, selectedCa
                                     onClick={() => handleCaseSelect(caseItem)}
                                     style={{ cursor: 'pointer' }}
                                 >
-                                    <TableCell
+                                    <TableCellSx
                                         component="th"
                                         scope="row"
-                                        sx={{
-                                            whiteSpace: 'nowrap',
-                                            overflow: 'hidden',
-                                            textOverflow: 'ellipsis',
-                                        }}
                                     >
                                         {caseItem.name}
-                                    </TableCell>
-                                    <TableCell
-                                        sx={{
-                                            whiteSpace: 'nowrap',
-                                            overflow: 'hidden',
-                                            textOverflow: 'ellipsis',
-                                        }}
-                                    >
+                                    </TableCellSx>
+                                    <TableCellSx>
                                         {caseItem.description}
-                                    </TableCell>
-                                    <TableCell
-                                        sx={{
-                                            whiteSpace: 'nowrap',
-                                            overflow: 'hidden',
-                                            textOverflow: 'ellipsis',
-                                        }}
-                                    >
+                                    </TableCellSx>
+                                    <TableCellSx>
                                         {caseItem.creator_name}
-                                    </TableCell>
+                                    </TableCellSx>
                                     {user && user.role === 'REGION_HEAD' && (
-                                        <TableCell
-                                            sx={{
-                                                whiteSpace: 'nowrap',
-                                                overflow: 'hidden',
-                                                textOverflow: 'ellipsis',
-                                            }}
-                                        >
+                                        <TableCellSx>
                                             {caseItem.department_name ||
                                                 (caseItem.department && caseItem.department.name) ||
                                                 'Не указано'}
-                                        </TableCell>
+                                        </TableCellSx>
+                                        // <TableCell
+                                        //     sx={{
+                                        //         whiteSpace: 'nowrap',
+                                        //         overflow: 'hidden',
+                                        //         textOverflow: 'ellipsis',
+                                        //     }}
+                                        // >
+                                        //     {caseItem.department_name ||
+                                        //         (caseItem.department && caseItem.department.name) ||
+                                        //         'Не указано'}
+                                        // </TableCell>
                                     )}
                                 </TableRow>
                             ))}
