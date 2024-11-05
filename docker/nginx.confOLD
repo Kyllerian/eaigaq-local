@@ -1,0 +1,46 @@
+# docker/nginx.conf
+server {
+    listen 80;
+    server_name 192.168.1.55;
+
+    # Корневая директория для фронтенда
+    root /usr/share/nginx/html;
+    index index.html index.htm;
+
+    # Обслуживание статических файлов фронтенда
+    location /static/ {
+        alias /usr/share/nginx/html/static/;
+        expires 1y;
+        add_header Cache-Control "public";
+    }
+
+    # Обслуживание статических файлов бэкенда (Django)
+    location /backend_static/ {
+        alias /staticfiles/;
+        expires 1y;
+        add_header Cache-Control "public";
+    }
+
+    # Прокси для API-запросов на бэкенд
+    location /api/ {
+        proxy_pass http://backend:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+
+    # Прокси для административной панели Django
+    location /admin/ {
+        proxy_pass http://backend:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+
+    # Обслуживание фронтенда
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
