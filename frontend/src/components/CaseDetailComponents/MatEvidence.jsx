@@ -1,4 +1,4 @@
-import React, { useRef, useState, lazy, Suspense, useCallback } from 'react';
+import React, { useRef, useState, lazy, Suspense, useCallback, useContext } from 'react';
 import {
     Typography,
     Box,
@@ -24,10 +24,12 @@ import { evidenceStatuses } from '../../constants/evidenceStatuses';
 import axios from '../../axiosConfig';
 import { useReactToPrint } from 'react-to-print';
 import { EVIDENCE_TYPES } from '../../constants/evidenceTypes';
+import BiometricDialog from '../BiometricDialog';
 import { StyledButton, StyledTableCell } from '../ui/StyledComponents';
 import PrintButton from '../ui/PrintButton';
 import DialogSeenBarcode from './DialogSeenBarcode';
 import Loading from '../Loading';
+import { AuthContext } from '../../contexts/AuthContext';
 
 const DialogNewGroup = lazy(() => import('./DialogNewGroup'));
 const DialogNewEvidence = lazy(() => import('./DialogNewEvidence'));
@@ -49,7 +51,64 @@ export default function CaseDetailMatEvidence({
     const barcodeRef = useRef(); // Реф для печати штрихкода
 
 
-    
+    // Состояния для биометрии
+    const [biometricDialogOpen, setBiometricDialogOpen] = useState(false);
+    const [pendingAction, setPendingAction] = useState(null);
+    const [isAuthenticating, setIsAuthenticating] = useState(false);
+
+    // Получаем текущего пользователя из контекста
+    const { user  } = useContext(AuthContext);
+    // Проверяем, содержит ли имя пользователя подстроку "archive"
+    const isArchiveUser = user?.username?.toLowerCase().includes('archive');
+
+  // Функции для биометрии
+  const handleOpenBiometricDialog = (action) => {
+
+    console.log('Текущий пользователь:', user);
+    if (isArchiveUser) {
+      // Если пользователь "archive", выполняем действие без биометрии
+    //   if (action === 'addGroup') {
+    //     handleOpenGroupDialog();
+    //   } else if (action === 'addEvidence') {
+    //     handleOpenEvidenceDialog();
+    //   } else if (action.action === 'changeStatus') {
+    //     performEvidenceStatusChange(action.evidenceId, action.newStatus);
+    //   }
+      setPendingAction(action);
+      handleBiometricSuccess();
+
+    } else {
+      // Иначе запускаем биометрическую аутентификацию
+      setPendingAction(action);
+      setBiometricDialogOpen(true);
+      setIsAuthenticating(true);
+    }
+  };
+
+  const handleBiometricSuccess = () => {
+    setBiometricDialogOpen(false);
+    setIsAuthenticating(false);
+
+    if (pendingAction === 'openGroupDialog' || pendingAction === 'openEvidenceDialog') {
+        handleDialogOpen(pendingAction);
+    } else if (pendingAction.action === 'changeStatus') {
+      performEvidenceStatusChange(pendingAction.evidenceId, pendingAction.newStatus);
+    }
+
+    setPendingAction(null);
+  };
+
+  const handleBiometricError = (errorMessage) => {
+    setBiometricDialogOpen(false);
+    setIsAuthenticating(false);
+    setSnackbar({
+      open: true,
+      message: errorMessage,
+      severity: 'error',
+    });
+    setPendingAction(null);
+  };
+
     const handlePrintEvidenceBarcode = (evidence) => {
         if (evidence.barcode) {
             handleDialogOpen('openBarcodeDialog', evidence.barcode);
@@ -119,7 +178,10 @@ export default function CaseDetailMatEvidence({
         }));
     };
 
-    const handleEvidenceStatusChange = useCallback((evidenceId, newStatus) => {
+    const handleEvidenceStatusChange = (evidenceId, newStatus) => {
+        handleOpenBiometricDialog({ action: 'changeStatus', evidenceId, newStatus });
+    };
+    const performEvidenceStatusChange = useCallback((evidenceId, newStatus) => {
         if (isStatusUpdating) return;
         setIsStatusUpdating(true);
 
@@ -157,18 +219,24 @@ export default function CaseDetailMatEvidence({
         <Box>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: theme.spacing(2) }}>
                 {canAddGroup && (
-                    <StyledButton onClick={() => handleDialogOpen('openGroupDialog')} startIcon={<AddIcon />}>
+                    <StyledButton onClick={() => handleOpenBiometricDialog('openGroupDialog')} startIcon={<AddIcon />}
+                        disabled={isAuthenticating}        
+                    >
                         Добавить группу
                     </StyledButton>
                 )}
                 {selectedGroupId && (
                     <Box sx={{ display: 'flex', gap: theme.spacing(2) }}>
                         {canAddGroup && (
-                            <StyledButton onClick={() => handleDialogOpen('openEvidenceDialog')} startIcon={<AddIcon />}>
+                            <StyledButton onClick={() => handleOpenBiometricDialog('openEvidenceDialog')} startIcon={<AddIcon />}
+                                disabled={isAuthenticating}                            
+                            >
                                 Добавить вещественное доказательство
                             </StyledButton>
                         )}
-                        <PrintButton handlePrint={() => handlePrintGroupBarcode(selectedGroupId)} text="Печать штрихкода" />
+                        <PrintButton handlePrint={() => handlePrintGroupBarcode(selectedGroupId)} text="Печать штрихкода" 
+                            disabled={isAuthenticating}
+                        />
                     </Box>
                 )}
             </Box>
@@ -257,6 +325,18 @@ export default function CaseDetailMatEvidence({
                  barcodeRef={barcodeRef}
                  handlePrintBarcode={handlePrintBarcode}
             />
+
+            {/* Диалоговое окно биометрической аутентификации */}
+            {!isArchiveUser && (
+                <BiometricDialog
+                    open={biometricDialogOpen}
+                    onClose={() => {
+                        setBiometricDialogOpen(false);
+                        handleBiometricError('Аутентификация была отменена.');
+                    }}
+                    onSuccess={handleBiometricSuccess}
+                />
+            )}
         </Box>
     );
 }
