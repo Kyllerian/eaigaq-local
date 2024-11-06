@@ -121,7 +121,7 @@ export default function AffairsToolbar({ user, departments, searchQuery, handleS
                             }
                             placement="top"
                         >
-                            <IconButton disabled>
+                            <IconButton>
                                 <CircleIcon
                                     style={{
                                         color: selectedCase

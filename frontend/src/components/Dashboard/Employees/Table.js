@@ -5,7 +5,6 @@ import {
     TableHead,
     TableRow,
     TableBody,
-    TableCell,
 } from '@mui/material';
 
 import { StyledTableCell } from '../../ui/StyledComponents';

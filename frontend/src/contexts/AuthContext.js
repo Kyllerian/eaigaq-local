@@ -58,7 +58,7 @@ export const AuthProvider = ({children}) => {
                 // Полностью аутентифицированный пользователь, получаем его данные
                 setBiometricRequired(false);
                 setBiometricRegistrationRequired(false);
-                const currentUser = await fetchCurrentUser();
+                await fetchCurrentUser();
                 return {success: true};
             }
 
@@ -72,7 +72,7 @@ export const AuthProvider = ({children}) => {
                 return {success: true, biometricRegistrationRequired: true};
             } else {
                 // Полностью аутентифицированный пользователь, получаем его данные
-                const currentUser = await fetchCurrentUser();
+                 await fetchCurrentUser();
                 return {success: true};
             }
         } catch (error) {

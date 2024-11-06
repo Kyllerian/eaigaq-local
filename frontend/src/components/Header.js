@@ -1,7 +1,7 @@
 // src/components/Header.js
 
 import React from 'react';
-import { AppBar, Toolbar, Typography, Button, IconButton, Box } from '@mui/material';
+import { AppBar, Toolbar, Typography, Button, } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import LogoMVDKZ from '../assets/Logo_MVD_KZ.png';
 

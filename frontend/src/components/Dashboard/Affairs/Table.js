@@ -1,3 +1,4 @@
+import React, { useState } from 'react';
 import {
     Paper,
     Table,
@@ -6,13 +7,23 @@ import {
     TableRow,
     TableBody,
     TableCell,
+    Box,
 } from '@mui/material';
-
+import Pagination from '@mui/material/Pagination';
 import { StyledTableCell } from '../../ui/StyledComponents';
 import { TableCellSx } from '../../ui/TableCell';
 
-
 export default function AffairsTable({ user, cases, handleCaseSelect, selectedCase, filteredCases }) {
+    const [page, setPage] = useState(1);
+    const rowsPerPage = 24;
+
+    const handleChangePage = (event, newPage) => {
+        setPage(newPage);
+    };
+
+    const paginatedCases = filteredCases.slice((page - 1) * rowsPerPage, page * rowsPerPage);
+
+    const totalPages = Math.ceil(filteredCases.length / rowsPerPage);
 
     return (
         <>
@@ -42,7 +53,7 @@ export default function AffairsTable({ user, cases, handleCaseSelect, selectedCa
                             </TableRow>
                         </TableHead>
                         <TableBody>
-                            {filteredCases.map((caseItem) => (
+                            {paginatedCases.map((caseItem) => (
                                 <TableRow
                                     key={caseItem.id}
                                     hover
@@ -50,10 +61,7 @@ export default function AffairsTable({ user, cases, handleCaseSelect, selectedCa
                                     onClick={() => handleCaseSelect(caseItem)}
                                     style={{ cursor: 'pointer' }}
                                 >
-                                    <TableCellSx
-                                        component="th"
-                                        scope="row"
-                                    >
+                                    <TableCellSx component="th" scope="row">
                                         {caseItem.name}
                                     </TableCellSx>
                                     <TableCellSx>
@@ -68,21 +76,10 @@ export default function AffairsTable({ user, cases, handleCaseSelect, selectedCa
                                                 (caseItem.department && caseItem.department.name) ||
                                                 'Не указано'}
                                         </TableCellSx>
-                                        // <TableCell
-                                        //     sx={{
-                                        //         whiteSpace: 'nowrap',
-                                        //         overflow: 'hidden',
-                                        //         textOverflow: 'ellipsis',
-                                        //     }}
-                                        // >
-                                        //     {caseItem.department_name ||
-                                        //         (caseItem.department && caseItem.department.name) ||
-                                        //         'Не указано'}
-                                        // </TableCell>
                                     )}
                                 </TableRow>
                             ))}
-                            {filteredCases.length === 0 && (
+                            {paginatedCases.length === 0 && (
                                 <TableRow>
                                     <TableCell colSpan={user && user.role === 'REGION_HEAD' ? 4 : 3} align="center">
                                         Нет результатов.
@@ -92,8 +89,23 @@ export default function AffairsTable({ user, cases, handleCaseSelect, selectedCa
                         </TableBody>
                     </Table>
                 </TableContainer>
-            </Paper>
 
+                {/* Компонент пагинации */}
+                {totalPages > 1 && (
+                    <Box display="flex" justifyContent="center" my={2}>
+                        <Pagination
+                            count={totalPages}
+                            page={page}
+                            onChange={handleChangePage}
+                            color="primary"
+                            siblingCount={1}
+                            boundaryCount={1}
+                            showFirstButton
+                            showLastButton
+                        />
+                    </Box>
+                )}
+            </Paper>
         </>
     );
 }
