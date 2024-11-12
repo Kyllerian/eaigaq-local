@@ -327,7 +327,7 @@ export default function CaseDetailMatEvidence({
             />
 
             {/* Диалоговое окно биометрической аутентификации */}
-            {!isArchiveUser && (
+            {biometricDialogOpen && !isArchiveUser && (
                 <BiometricDialog
                     open={biometricDialogOpen}
                     onClose={() => {

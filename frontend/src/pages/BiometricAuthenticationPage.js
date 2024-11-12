@@ -15,6 +15,7 @@ import CameraIcon from '@mui/icons-material/Camera';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ErrorIcon from '@mui/icons-material/Error';
 import LogoMVDKZ from '../assets/Logo_MVD_KZ.png';
+import { BiometricAuthButton } from '../components/ui/BiometricAuthButton';
 
 const Screen = styled(Box)(({ theme }) => ({
   background: theme.palette.background.default,
@@ -76,6 +77,10 @@ function BiometricAuthenticationPage() {
       const data = JSON.parse(event.data);
       if (data.detail) {
         setSuccess(data.detail);
+        if (videoRef.current && videoRef.current.srcObject) {
+          videoRef.current.srcObject.getTracks().forEach((track) => track.stop());
+          videoRef.current.srcObject = null;
+        }
         // Обновляем информацию о пользователе
         const updatedUser = await fetchCurrentUser();
         if (updatedUser && updatedUser.biometric_registered) {
@@ -86,7 +91,7 @@ function BiometricAuthenticationPage() {
       } else if (data.warning) {
         setError(data.warning);
       } else if (data.message) {
-        setSuccess(data.message);
+        setError(data.message);
       }
     };
 
@@ -183,24 +188,28 @@ function BiometricAuthenticationPage() {
         <Typography component="h1" variant="h5" align="center" sx={{ mb: 2 }}>
           Биометрическая аутентификация
         </Typography>
-        <Typography variant="body1" align="center" sx={{ mb: 2 }}>
-          Пожалуйста, убедитесь, что ваше лицо хорошо видно в камере. Нажмите кнопку ниже, чтобы начать процесс аутентификации.
+        <Typography variant="body2" align="center" sx={{ mb: 3, fontSize: '0.9rem' }}>
+          Пожалуйста, убедитесь, что Ваше лицо хорошо видно и Вы находитесь в хорошо освещенном месте без посторонних лиц в кадре.
+          Нажмите кнопку ниже, чтобы начать процесс аутентификации.
         </Typography>
+
         {error && (
           <Alert
             severity="error"
-            sx={{ width: '100%', mb: 2, display: 'flex', alignItems: 'center' }}
+            sx={{ width: '100%', mb: 2, p: 0, display: 'flex', alignItems: 'center' }}
+            style={{ padding: 0 }}
+            icon={<ErrorIcon sx={{ mr: 1 }} />}
           >
-            <ErrorIcon sx={{ mr: 1 }} />
             {error}
           </Alert>
         )}
         {success && (
           <Alert
             severity="success"
-            sx={{ width: '100%', mb: 2, display: 'flex', alignItems: 'center' }}
+            sx={{ width: '100%', mb: 2, p: 0, display: 'flex', alignItems: 'center' }}
+            style={{ padding: 0 }}
+            icon={<CheckCircleIcon sx={{ mr: 1 }} />}
           >
-            <CheckCircleIcon sx={{ mr: 1 }} />
             {success}
           </Alert>
         )}
@@ -220,23 +229,21 @@ function BiometricAuthenticationPage() {
             </Typography>
           </Box>
         ) : (
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={handleStartAuthentication}
-            sx={{
-              mb: 2,
-              padding: '0.5em 1em',
-              borderRadius: '30px',
-            }}
-            startIcon={<CameraIcon />}
-          >
-            Начать аутентификацию
-          </Button>
+          <BiometricAuthButton onClick={handleStartAuthentication} />
+          // <Button
+          //   variant="contained"
+          //   color="primary"
+          //   onClick={handleStartAuthentication}
+          //   sx={{
+          //     mb: 2,
+          //     padding: '0.5em 1em',
+          //     borderRadius: '30px',
+          //   }}
+          //   startIcon={<CameraIcon />}
+          // >
+          //   Начать аутентификацию
+          // </Button>
         )}
-        <Typography variant="body2" align="center" sx={{ mt: 2, color: 'gray' }}>
-          Убедитесь, что вы находитесь в хорошо освещенном месте без посторонних лиц в кадре.
-        </Typography>
       </Screen>
     </Box>
   );

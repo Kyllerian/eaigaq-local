@@ -91,6 +91,7 @@ export const AuthProvider = ({children}) => {
             setUser(null);
             setBiometricRequired(false);
             setBiometricRegistrationRequired(false);
+            window.location.reload();
         } catch (error) {
             console.error('Ошибка при логауте:', error);
         }
