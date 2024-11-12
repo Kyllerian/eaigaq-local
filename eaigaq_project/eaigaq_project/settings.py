@@ -226,3 +226,17 @@ CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_WORKER_POOL = 'solo'
+
+
+# 🛡️ Настройки безопасности для HTTPS
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
+
+# Включаем HSTS (HTTP Strict Transport Security)
+SECURE_HSTS_SECONDS = 3600  # Вы можете изменить время по необходимости
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
+
+# Перенаправление всех HTTP-запросов на HTTPS
+SECURE_SSL_REDIRECT = True
