@@ -33,6 +33,7 @@ import { AuthContext } from '../../contexts/AuthContext';
 
 const DialogNewGroup = lazy(() => import('./DialogNewGroup'));
 const DialogNewEvidence = lazy(() => import('./DialogNewEvidence'));
+const DialogAlertNewStatus = lazy(() => import('./DialogAlertNewStatus'));
 
 export default function CaseDetailMatEvidence({
     id, setGroups, setIsStatusUpdating, isStatusUpdating, setSnackbar, canEdit, canAddGroup, groups,
@@ -43,10 +44,13 @@ export default function CaseDetailMatEvidence({
     const [dialogStates, setDialogStates] = useState({
         openGroupDialog: false,
         openEvidenceDialog: false,
+        openAlertNewStatus: false,
         openBarcodeDialog: false,
         barcodeValueToDisplay: '',
+        currentEvidenceId: '',
+        currentNewStatus: ''
     });
-    
+
     // Состояния для диалогового окна и значения штрихкода
     const barcodeRef = useRef(); // Реф для печати штрихкода
 
@@ -74,9 +78,12 @@ export default function CaseDetailMatEvidence({
     //   } else if (action.action === 'changeStatus') {
     //     performEvidenceStatusChange(action.evidenceId, action.newStatus);
     //   }
-      setPendingAction(action);
-      handleBiometricSuccess();
-
+      console.log('pendingAction', action)
+        if (action === 'openGroupDialog' || action === 'openEvidenceDialog') {
+            handleDialogOpen(action);
+        } else if (action.action === 'changeStatus') {
+        performEvidenceStatusChange(action.evidenceId, action.newStatus);
+        }
     } else {
       // Иначе запускаем биометрическую аутентификацию
       setPendingAction(action);
@@ -88,7 +95,7 @@ export default function CaseDetailMatEvidence({
   const handleBiometricSuccess = () => {
     setBiometricDialogOpen(false);
     setIsAuthenticating(false);
-
+    console.log('pendingAction', pendingAction)
     if (pendingAction === 'openGroupDialog' || pendingAction === 'openEvidenceDialog') {
         handleDialogOpen(pendingAction);
     } else if (pendingAction.action === 'changeStatus') {
@@ -170,21 +177,33 @@ export default function CaseDetailMatEvidence({
         setSelectedGroupId(selectedGroupId === groupId ? null : groupId);
     };
 
-    const handleDialogOpen = (dialogType, barcodeValue = '') => {
+    const handleDialogOpen = (dialogType, barcodeValue = '', newStatus = '') => {
         setDialogStates((prev) => ({
             ...prev,
             [dialogType]: true,
             barcodeValueToDisplay: barcodeValue,
+            currentEvidenceId: barcodeValue,
+            currentNewStatus: newStatus
         }));
     };
 
     const handleEvidenceStatusChange = (evidenceId, newStatus) => {
-        handleOpenBiometricDialog({ action: 'changeStatus', evidenceId, newStatus });
+        if('DESTROYED' === newStatus){
+            handleDialogOpen('openAlertNewStatus', evidenceId, newStatus);
+        }else{
+            handleOpenBiometricDialog({ action: 'changeStatus', evidenceId, newStatus });
+        }
     };
+
+    const SubmitChangeEvidenceStatus = (evidenceId, newStatus) => {
+        handleOpenBiometricDialog({ action: 'changeStatus', evidenceId, newStatus });
+
+    }
     const performEvidenceStatusChange = useCallback((evidenceId, newStatus) => {
         if (isStatusUpdating) return;
         setIsStatusUpdating(true);
 
+        console.log(evidenceId, 'evidenceId');
         axios
             .patch(`/api/material-evidences/${evidenceId}/`, { status: newStatus })
             .then((response) => {
@@ -222,7 +241,7 @@ export default function CaseDetailMatEvidence({
                     <StyledButton onClick={() => handleOpenBiometricDialog('openGroupDialog')} startIcon={<AddIcon />}
                         disabled={isAuthenticating}        
                     >
-                        Добавить группу
+                        <span style={{ height: '1ex', overflow: 'visible', lineHeight: '1ex', overflow: 'visible', verticalAlign: 'bottom' }}>Добавить группу</span>
                     </StyledButton>
                 )}
                 {selectedGroupId && (
@@ -231,7 +250,7 @@ export default function CaseDetailMatEvidence({
                             <StyledButton onClick={() => handleOpenBiometricDialog('openEvidenceDialog')} startIcon={<AddIcon />}
                                 disabled={isAuthenticating}                            
                             >
-                                Добавить вещественное доказательство
+                                <span style={{ height: '1ex', overflow: 'visible', lineHeight: '1ex', overflow: 'visible', verticalAlign: 'bottom' }}>Добавить вещественное доказательство</span>
                             </StyledButton>
                         )}
                         <PrintButton handlePrint={() => handlePrintGroupBarcode(selectedGroupId)} text="Печать штрихкода" 
@@ -267,7 +286,7 @@ export default function CaseDetailMatEvidence({
                                             <TableCell>
                                                 {canEdit ? (
                                                     <FormControl fullWidth variant="standard">
-                                                        <Select value={evidence.status} onChange={(event) => handleEvidenceStatusChange(evidence.id, event.target.value)}>
+                                                        <Select value={evidence.status} disabled={'DESTROYED' === evidence.status} onChange={(event) => handleEvidenceStatusChange(evidence.id, event.target.value)}>
                                                             {evidenceStatuses.map((status) => (
                                                                 <MenuItem key={status.value} value={status.value}>{status.label}</MenuItem>
                                                             ))}
@@ -314,6 +333,15 @@ export default function CaseDetailMatEvidence({
                     setGroups={setGroups}
                     selectedGroupId={selectedGroupId}
                     setSnackbar={setSnackbar}
+                    id={id}
+                />
+                <DialogAlertNewStatus
+                    open={dialogStates.openAlertNewStatus}
+                    setOpenAlertNewStatusDialog={(open) => setDialogStates((prev) => ({ ...prev, openAlertNewStatus: open }))}
+                    setSnackbar={setSnackbar}
+                    evidenceId={dialogStates.currentEvidenceId}
+                    newStatus={dialogStates.currentNewStatus}
+                    SubmitChangeEvidenceStatus={SubmitChangeEvidenceStatus}
                     id={id}
                 />
             </Suspense>

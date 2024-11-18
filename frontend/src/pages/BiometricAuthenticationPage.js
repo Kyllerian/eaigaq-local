@@ -81,6 +81,7 @@ function BiometricAuthenticationPage() {
           videoRef.current.srcObject.getTracks().forEach((track) => track.stop());
           videoRef.current.srcObject = null;
         }
+        sessionStorage.setItem('user_authentificated', 'true');
         // Обновляем информацию о пользователе
         const updatedUser = await fetchCurrentUser();
         if (updatedUser && updatedUser.biometric_registered) {
@@ -177,7 +178,8 @@ function BiometricAuthenticationPage() {
         justifyContent: 'center',
       }}
     >
-      <Screen>
+      <Screen> 
+         {/* sx={{padding: '1.75em'}}> */}
         <Box sx={{ textAlign: 'center', mb: 3 }}>
           <img
             src={LogoMVDKZ}
@@ -185,7 +187,7 @@ function BiometricAuthenticationPage() {
             style={{ width: '80px', height: '80px' }}
           />
         </Box>
-        <Typography component="h1" variant="h5" align="center" sx={{ mb: 2 }}>
+        <Typography component="h1" variant="h5" align="center" sx={{ mb: 2, fontWeight: 'bold' }}>
           Биометрическая аутентификация
         </Typography>
         <Typography variant="body2" align="center" sx={{ mb: 3, fontSize: '0.9rem' }}>
@@ -229,20 +231,7 @@ function BiometricAuthenticationPage() {
             </Typography>
           </Box>
         ) : (
-          <BiometricAuthButton onClick={handleStartAuthentication} />
-          // <Button
-          //   variant="contained"
-          //   color="primary"
-          //   onClick={handleStartAuthentication}
-          //   sx={{
-          //     mb: 2,
-          //     padding: '0.5em 1em',
-          //     borderRadius: '30px',
-          //   }}
-          //   startIcon={<CameraIcon />}
-          // >
-          //   Начать аутентификацию
-          // </Button>
+          <BiometricAuthButton onClick={handleStartAuthentication} text={'Начать аутентификацию'} />
         )}
       </Screen>
     </Box>

@@ -119,70 +119,19 @@ const Dashboard = () => {
           (user &&
             user.role !== 'DEPARTMENT_HEAD' &&
             user.role !== 'REGION_HEAD')) && (
-            // <>
-            //   {/* Поля поиска и фильтрации */}
-            //   <AffairsToolbar user={user}
-            //     departments={departments}
-            //     searchQuery={searchQuery}
-            //     handleSearchChange={handleSearchChange}
-            //     handleOpenBarcodeDialog={handleOpenBarcodeDialog}
-            //     handleDepartmentChange={handleDepartmentChange}
-            //     handleOpenCaseDialog={handleOpenCaseDialog}
-            //     selectedDepartment={selectedDepartment}
-            //     selectedCase={selectedCase}
-            //     handleOpenCaseDetails={handleOpenCaseDetails}
-            //   />
 
-            //   {/* Таблица с делами */}
-            //   <AffairsTable user={user} cases={cases} handleCaseSelect={handleCaseSelect} selectedCase={selectedCase} />
-
-            //   {/* Диалоговое окно для добавления нового дела */}
-            //   {user.role !== 'REGION_HEAD' && (
-            //     <DialogNewAffairs openCaseDialog={openCaseDialog} setOpenCaseDialog={setOpenCaseDialog} setSnackbar={setSnackbar} setCases={setCases} cases={cases} />
-            //   )}
-
-            //   {/* Диалоговое окно для сканирования штрихкода */}
-            //   <Dialog
-            //     open={openBarcodeDialog}
-            //     onClose={handleCloseBarcodeDialog}
-            //   >
-            //     <DialogTitle>Сканирование штрихкода</DialogTitle>
-            //     <DialogContent>
-            //       <TextField
-            //         autoFocus
-            //         inputRef={barcodeInputRef}
-            //         margin="dense"
-            //         label="Штрихкод"
-            //         value={scannedBarcode}
-            //         onChange={handleBarcodeInputChange}
-            //         fullWidth
-            //         onKeyPress={(event) => {
-            //           if (event.key === 'Enter') {
-            //             handleBarcodeSubmit(event);
-            //           }
-            //         }}
-            //       />
-            //     </DialogContent>
-            //     <DialogActions>
-            //       <Button onClick={handleCloseBarcodeDialog}>Отмена</Button>
-            //       <StyledButton onClick={handleBarcodeSubmit}>
-            //         Найти
-            //       </StyledButton>
-            //     </DialogActions>
-            //   </Dialog>
-            // </>
             <>
-            <CasesTab
-            user={user}
-            cases={cases}
-            setCases={setCases}
-            departments={departments}
-            fetchCases={fetchCases}
-            snackbar={snackbar}
-            setSnackbar={setSnackbar}
-            setError={setError}
-          />
-          </>
+              <CasesTab
+                user={user}
+                cases={cases}
+                setCases={setCases}
+                departments={departments}
+                fetchCases={fetchCases}
+                snackbar={snackbar}
+                setSnackbar={setSnackbar}
+                setError={setError}
+              />
+            </>
           )}
 
         {/* Вкладка "Сотрудники" */}
@@ -201,183 +150,10 @@ const Dashboard = () => {
 
         {/* Вкладка "Поиск Вещдоков" */}
         {tabValue === 2 && (
-          // <Box>
-          //   {/* Поля поиска и фильтрации */}
-          //   <Box sx={{ mb: theme.spacing(3) }}>
-          //     <Box
-          //       sx={{
-          //         display: 'flex',
-          //         flexWrap: 'wrap',
-          //         alignItems: 'center',
-          //         gap: theme.spacing(2),
-          //         mb: theme.spacing(2),
-          //       }}
-          //     >
-          //       <TextField
-          //         label="Поиск по названию или описанию"
-          //         variant="outlined"
-          //         value={evidenceSearchQuery}
-          //         onChange={handleEvidenceSearchChange}
-          //         size="small"
-          //         sx={{ flexGrow: 1 }}
-          //         InputProps={{
-          //           startAdornment: (
-          //             <InputAdornment position="start">
-          //               <SearchIcon color="action" />
-          //             </InputAdornment>
-          //           ),
-          //         }}
-          //       />
-          //       <FormControl variant="outlined" size="small" sx={{ minWidth: 200 }}>
-          //         <InputLabel id="evidence-type-filter-label">Тип ВД</InputLabel>
-          //         <Select
-          //           labelId="evidence-type-filter-label"
-          //           value={evidenceTypeFilter}
-          //           onChange={handleEvidenceTypeFilterChange}
-          //           label="Тип ВД"
-          //         >
-          //           <MenuItem value="">
-          //             <em>Все типы</em>
-          //           </MenuItem>
-          //           {EVIDENCE_TYPES.map((type) => (
-          //             <MenuItem key={type.value} value={type.value}>
-          //               {type.label}
-          //             </MenuItem>
-          //           ))}
-          //         </Select>
-          //       </FormControl>
-          //       <TextField
-          //         label="Дата добавления от"
-          //         type="date"
-          //         variant="outlined"
-          //         value={dateAddedFrom}
-          //         onChange={handleDateAddedFromChange}
-          //         size="small"
-          //         InputLabelProps={{
-          //           shrink: true,
-          //         }}
-          //       />
-          //       <TextField
-          //         label="Дата добавления до"
-          //         type="date"
-          //         variant="outlined"
-          //         value={dateAddedTo}
-          //         onChange={handleDateAddedToChange}
-          //         size="small"
-          //         InputLabelProps={{
-          //           shrink: true,
-          //         }}
-          //       />
-          //       {/* Кнопка "Экспорт" */}
-          //       <StyledButton
-          //         onClick={handleEvidenceExport}
-          //         startIcon={<PrintIcon />}
-          //         sx={{ ml: 'auto' }}
-          //       >
-          //         Экспорт отчета
-          //       </StyledButton>
-          //     </Box>
-
-          //     {/* Таблица с вещдоками */}
-          //     <Paper elevation={1}>
-          //       <TableContainer>
-          //         <Table
-          //           aria-label="Таблица вещдоков"
-          //           sx={{ tableLayout: 'fixed', minWidth: 650 }}
-          //         >
-          //           <TableHead>
-          //             <TableRow>
-          //               <StyledTableCell sx={{ width: '15%' }}>
-          //                 Название ВД
-          //               </StyledTableCell>
-          //               <StyledTableCell sx={{ width: '35%' }}>
-          //                 Описание ВД
-          //               </StyledTableCell>
-          //               <StyledTableCell sx={{ width: '15%' }}>
-          //                 Тип ВД
-          //               </StyledTableCell>
-          //               <StyledTableCell sx={{ width: '15%' }}>
-          //                 Дело
-          //               </StyledTableCell>
-          //               <StyledTableCell sx={{ width: '20%' }}>
-          //                 Действия
-          //               </StyledTableCell>
-          //             </TableRow>
-          //           </TableHead>
-          //           <TableBody>
-          //             {evidences.length > 0 ? (
-          //               evidences.map((evidence) => (
-          //                 <TableRow key={evidence.id} hover>
-          //                   <TableCell
-          //                     sx={{
-          //                       whiteSpace: 'nowrap',
-          //                       overflow: 'hidden',
-          //                       textOverflow: 'ellipsis',
-          //                     }}
-          //                   >
-          //                     {evidence.name}
-          //                   </TableCell>
-          //                   <TableCell
-          //                     sx={{
-          //                       whiteSpace: 'nowrap',
-          //                       overflow: 'hidden',
-          //                       textOverflow: 'ellipsis',
-          //                     }}
-          //                   >
-          //                     {evidence.description}
-          //                   </TableCell>
-          //                   <TableCell>
-          //                     {EVIDENCE_TYPES.find(
-          //                       (type) => type.value === evidence.type
-          //                     )?.label || evidence.type}
-          //                   </TableCell>
-          //                   <TableCell>
-          //                     {evidence.case ? (
-          //                       <Button
-          //                         variant="text"
-          //                         color="primary"
-          //                         onClick={() =>
-          //                           navigate(`/cases/${evidence.case.id}/`)
-          //                         }
-          //                         startIcon={<OpenInNewIcon />}
-          //                       >
-          //                         {evidence.case.name || 'Дело'}
-          //                       </Button>
-          //                     ) : (
-          //                       'Не назначено'
-          //                     )}
-          //                   </TableCell>
-          //                   <TableCell>
-          //                     <Tooltip title="Печать штрихкода">
-          //                       <IconButton
-          //                         color="primary"
-          //                         onClick={() =>
-          //                           handlePrintEvidenceBarcode(evidence)
-          //                         }
-          //                       >
-          //                         <PrintIcon />
-          //                       </IconButton>
-          //                     </Tooltip>
-          //                   </TableCell>
-          //                 </TableRow>
-          //               ))
-          //             ) : (
-          //               <TableRow>
-          //                 <TableCell colSpan={5} align="center">
-          //                   Нет результатов.
-          //                 </TableCell>
-          //               </TableRow>
-          //             )}
-          //           </TableBody>
-          //         </Table>
-          //       </TableContainer>
-          //     </Paper>
-          //   </Box>
-          // </Box>
           <EvidenceSearchTab setSnackbar={setSnackbar} />
         )}
 
-        
+
         {/* Snackbar для уведомлений */}
         <Notifyer snackbarOpened={snackbar.open} setSnackbarOpen={setSnackbar} message={snackbar.message} severity={snackbar.severity} />
 

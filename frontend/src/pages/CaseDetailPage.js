@@ -28,6 +28,7 @@ import Loading from '../components/Loading';
 import Notifyer from '../components/Notifyer';
 import { StyledButton } from '../components/ui/StyledComponents';
 import PrintButton from '../components/ui/PrintButton';
+import DialogChangeInvestigator from '../components/CaseDetailComponents/DialogChangeInvestigator';
 
 const CaseDetailPage = () => {
   const { id } = useParams(); // Получаем ID дела из URL
@@ -35,6 +36,8 @@ const CaseDetailPage = () => {
   const theme = useTheme();
   const [caseItem, setCaseItem] = useState(null);
   const [groups, setGroups] = useState([]);
+  const [openDialogChangeInvestigator, setOpenDialogChangeInvestigator] = useState(false);
+  const [InvestigatorName, setInvestigatorName] = useState(null);
   const [tabValue, setTabValue] = useState(0);
   const [snackbar, setSnackbar] = useState({
     open: false,
@@ -88,13 +91,30 @@ const CaseDetailPage = () => {
       isCreatorOrInvestigator) &&
     canView;
 
+  const canChangeInvestigator = user.role === 'DEPARTMENT_HEAD' || user.role === 'REGION_HEAD';
+
   useEffect(() => {
     // Получаем детали дела
     axios
       .get(`/api/cases/${id}/`)
       .then((response) => {
         setCaseItem(response.data);
-      })
+
+        // получаем следователя этого дела 
+        axios
+            .get(`/api/users/${response.data?.investigator}/`)
+            .then((response) => {
+              setInvestigatorName(response.data?.full_name);
+            })
+            .catch((error) => {
+              console.error('Ошибка при получении полного имени следователя:', error);
+              setSnackbar({
+                open: true,
+                message: 'Ошибка при загрузке дела.',
+                severity: 'error',
+              });
+            });
+        })
       .catch((error) => {
         console.error('Ошибка при получении деталей дела:', error);
         setSnackbar({
@@ -142,7 +162,7 @@ const CaseDetailPage = () => {
     setTabValue(newValue);
   };
 
-// открытие/закрытие дела
+  // открытие/закрытие дела
   const handleStatusToggle = () => {
     const updatedStatus = !caseItem.active;
     axios
@@ -167,9 +187,13 @@ const CaseDetailPage = () => {
       });
   };
 
+  const handleOpenDialogChangeInvestigator = () => {
+    setOpenDialogChangeInvestigator(true);
+  }
+
   if (!caseItem) {
     return (
-        <Loading/>
+      <Loading />
     );
   }
 
@@ -200,8 +224,23 @@ const CaseDetailPage = () => {
           <Box sx={{ flexGrow: 1 }} />
           {/* Кнопка "Экспорт" */}
           {canView && (
-            <PrintButton handlePrint={handlePrintReport} text={"Экспорт"}/>
+            <PrintButton handlePrint={handlePrintReport} text={"Экспорт"} />
           )}
+
+          {/* Кнопка "Переназначить дело" */}
+          {canChangeInvestigator && (
+
+            <StyledButton
+              sx={{ mr: 2 }}
+
+              onClick={handleOpenDialogChangeInvestigator}
+              startIcon={<CheckCircleIcon />}
+            >
+              <span style={{ height: '1ex', overflow: 'visible', lineHeight: '1ex', overflow: 'visible', verticalAlign: 'bottom' }}>{'Переназначить дело'}</span>
+            </StyledButton>
+          )
+
+          }
           {/* Кнопка "Активировать/Закрыть" */}
           {canEdit && (
             <Tooltip
@@ -221,7 +260,7 @@ const CaseDetailPage = () => {
                 }}
                 startIcon={caseItem.active ? <CloseIcon /> : <CheckCircleIcon />}
               >
-                {caseItem.active ? 'Закрыть' : 'Активировать'}
+                <span style={{ height: '1ex', overflow: 'visible', lineHeight: '1ex', overflow: 'visible', verticalAlign: 'bottom' }}>{caseItem.active ? 'Закрыть' : 'Активировать'}</span>
               </StyledButton>
             </Tooltip>
           )}
@@ -242,7 +281,7 @@ const CaseDetailPage = () => {
 
         {/* Вкладка "Информация" */}
         {tabValue === 0 && (
-          <CaseDetailInfromation id={id} caseItem={caseItem} setSnackbar={setSnackbar} setCaseItem={setCaseItem} canEdit={canEdit} />
+          <CaseDetailInfromation id={id} caseItem={caseItem} setSnackbar={setSnackbar} setCaseItem={setCaseItem} canEdit={canEdit} InvestigatorName={InvestigatorName} />
         )}
 
         {/* Вкладка "Вещдоки" */}
@@ -254,7 +293,7 @@ const CaseDetailPage = () => {
             groups={groups}
             setGroups={setGroups}
             setIsStatusUpdating={setIsStatusUpdating}
-            isStatusUpdating={isStatusUpdating} 
+            isStatusUpdating={isStatusUpdating}
             setSnackbar={setSnackbar}
           />
         )}
@@ -266,11 +305,23 @@ const CaseDetailPage = () => {
       </Layout>
 
       {/* Компонент для печати отчета */}
-      <PrintReport reportRef={reportRef} caseItem={caseItem} 
+      <PrintReport reportRef={reportRef} caseItem={caseItem}
         changeLogs={changeLogs}
         groups={groups}
         canViewHistory={canViewHistory}
       />
+
+
+      {openDialogChangeInvestigator && (
+        <DialogChangeInvestigator open={openDialogChangeInvestigator}
+          setOpenDialog={(open) => setOpenDialogChangeInvestigator(open)}
+          user={user}
+          caseItem={caseItem}
+          setCaseItem={setCaseItem}
+          setSnackbar={setSnackbar}
+          id={id}
+        />
+      )}
 
       {/* Snackbar для уведомлений */}
       <Notifyer snackbarOpened={snackbar.open} setSnackbarOpen={setSnackbar} message={snackbar.message} severity={snackbar.severity} />

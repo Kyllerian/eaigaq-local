@@ -4,7 +4,7 @@ import {
 } from '@mui/material';
 import CameraIcon from '@mui/icons-material/Camera';
 
-const BiometricAuthButton = forwardRef(({ onClick, ...props }, ref) => {
+const BiometricAuthButton = forwardRef(({ onClick, text, ...props }, ref) => {
     return (
         <Button ref={ref}
         variant="contained"
@@ -23,7 +23,7 @@ const BiometricAuthButton = forwardRef(({ onClick, ...props }, ref) => {
         startIcon={<CameraIcon />}
         {...props}
       >
-        Начать аутентификацию
+        <span style={{ height: '1ex', overflow: 'visible', lineHeight: '1ex', overflow: 'visible', verticalAlign: 'bottom' }}> {text} </span>
       </Button>
     )
 })

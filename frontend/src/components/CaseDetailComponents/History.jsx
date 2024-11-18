@@ -75,34 +75,64 @@ export default function History({ changeLogs, }) {
                                                 try {
                                                     const data = JSON.parse(log.data);
                                                     if (log.action === 'update') {
-                                                        const displayFields = [
-                                                            'name',
-                                                            'description',
-                                                            'status',
-                                                        ];
-                                                        return Object.entries(data).map(
-                                                            ([field, values]) => {
-                                                                if (displayFields.includes(field)) {
-                                                                    return (
-                                                                        <div key={field}>
-                                                                            <strong>
-                                                                                {fieldLabels[field] || field}
-                                                                            </strong>
-                                                                            :{' '}
-                                                                            {field === 'status'
-                                                                                ? getStatusLabel(values.old)
-                                                                                : values.old}{' '}
-                                                                            →{' '}
-                                                                            {field === 'status'
-                                                                                ? getStatusLabel(values.new)
-                                                                                : values.new}
-                                                                        </div>
-                                                                    );
-                                                                } else {
-                                                                    return null;
+                                                        console.log(data, 'data1')
+                                                        if ((log.fields).includes("investigator")) {
+                                                            const displayFields = [
+                                                                'creator',
+                                                                'investigator',
+                                                                'department',
+                                                            ];
+                                                            console.log(data, 'data2')
+                                                            return Object.entries(data).map(
+                                                                ([field, values]) => {
+                                                                    console.log(displayFields.includes(field), 'field', field)
+                                                                    if (displayFields.includes(field)) {
+                                                                        return (
+                                                                            <div key={field}>
+                                                                                <strong>
+                                                                                    {fieldLabels[field] || field}
+                                                                                </strong>
+                                                                                :{' '}
+                                                                                {values.old}{' '}
+                                                                                →{' '}
+                                                                                {values.new}
+                                                                            </div>
+                                                                        );
+                                                                    } else {
+                                                                        return null;
+                                                                    }
                                                                 }
-                                                            }
-                                                        );
+                                                            );
+                                                        } else {
+                                                            const displayFields = [
+                                                                'name',
+                                                                'description',
+                                                                'status',
+                                                            ];
+                                                            return Object.entries(data).map(
+                                                                ([field, values]) => {
+                                                                    if (displayFields.includes(field)) {
+                                                                        return (
+                                                                            <div key={field}>
+                                                                                <strong>
+                                                                                    {fieldLabels[field] || field}
+                                                                                </strong>
+                                                                                :{' '}
+                                                                                {field === 'status'
+                                                                                    ? getStatusLabel(values.old)
+                                                                                    : values.old}{' '}
+                                                                                →{' '}
+                                                                                {field === 'status'
+                                                                                    ? getStatusLabel(values.new)
+                                                                                    : values.new}
+                                                                            </div>
+                                                                        );
+                                                                    } else {
+                                                                        return null;
+                                                                    }
+                                                                }
+                                                            );
+                                                        }
                                                     } else if (log.action === 'create') {
                                                         const displayFields = [
                                                             'name',

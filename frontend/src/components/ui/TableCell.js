@@ -20,4 +20,21 @@ const TableCellSx = forwardRef(({ children, ...props }, ref) => {
 
 TableCellSx.displayName = "TableCellSx";
 
-export { TableCellSx }
+
+const TableCellWrap = forwardRef(({ children, ...props }, ref) => {
+    return (
+        <TableCell ref={ref}
+            sx={{
+                whiteSpace: 'wrap',
+                textWrap: 'wrap',
+                overflowWrap: 'anywhere',
+            }}
+            {...props}
+        >
+            {children}
+        </TableCell>
+    )
+})
+
+TableCellWrap.displayName = "TableCellWrap";
+export { TableCellSx, TableCellWrap }

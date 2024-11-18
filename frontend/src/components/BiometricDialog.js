@@ -12,7 +12,6 @@ import {
   CircularProgress,
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
-import CameraIcon from '@mui/icons-material/Camera';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ErrorIcon from '@mui/icons-material/Error';
 import LogoMVDKZ from '../assets/Logo_MVD_KZ.png';
@@ -204,12 +203,7 @@ const BiometricDialog = ({ open, onClose, onSuccess }) => {
         </Box>
 
         {/* Заголовок */}
-        <Typography
-          component="h2"
-          variant="h5"
-          align="center"
-          sx={{ mb: 2, fontWeight: 'bold' }}
-        >
+        <Typography component="h2" variant="h5" align="center" sx={{ mb: 2, fontWeight: 'bold' }}>
           Биометрическая аутентификация
         </Typography>
 
@@ -223,14 +217,7 @@ const BiometricDialog = ({ open, onClose, onSuccess }) => {
         {error && (
           <Alert
             severity="error"
-            sx={{
-              width: '100%',
-              mb: 2,
-              p: 0,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
+            sx={{ width: '100%', mb: 2, p: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', }}
             style={{ padding: 0 }}
             icon={<ErrorIcon sx={{ mr: 1 }} />}
           >
@@ -242,14 +229,7 @@ const BiometricDialog = ({ open, onClose, onSuccess }) => {
         {success && (
           <Alert
             severity="success"
-            sx={{
-              width: '100%',
-              mb: 2,
-              p: 0,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
+            sx={{ width: '100%', mb: 2, p: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', }}
             style={{ padding: 0 }}
             icon={<CheckCircleIcon sx={{ mr: 1 }} />}
           >
@@ -263,12 +243,7 @@ const BiometricDialog = ({ open, onClose, onSuccess }) => {
             ref={videoRef}
             autoPlay
             playsInline
-            style={{
-              width: '100%',
-              borderRadius: '10px',
-              backgroundColor: '#000',
-              objectFit: 'cover',
-            }}
+            style={{ width: '95%', height: '40vh', borderRadius: '10px', backgroundColor: '#000', objectFit: 'cover', }}
           />
         </Box>
 
@@ -281,25 +256,7 @@ const BiometricDialog = ({ open, onClose, onSuccess }) => {
             </Typography>
           </Box>
         ) : (
-          <BiometricAuthButton onClick={handleStartAuthentication} />
-          // <Button
-          //   variant="contained"
-          //   color="primary"
-          //   onClick={handleStartAuthentication}
-          //   sx={{
-          //     mb: 2,
-          //     padding: '0.75em 1.5em',
-          //     borderRadius: '30px',
-          //     display: 'flex',
-          //     m: 'auto',
-          //     fontWeight: 'bold',
-          //     fontSize: '1rem',
-          //     textTransform: 'none',
-          //   }}
-          //   startIcon={<CameraIcon />}
-          // >
-          //   Начать аутентификацию
-          // </Button>
+          <BiometricAuthButton style={{padding: '1rem 1.5rem'}} onClick={handleStartAuthentication} text={'Начать аутентификацию'} />
         )}
       </DialogContent>
       <DialogActions sx={{ justifyContent: 'center', pt: 2 }}>

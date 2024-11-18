@@ -4,17 +4,16 @@ import React, { useContext, useEffect, useRef, useState } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import {
-  Button,
   Box,
   Typography,
   Alert,
   CircularProgress,
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
-import CameraIcon from '@mui/icons-material/Camera';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ErrorIcon from '@mui/icons-material/Error';
 import LogoMVDKZ from '../assets/Logo_MVD_KZ.png';
+import { BiometricAuthButton } from '../components/ui/BiometricAuthButton';
 
 const Screen = styled(Box)(({ theme }) => ({
   background: theme.palette.background.default,
@@ -75,6 +74,7 @@ function BiometricRegistrationPage() {
       const data = JSON.parse(event.data);
       if (data.detail) {
         setSuccess(data.detail);
+        sessionStorage.setItem('user_authentificated', 'true');
         // Обновляем информацию о пользователе
         const updatedUser = await fetchCurrentUser();
         if (updatedUser && updatedUser.biometric_registered) {
@@ -178,18 +178,20 @@ function BiometricRegistrationPage() {
             style={{ width: '80px', height: '80px' }}
           />
         </Box>
-        <Typography component="h1" variant="h5" align="center" sx={{ mb: 2 }}>
+        <Typography component="h1" variant="h5" align="center" sx={{ mb: 2, fontWeight: 'bold' }}>
           Регистрация биометрии
         </Typography>
-        <Typography variant="body1" align="center" sx={{ mb: 2 }}>
-          Для повышения безопасности требуется регистрация вашей биометрии. Пожалуйста, убедитесь, что ваше лицо хорошо видно в камере, и нажмите кнопку ниже.
+        
+        <Typography variant="body2" align="center" sx={{ mb: 3, fontSize: '0.9rem' }}>
+          Пожалуйста, убедитесь, что Ваше лицо хорошо видно и Вы находитесь в хорошо освещенном месте без посторонних лиц в кадре.
+          Нажмите кнопку ниже, чтобы начать процесс аутентификации.
         </Typography>
         {error && (
           <Alert
             severity="error"
             sx={{ width: '100%', mb: 2, display: 'flex', alignItems: 'center' }}
+            icon={<ErrorIcon sx={{ mr: 1 }} />}
           >
-            <ErrorIcon sx={{ mr: 1 }} />
             {error}
           </Alert>
         )}
@@ -197,8 +199,8 @@ function BiometricRegistrationPage() {
           <Alert
             severity="success"
             sx={{ width: '100%', mb: 2, display: 'flex', alignItems: 'center' }}
+            icon={<CheckCircleIcon sx={{ mr: 1 }} />}
           >
-            <CheckCircleIcon sx={{ mr: 1 }} />
             {success}
           </Alert>
         )}
@@ -218,23 +220,8 @@ function BiometricRegistrationPage() {
             </Typography>
           </Box>
         ) : (
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={handleStartRegistration}
-            sx={{
-              mb: 2,
-              padding: '0.5em 1em',
-              borderRadius: '30px',
-            }}
-            startIcon={<CameraIcon />}
-          >
-            Начать регистрацию
-          </Button>
+          <BiometricAuthButton onClick={handleStartRegistration} text={'Начать регистрацию'} />
         )}
-        <Typography variant="body2" align="center" sx={{ mt: 2, color: 'gray' }}>
-          Пожалуйста, находитесь в спокойном положении и смотрите прямо в камеру.
-        </Typography>
       </Screen>
     </Box>
   );

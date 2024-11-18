@@ -94,13 +94,13 @@ export default function EmployeesToolbar({ user, employeeSearchQuery, department
                         startIcon={<AddIcon />}
                         sx={{ mr: 2 }}
                     >
-                        Добавить сотрудника
+                        <span style={{ height: '1ex', overflow: 'visible', lineHeight: '1ex', overflow: 'visible', verticalAlign: 'bottom' }}>Добавить сотрудника</span>
                     </StyledButton>
                     <StyledButton
                         onClick={handleOpenExportDialog}
                         startIcon={<PrintIcon />}
                     >
-                        Экспорт отчета
+                        <span style={{ height: '1ex', overflow: 'visible', lineHeight: '1ex', overflow: 'visible', verticalAlign: 'bottom' }}>Экспорт отчета</span>
                     </StyledButton>
                 </Box>
                 {selectedEmployee && (

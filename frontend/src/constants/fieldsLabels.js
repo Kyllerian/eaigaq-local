@@ -7,5 +7,8 @@ export const fieldLabels = {
     created: 'Создано',
     case: 'Дело',
     group: 'Группа',
+    creator: 'Создатель',
+    investigator: 'Следователь',
+    department: 'Департамент'
 };
   

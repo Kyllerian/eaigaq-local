@@ -99,7 +99,7 @@ export default function AffairsToolbar({ user, departments, searchQuery, handleS
                             onClick={handleOpenCaseDialog}
                             startIcon={<AddIcon />}
                         >
-                            Добавить дело
+                            <span style={{ height: '1ex', overflow: 'visible', lineHeight: '1ex', overflow: 'visible', verticalAlign: 'bottom' }}>Добавить дело</span>
                         </StyledButton>
                     ) : (
                         <Box sx={{ width: 128 }} />
@@ -139,7 +139,7 @@ export default function AffairsToolbar({ user, departments, searchQuery, handleS
                             startIcon={<OpenInNewIcon />}
                             disabled={!selectedCase}
                         >
-                            Открыть дело
+                            <span style={{ height: '1ex', overflow: 'visible', lineHeight: '1ex', overflow: 'visible', verticalAlign: 'bottom' }}>Открыть дело</span>
                         </StyledButton>
                     </Box>
                 </Box>

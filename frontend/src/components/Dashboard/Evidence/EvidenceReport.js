@@ -12,6 +12,7 @@ import {
 import LogoMVDKZ from "../../../assets/Logo_MVD_KZ.png";
 import { formatDate } from '../../../constants/formatDate';
 import { EVIDENCE_TYPES } from '../../../constants/evidenceTypes';
+import { TableCellWrap } from '../../ui/TableCell';
 
 
 export default function EvidenceReport({ evidenceReportRef, evidenceSearchQuery, evidenceTypeFilter, dateAddedFrom, dateAddedTo, evidenceExportData }) {
@@ -98,17 +99,17 @@ export default function EvidenceReport({ evidenceReportRef, evidenceSearchQuery,
                             <TableBody>
                                 {evidenceExportData.map((evidence) => (
                                     <TableRow key={evidence.id}>
-                                        <TableCell>{evidence.name}</TableCell>
-                                        <TableCell>{evidence.description}</TableCell>
-                                        <TableCell>
+                                        <TableCellWrap>{evidence.name}</TableCellWrap>
+                                        <TableCellWrap>{evidence.description}</TableCellWrap>
+                                        <TableCellWrap>
                                             {EVIDENCE_TYPES.find(
                                                 (type) => type.value === evidence.type
                                             )?.label || evidence.type}
-                                        </TableCell>
-                                        <TableCell>
+                                        </TableCellWrap>
+                                        <TableCellWrap>
                                             {evidence.case ? evidence.case.name : 'Не назначено'}
-                                        </TableCell>
-                                        <TableCell>{formatDate(evidence.created)}</TableCell>
+                                        </TableCellWrap>
+                                        <TableCellWrap>{formatDate(evidence.created)}</TableCellWrap>
                                     </TableRow>
                                 ))}
                                 {evidenceExportData.length === 0 && (

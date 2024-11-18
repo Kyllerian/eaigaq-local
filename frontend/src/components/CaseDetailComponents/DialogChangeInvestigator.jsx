@@ -2,41 +2,34 @@ import {
     Button,
     FormControl,
     InputLabel,
-    MenuItem,
     Select,
+    MenuItem,
+    Alert,
 } from '@mui/material';
 
-import { StyledButton } from '../../ui/StyledComponents';
-import DashboardDialog from '../../ui/DashboardDialog';
-import axios from '../../../axiosConfig';
-import PrintSessionReport from './PrintSessionReport';
 import { useEffect, useRef, useState } from 'react';
-import { useReactToPrint } from 'react-to-print';
+import { StyledButton } from '../ui/StyledComponents';
+import axios from '../../axiosConfig';
+import DashboardDialog from '../ui/DashboardDialog';
 
-
-export default function DialogExportEmpolyees({ user, departments, employees, openExportDialog, setOpenExportDialog, setSnackbar, 
-}) {
-    const reportRef = useRef();
-    const [exportData, setExportData] = useState([]);
-    const [shouldPrint, setShouldPrint] = useState(false);
-
+export default function DialogChangeInvestigator({ open, setOpenDialog, user, caseItem, setCaseItem, setSnackbar, id }) {
+    const [employees, setEmployees] = useState([]);
+    const [departments, setDepartments] = useState([]);
     const [exportFilters, setExportFilters] = useState({
-        department: 'all_dept',
+        department: 'all_depart',
         employee: '',
     });
+    const [exportData, setExportData] = useState([]);
+    const [error, setError] = useState(null);
 
-    // Printing
-    const handlePrintReport = useReactToPrint({
-        contentRef: reportRef,
-        documentTitle: 'Отчет по сессиям сотрудников',
-    });
-    useEffect(() => {
-        if (shouldPrint && exportData.length > 0) {
-            handlePrintReport();
-            setShouldPrint(false);
-        }
-    }, [shouldPrint, exportData, handlePrintReport]); // Удалили handlePrintReport из зависимостей
-    
+
+    const handleCloseDialog = () => {
+        setOpenDialog(false);
+        setEmployees([]);
+        setDepartments([]);
+    };
+
+
     const handleExportFilterChange = (event) => {
         const { name, value } = event.target;
         setExportFilters((prevFilters) => ({
@@ -52,6 +45,40 @@ export default function DialogExportEmpolyees({ user, departments, employees, op
         }
     };
 
+    useEffect(() => {
+        if (!user) return;
+
+        if (user.role === 'DEPARTMENT_HEAD') {
+            axios
+                .get('/api/users/')
+                .then((response) => {
+                    setEmployees(response.data.filter((emp) => caseItem.investigator != emp.id));
+                })
+                .catch((error) => {
+                    setError('Ошибка при загрузке сотрудников.');
+                });
+        } else if (user.role === 'REGION_HEAD') {
+            axios
+                .get('/api/users/all_departments/')
+                .then((response) => {
+                    setEmployees(response.data.filter((emp) => caseItem.investigator != emp.id));
+                })
+                .catch((error) => {
+                    setError('Ошибка при загрузке сотрудников.');
+                });
+
+            axios
+                .get('/api/departments/')
+                .then((response) => {
+                    setDepartments(response.data);
+                })
+                .catch((error) => {
+                    setError('Ошибка при загрузке отделений.');
+                });
+        }
+    }, [user]);
+
+
     const handleExportSubmit = () => {
         let params = {};
 
@@ -62,7 +89,7 @@ export default function DialogExportEmpolyees({ user, departments, employees, op
                 params.department_id = user.department.id;
             }
         } else if (user.role === 'REGION_HEAD') {
-            if (exportFilters.department !== 'all_dept') {
+            if (exportFilters.department) {
                 params.department_id = exportFilters.department;
                 if (exportFilters.employee) {
                     params.user_id = exportFilters.employee;
@@ -71,26 +98,40 @@ export default function DialogExportEmpolyees({ user, departments, employees, op
                 params.region = user.region;
             }
         }
+        handleChangeInvestigator(params.user_id, params.department_id)
+    };
 
+
+    const handleChangeInvestigator = (NewInvestigatorId, NewDepartmentId) => {
         axios
-            .get('/api/sessions/', { params })
-            .then((response) => {
-                setExportData(response.data);
-                setShouldPrint(true);
-                setOpenExportDialog(false);
+            .put(`/api/cases/${id}/`, {
+                name: caseItem.name,
+                description: caseItem.description,
+                investigator: NewInvestigatorId,
+                creator: NewInvestigatorId,
+                department_id: NewDepartmentId,
             })
-            .catch((error) => {
-                console.error('Ошибка при получении данных сессий:', error);
+            .then((response) => {
+                setCaseItem(response.data);
                 setSnackbar({
                     open: true,
-                    message: 'Ошибка при получении данных сессий.',
+                    message: 'Дело успешно переназначено.',
+                    severity: 'success',
+                });
+            })
+            .catch((error) => {
+                console.error('Ошибка при переназначении дела:', error);
+                setSnackbar({
+                    open: true,
+                    message: 'Ошибка при переназначении дела.',
                     severity: 'error',
                 });
             });
+        handleCloseDialog();
     };
     return (
         <>
-            <DashboardDialog open={openExportDialog} setOpen={setOpenExportDialog} title={"Экспорт отчета о сессиях сотрудников"}  >
+            <DashboardDialog open={open} setOpen={setOpenDialog} title={"Выберите пользователя на которого переназначите дело"}  >
                 {{
                     content: (
                         <>
@@ -104,9 +145,6 @@ export default function DialogExportEmpolyees({ user, departments, employees, op
                                         onChange={handleExportFilterChange}
                                         label="Отделение"
                                     >
-                                        <MenuItem value="all_dept">
-                                            <em>Все отделения</em>
-                                        </MenuItem>
                                         {departments.map((dept) => (
                                             <MenuItem key={dept.id} value={dept.id}>
                                                 {dept.name}
@@ -116,7 +154,7 @@ export default function DialogExportEmpolyees({ user, departments, employees, op
                                 </FormControl>
                             )}
 
-                            {(user.role === 'DEPARTMENT_HEAD' || exportFilters.department !== 'all_dept') && (
+                            {(user.role === 'DEPARTMENT_HEAD' || exportFilters.department) && (
                                 <FormControl fullWidth margin="dense">
                                     <InputLabel id="export-employee-label">Сотрудник</InputLabel>
                                     <Select
@@ -126,9 +164,6 @@ export default function DialogExportEmpolyees({ user, departments, employees, op
                                         onChange={handleExportFilterChange}
                                         label="Сотрудник"
                                     >
-                                        <MenuItem value="">
-                                            <em>Все сотрудники</em>
-                                        </MenuItem>
                                         {employees
                                             .filter((emp) =>
                                                 user.role === 'DEPARTMENT_HEAD'
@@ -148,19 +183,18 @@ export default function DialogExportEmpolyees({ user, departments, employees, op
                     ),
                     actions: (
                         <>
-                            <Button onClick={() => setOpenExportDialog(false)}>Отмена</Button>
-                            <StyledButton onClick={handleExportSubmit}>Сформировать отчет</StyledButton>
-
+                            <Button onClick={handleCloseDialog}>Отмена</Button>
+                            <StyledButton onClick={handleExportSubmit}>Переназначить</StyledButton>
                         </>
                     )
                 }}
             </DashboardDialog>
 
-            
-            {/* Hidden Print Component for Session Report */}
-            <PrintSessionReport user={user} reportRef={reportRef} exportData={exportData} exportFilters={exportFilters} 
-                departments={departments} employees={employees} 
-            />
+            {error && (
+                <Alert severity="error" sx={{ mb: 2 }}>
+                    {error}
+                </Alert>
+            )}
         </>
     );
 }

@@ -125,7 +125,6 @@ const EmployeesTab = ({
                 openExportDialog={openExportDialog}
                 setOpenExportDialog={setOpenExportDialog}
                 setSnackbar={setSnackbar}
-                setOpenEmployeeDialog={setOpenEmployeeDialog}  
             />
         </>
     );

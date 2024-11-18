@@ -1,6 +1,6 @@
 import {
     Paper,
-    TextField,
+    Typography,
     Grid,
 } from '@mui/material';
 
@@ -9,7 +9,7 @@ import axios from '../../axiosConfig';
 import { StyledButton } from '../ui/StyledComponents';
 import { StyledTextFieldWithoutMargin } from '../ui/StyledTextfield';
 
-export default function CaseDetailInfromation({ id, caseItem, canEdit, setCaseItem, setSnackbar }) {
+export default function CaseDetailInfromation({ id, caseItem, canEdit, setCaseItem, setSnackbar, InvestigatorName }) {
     const theme = useTheme();
     const handleInfoChange = (event) => {
         const { name, value } = event.target;
@@ -44,6 +44,7 @@ export default function CaseDetailInfromation({ id, caseItem, canEdit, setCaseIt
         <>
             <Paper elevation={1} sx={{ padding: theme.spacing(3) }}>
                 <Grid container spacing={2}>
+                    <Typography variant="body2">Следователь по делу: {InvestigatorName}</Typography>
                     <Grid item xs={12}>
                         <StyledTextFieldWithoutMargin label="Название дела" name="name" value={caseItem.name} onChange={handleInfoChange} disabled={!canEdit} />
 
@@ -54,17 +55,6 @@ export default function CaseDetailInfromation({ id, caseItem, canEdit, setCaseIt
                             rows={4}
                             disabled={!canEdit}
                         />
-                        {/* 
-                        <TextField
-                            label="Описание дела"
-                            name="description"
-                            value={caseItem.description}
-                            onChange={handleInfoChange}
-                            fullWidth
-                            multiline
-                            rows={4}
-                            disabled={!canEdit}
-                        /> */}
                     </Grid>
                     {canEdit && (
                         <Grid item xs={12} sx={{ textAlign: 'right' }}>

@@ -6,6 +6,7 @@ from .models import (
     Session, Camera, AuditEntry, EvidenceGroup, FaceEncoding, Region
 )
 
+
 class DepartmentSerializer(serializers.ModelSerializer):
     region_display = serializers.CharField(source='get_region_display', read_only=True)
 
@@ -74,8 +75,50 @@ class UserSerializer(serializers.ModelSerializer):
         return user
 
 
+# class CaseSerializer(serializers.ModelSerializer):
+#     investigator = UserSerializer(read_only=False)
+#     creator_name = serializers.CharField(source='creator.get_full_name', read_only=True)
+#     department = DepartmentSerializer(read_only=True)
+#     department_id = serializers.PrimaryKeyRelatedField(
+#         queryset=Department.objects.all(),
+#         source='department',
+#         write_only=True,
+#         required=False
+#     )
+#     department_name = serializers.CharField(source='department.name', read_only=True)
+#     region_name = serializers.CharField(source='department.get_region_display', read_only=True)
+#
+#     class Meta:
+#         model = Case
+#         fields = [
+#             'id', 'name', 'description', 'active',
+#             'creator', 'creator_name', 'investigator',
+#             'department', 'department_id', 'department_name', 'created', 'updated', 'region_name'
+#         ]
+#         read_only_fields = [
+#             # 'creator', 'creator_name', 'investigator', 'department',
+#             # 'department_name', 'created', 'updated', 'region_name'
+#             'created', 'updated'
+#         ]
+#
+#     def create(self, validated_data):
+#         user = self.context['request'].user
+#         validated_data['creator'] = user
+#         validated_data['investigator'] = user
+#         validated_data['department'] = user.department
+#         return super().create(validated_data)
+
+
 class CaseSerializer(serializers.ModelSerializer):
-    investigator = UserSerializer(read_only=True)
+    investigator = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(),
+        required=False,
+        allow_null=True
+    )
+    creator = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(),
+        required=False
+    )
     creator_name = serializers.CharField(source='creator.get_full_name', read_only=True)
     department = DepartmentSerializer(read_only=True)
     department_id = serializers.PrimaryKeyRelatedField(
@@ -95,8 +138,7 @@ class CaseSerializer(serializers.ModelSerializer):
             'department', 'department_id', 'department_name', 'created', 'updated', 'region_name'
         ]
         read_only_fields = [
-            'creator', 'creator_name', 'investigator', 'department',
-            'department_name', 'created', 'updated', 'region_name'
+            'department', 'created', 'updated', 'region_name'
         ]
 
     def create(self, validated_data):
@@ -128,7 +170,6 @@ class NestedMaterialEvidenceSerializer(serializers.ModelSerializer):
         read_only_fields = ['barcode', 'created', 'updated', 'active', 'group_name', 'type_display']
 
 
-
 class EvidenceGroupSerializer(serializers.ModelSerializer):
     material_evidences = NestedMaterialEvidenceSerializer(many=True, read_only=True)
     barcode = serializers.CharField(read_only=True)
@@ -146,8 +187,6 @@ class EvidenceGroupSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data['created_by'] = self.context['request'].user
         return super().create(validated_data)
-
-
 
 
 class MaterialEvidenceSerializer(serializers.ModelSerializer):
@@ -177,9 +216,9 @@ class MaterialEvidenceSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'name', 'description', 'case', 'case_id', 'created_by',
             'status', 'status_display', 'barcode', 'created', 'updated', 'active',
-            'group_id', 'group_name','type', 'type_display'
+            'group_id', 'group_name', 'type', 'type_display'
         ]
-        read_only_fields = ['created_by', 'created', 'updated', 'barcode', 'case', 'group_name','type_display']
+        read_only_fields = ['created_by', 'created', 'updated', 'barcode', 'case', 'group_name', 'type_display']
 
     def create(self, validated_data):
         validated_data['created_by'] = self.context['request'].user

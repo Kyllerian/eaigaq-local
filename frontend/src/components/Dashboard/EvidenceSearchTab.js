@@ -210,7 +210,7 @@ const EvidenceSearchTab = ({ setSnackbar }) => {
                         startIcon={<PrintIcon />}
                         sx={{ ml: 'auto' }}
                     >
-                        Экспорт отчета
+                        <span style={{ height: '1ex', overflow: 'visible', lineHeight: '1ex', overflow: 'visible', verticalAlign: 'bottom' }}>Экспорт отчета</span>
                     </StyledButton>
                 </Box>
 
