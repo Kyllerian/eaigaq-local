@@ -29,3 +29,4 @@ urlpatterns = [
     path('current-user/', current_user, name='current_user'),
     path('download/certificate/', download_certificate, name='download_certificate'),
 ]
+

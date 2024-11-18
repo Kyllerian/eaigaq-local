@@ -2,7 +2,7 @@ export default function calculateRowsPerPage(tableContainerRef, tableRowRef, fil
     if (tableContainerRef.current && tableRowRef.current) {
         const windowHeight = window.innerHeight;
         const tableTop = tableContainerRef.current.getBoundingClientRect().top;
-        const availableHeight = windowHeight - tableTop - 180; // 100px на отступы и пагинацию
+        const availableHeight = windowHeight - tableTop - 150; // 100px на отступы и пагинацию
 
         const rowHeight = tableRowRef.current.getBoundingClientRect().height;
         const possibleRows = Math.floor(availableHeight / rowHeight);

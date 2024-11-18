@@ -31,8 +31,8 @@ export default function DialogAlertNewStatus({ open, setOpenAlertNewStatusDialog
                 {{
                     content: (
                         <>
-                            <p>Уверены, что хотите изменить статус на уничтожен?
-                                Это нельзя будет изменить!!!
+                            <p>Уверены, что хотите изменить статус?
+                                Это действие нельзя отменить
                             </p>
                         </>
                     ),
