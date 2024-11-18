@@ -19,7 +19,7 @@ import LoginIcon from '@mui/icons-material/Login';
 import MailOutlineIcon from '@mui/icons-material/MailOutline';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
-import LogoMVDKZ from '../assets/Logo_MVD_KZ.png';
+import LogoMVDKZ from '../assets/Logo_MVD_KZ.webp';
 
 // Создаём стилизованный компонент с использованием Material-UI styled API
 const Screen = styled(Box)(({ theme }) => ({
@@ -216,7 +216,7 @@ function LoginPage() {
             mt: 2,
           }}
         >
-          <Button component="a" href={`${process.env.REACT_APP_BACKEND_URL}download/certificate.crt`} download sx={{ fontSize: '0.6rem', textDecoration: 'underline', mx: 'auto', display: 'flex' }}>
+          <Button component="a" href={`${process.env.REACT_APP_BACKEND_URL}api/download/certificate/`} download sx={{ fontSize: '0.6rem', textDecoration: 'underline', mx: 'auto', display: 'flex' }}>
             Скачать сертификат
           </Button>
         </Box>

@@ -170,104 +170,33 @@ export default function DialogNewEmpolyees({ user, departments, setSnackbar, set
                     content: (
                         <>
                             <StyledTextField autoFocus label="Имя пользователя" name="username" value={newEmployee.username} onChange={handleEmployeeInputChange} required />
-                            {/* <TextField
-                                autoFocus
-                                margin="dense"
-                                label="Имя пользователя"
-                                name="username"
-                                value={newEmployee.username}
-                                onChange={handleEmployeeInputChange}
-                                fullWidth
-                                required
-                            /> */}
                             <StyledTextField label="Пароль" name="password" type="password" value={newEmployee.password} onChange={handleEmployeeInputChange} required />
-                            {/* <TextField
-                                margin="dense"
-                                label="Пароль"
-                                name="password"
-                                type="password"
-                                value={newEmployee.password}
-                                onChange={handleEmployeeInputChange}
-                                fullWidth
-                                required
-                            /> */}
                             <StyledTextField label="Подтвердите пароль" name="confirm_password" type="password" value={newEmployee.confirm_password} onChange={handleEmployeeInputChange} required />
-                            {/* <TextField
-                                margin="dense"
-                                label="Подтвердите пароль"
-                                name="confirm_password"
-                                type="password"
-                                value={newEmployee.confirm_password}
-                                onChange={handleEmployeeInputChange}
-                                fullWidth
-                                required
-                            /> */}
                             <StyledTextField label="Имя"
                                 name="first_name"
                                 value={newEmployee.first_name}
                                 onChange={handleEmployeeInputChange}
                             />
-                            {/* <TextField
-                                margin="dense"
-                                label="Имя"
-                                name="first_name"
-                                value={newEmployee.first_name}
-                                onChange={handleEmployeeInputChange}
-                                fullWidth
-                            /> */}
                             <StyledTextField label="Фамилия"
                                 name="last_name"
                                 value={newEmployee.last_name}
                                 onChange={handleEmployeeInputChange}
                             />
-                            {/* <TextField
-                                margin="dense"
-                                label="Фамилия"
-                                name="last_name"
-                                value={newEmployee.last_name}
-                                onChange={handleEmployeeInputChange}
-                                fullWidth
-                            /> */}
                             <StyledTextField label="Электронная почта"
                                 name="email"
                                 value={newEmployee.email}
                                 onChange={handleEmployeeInputChange}
                             />
-                            {/* <TextField
-                                margin="dense"
-                                label="Электронная почта"
-                                name="email"
-                                value={newEmployee.email}
-                                onChange={handleEmployeeInputChange}
-                                fullWidth
-                            /> */}
                             <StyledTextField label="Номер телефона"
                                 name="phone_number"
                                 value={newEmployee.phone_number}
                                 onChange={handleEmployeeInputChange}
                             />
-                            {/* <TextField
-                                margin="dense"
-                                label="Номер телефона"
-                                name="phone_number"
-                                value={newEmployee.phone_number}
-                                onChange={handleEmployeeInputChange}
-                                fullWidth
-                            /> */}
-
                             <StyledTextField label="Звание"
                                 name="rank"
                                 value={newEmployee.rank}
                                 onChange={handleEmployeeInputChange}
                             />
-                            {/* <TextField
-                                margin="dense"
-                                label="Звание"
-                                name="rank"
-                                value={newEmployee.rank}
-                                onChange={handleEmployeeInputChange}
-                                fullWidth
-                            /> */}
                             {user.role === 'REGION_HEAD' && (
                                 <>
                                     <FormControl fullWidth margin="dense">

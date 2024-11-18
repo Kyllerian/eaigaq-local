@@ -3,7 +3,7 @@ import {
 } from '@mui/material';
 
 import { formatDate } from '../../../constants/formatDate';
-import LogoMVDKZ from "../../../assets/Logo_MVD_KZ.png";
+import LogoMVDKZ from "../../../assets/Logo_MVD_KZ.webp";
 
 export default function PrintLoginDetails({ loginDetailsRef, newEmployeeCreated, employeePassword }) {
     return (

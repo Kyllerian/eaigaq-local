@@ -14,7 +14,7 @@ import {
 import { styled } from '@mui/material/styles';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ErrorIcon from '@mui/icons-material/Error';
-import LogoMVDKZ from '../assets/Logo_MVD_KZ.png';
+import LogoMVDKZ from '../assets/Logo_MVD_KZ.webp';
 import { BiometricAuthButton } from './ui/BiometricAuthButton';
 
 // Стилизация диалогового окна для соответствия единому стилю

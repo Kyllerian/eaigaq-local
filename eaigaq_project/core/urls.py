@@ -6,6 +6,7 @@ from .views import (
     UserViewSet, DepartmentViewSet, CaseViewSet, MaterialEvidenceViewSet,
     MaterialEvidenceEventViewSet, SessionViewSet, CameraViewSet, AuditEntryViewSet,
     get_csrf_token, login_view, logout_view, check_auth, current_user, EvidenceGroupViewSet,
+    download_certificate
 )
 
 router = routers.DefaultRouter()
@@ -26,4 +27,5 @@ urlpatterns = [
     path('logout/', logout_view, name='logout'),
     path('check_auth/', check_auth, name='check_auth'),
     path('current-user/', current_user, name='current_user'),
+    path('download/certificate/', download_certificate, name='download_certificate'),
 ]

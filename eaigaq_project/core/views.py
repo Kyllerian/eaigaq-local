@@ -1,11 +1,13 @@
 # eaigaq_project/core/views.py
 
 from django.contrib.auth import authenticate, login, logout
-from django.http import JsonResponse
+from django.http import JsonResponse, FileResponse
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.db.models import Q
 from django.forms.models import model_to_dict
 from django.contrib.auth import login
+import os
+from django.conf import settings
 
 from rest_framework import viewsets, filters
 from django_filters.rest_framework import DjangoFilterBackend
@@ -286,24 +288,6 @@ class CaseViewSet(viewsets.ModelViewSet):
         ignored_fields = {'department_id', 'department'}
         updated_fields -= ignored_fields
 
-        # # Проверяем, пытается ли пользователь изменить поле 'investigator'
-        # if 'investigator' in updated_fields:
-        #     new_investigator_id = data.get('investigator')
-        #     try:
-        #         new_investigator = User.objects.get(id=new_investigator_id)
-        #     except User.DoesNotExist:
-        #         raise ValidationError({"investigator": "Указанный следователь не найден."})
-        #
-        #     if user.role == 'REGION_HEAD':
-        #         if new_investigator.region != user.region:
-        #             raise PermissionDenied("Вы можете назначать только пользователей из вашего региона.")
-        #     elif user.role == 'DEPARTMENT_HEAD':
-        #         if new_investigator.department != user.department:
-        #             raise PermissionDenied("Вы можете назначать только пользователей из вашего отделения.")
-        #     else:
-        #         raise PermissionDenied("Вы не можете менять поле 'investigator'.")
-        # else:
-        #     new_investigator = None  # Не меняем следователя
         # Проверка прав доступа и валидация изменений
         for field in ['investigator', 'creator']:
             if field in updated_fields:
@@ -323,21 +307,6 @@ class CaseViewSet(viewsets.ModelViewSet):
                             f"Вы можете назначать только пользователей из вашего отделения для поля '{field}'.")
                 else:
                     raise PermissionDenied(f"Вы не можете менять поле '{field}'.")
-
-        # # Проверяем права на изменение других полей
-        # allowed_fields = {'name', 'description', 'active'}
-        # if user.role not in ['REGION_HEAD', 'DEPARTMENT_HEAD']:
-        #     # Обычные пользователи
-        #     if instance.investigator != user:
-        #         raise PermissionDenied("Вы не являетесь следователем этого дела.")
-        #     disallowed_fields = updated_fields - allowed_fields
-        #     if disallowed_fields:
-        #         raise PermissionDenied(f"Вы не можете обновлять поля: {', '.join(disallowed_fields)}")
-        # else:
-        #     # REGION_HEAD и DEPARTMENT_HEAD могут менять разрешенные поля и 'investigator'
-        #     disallowed_fields = updated_fields - allowed_fields - {'investigator'}
-        #     if disallowed_fields:
-        #         raise PermissionDenied(f"Вы не можете обновлять поля: {', '.join(disallowed_fields)}")
 
         # Проверяем права на изменение других полей
         allowed_fields = {'name', 'description', 'active', 'investigator', 'creator'}
@@ -394,102 +363,6 @@ class CaseViewSet(viewsets.ModelViewSet):
 
         return Response(serializer.data)
 
-        # # Вызываем оригинальный метод update
-        # response = super().update(request, *args, **kwargs)
-        #
-        # # Получаем обновленный экземпляр
-        # new_instance = self.get_object()
-        # new_instance_dict = model_to_dict(new_instance)
-        #
-        # # Определяем, какие поля были изменены
-        # changes = {}
-        # for field in new_instance_dict.keys():
-        #     old_value = old_instance.get(field)
-        #     new_value = new_instance_dict.get(field)
-        #     if old_value != new_value:
-        #         changes[field] = {'old': old_value, 'new': new_value}
-        #
-        # if changes:
-        #     # Создаем запись в AuditEntry
-        #     AuditEntry.objects.create(
-        #         object_id=instance.id,
-        #         object_name=instance.name,
-        #         table_name='case',
-        #         class_name='Case',
-        #         action='update',
-        #         fields=', '.join(changes.keys()),
-        #         data=json.dumps(changes, ensure_ascii=False, default=str),
-        #         user=user,
-        #         case=instance  # Ссылка на дело
-        #     )
-        #
-        # return response
-
-    # def perform_update(self, serializer):
-    #     user = self.request.user
-    #     instance = self.get_object()
-    #     old_instance = model_to_dict(instance)
-    #
-    #     updated_fields = set(serializer.validated_data.keys())
-    #
-    #     # Проверяем, пытается ли пользователь изменить поле 'investigator'
-    #     if 'investigator' in updated_fields:
-    #         new_investigator = serializer.validated_data.get('investigator')
-    #
-    #         if user.role == 'REGION_HEAD':
-    #             # Глава региона может назначать пользователей только из своего региона
-    #             if new_investigator.region != user.region:
-    #                 raise PermissionDenied("Вы можете назначать только пользователей из вашего региона.")
-    #         elif user.role == 'DEPARTMENT_HEAD':
-    #             # Глава отделения может назначать пользователей только из вашего отделения
-    #             if new_investigator.department != user.department:
-    #                 raise PermissionDenied("Вы можете назначать только пользователей из вашего отделения.")
-    #         else:
-    #             # Остальные пользователи не могут менять 'investigator'
-    #             raise PermissionDenied("Вы не можете менять поле 'investigator'.")
-    #
-    #     # Проверяем права на изменение других полей
-    #     allowed_fields = {'name', 'description', 'active'}
-    #     if user.role not in ['REGION_HEAD', 'DEPARTMENT_HEAD']:
-    #         # Обычные пользователи
-    #         if instance.investigator != user:
-    #             raise PermissionDenied("Вы не являетесь следователем этого дела.")
-    #         disallowed_fields = updated_fields - allowed_fields
-    #         if disallowed_fields:
-    #             raise PermissionDenied(f"Вы не можете обновлять поля: {', '.join(disallowed_fields)}")
-    #     else:
-    #         # REGION_HEAD и DEPARTMENT_HEAD могут менять разрешенные поля и 'investigator'
-    #         disallowed_fields = updated_fields - allowed_fields - {'investigator'}
-    #         if disallowed_fields:
-    #             raise PermissionDenied(f"Вы не можете обновлять поля: {', '.join(disallowed_fields)}")
-    #
-    #     # Вызываем метод save у сериализатора
-    #     serializer.save()
-    #
-    #     # Логирование изменений
-    #     new_instance = self.get_object()
-    #     new_instance_dict = model_to_dict(new_instance)
-    #     changes = {}
-    #     for field in new_instance_dict.keys():
-    #         old_value = old_instance.get(field)
-    #         new_value = new_instance_dict.get(field)
-    #         if old_value != new_value:
-    #             changes[field] = {'old': old_value, 'new': new_value}
-    #
-    #     if changes:
-    #         # Создаем запись в AuditEntry
-    #         AuditEntry.objects.create(
-    #             object_id=instance.id,
-    #             object_name=instance.name,
-    #             table_name='case',
-    #             class_name='Case',
-    #             action='update',
-    #             fields=', '.join(changes.keys()),
-    #             data=json.dumps(changes, ensure_ascii=False, default=str),
-    #             user=user,
-    #             case=instance  # Ссылка на дело
-    #         )
-
     def perform_create(self, serializer):
         user = self.request.user
         if not user.department:
@@ -535,175 +408,6 @@ class CaseViewSet(viewsets.ModelViewSet):
         # Возвращаем данные дела
         serializer = self.get_serializer(case)
         return Response(serializer.data)
-
-
-# class CaseViewSet(viewsets.ModelViewSet):
-#     queryset = Case.objects.all()
-#     serializer_class = CaseSerializer
-#     permission_classes = [IsAuthenticated]
-#
-#     # Добавляем фильтры
-#     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
-#     filterset_fields = ['department']  # Фильтрация по отделению
-#     search_fields = ['name', 'creator__username']  # Поиск по названию дела и имени создателя
-#
-#     def get_permissions(self):
-#         if self.action in ["update", "partial_update", "destroy"]:
-#             permission_classes = [IsAuthenticated, IsCreator]
-#         else:
-#             permission_classes = [IsAuthenticated]
-#         return [permission() for permission in permission_classes]
-#
-#     def get_queryset(self):
-#         user = self.request.user
-#
-#         # Получаем параметры поиска и фильтрации
-#         search_query = self.request.query_params.get("search", "").strip()
-#         department_id = self.request.query_params.get("department")
-#
-#         # Инициализируем базовый фильтр
-#         base_q_filter = Q()
-#
-#         if department_id:
-#             base_q_filter &= Q(department_id=department_id)
-#
-#         # Инициализируем объект Q для поиска
-#         q_objects = Q()
-#
-#         # Инициализируем переменные для хранения case_ids
-#         case_ids_from_evidences = []
-#         case_ids_from_groups = []
-#
-#         if search_query:
-#             # Проверяем, является ли поисковый запрос штрихкодом
-#             if search_query.isdigit() and len(search_query) == 13:
-#                 # Ищем вещественные доказательства с данным штрихкодом
-#                 material_evidences = MaterialEvidence.objects.filter(
-#                     barcode=search_query
-#                 )
-#
-#                 # Получаем ID дел, связанных с найденными вещественными доказательствами
-#                 case_ids_from_evidences = material_evidences.values_list(
-#                     "case_id", flat=True
-#                 )
-#
-#                 # Если есть совпадения, добавляем их в фильтр
-#                 if case_ids_from_evidences:
-#                     q_objects |= Q(id__in=case_ids_from_evidences)
-#
-#                 # Ищем группы вещественных доказательств с данным штрихкодом
-#                 evidence_groups = EvidenceGroup.objects.filter(barcode=search_query)
-#                 case_ids_from_groups = evidence_groups.values_list(
-#                     "case_id", flat=True
-#                 )
-#
-#                 if case_ids_from_groups:
-#                     q_objects |= Q(id__in=case_ids_from_groups)
-#             else:
-#                 # Поиск по названию дела и имени создателя
-#                 q_objects |= Q(name__icontains=search_query) | Q(
-#                     creator__username__icontains=search_query
-#                 )
-#
-#         # Применяем фильтр доступа на основе роли пользователя
-#         if user.role == "REGION_HEAD":
-#             base_q_filter &= Q(department__region=user.region)
-#         elif user.role == "DEPARTMENT_HEAD":
-#             base_q_filter &= Q(department=user.department)
-#         else:
-#             # Обычный пользователь может видеть дела, где он является создателем или следователем
-#             base_q_filter &= Q(creator=user) | Q(investigator=user)
-#
-#             if search_query and (case_ids_from_evidences or case_ids_from_groups):
-#                 case_ids = set(case_ids_from_evidences) | set(case_ids_from_groups)
-#                 base_q_filter |= Q(id__in=case_ids)
-#
-#         # Применяем фильтры к queryset
-#         queryset = Case.objects.filter(base_q_filter & q_objects).distinct()
-#
-#         return queryset.select_related("creator", "investigator", "department")
-#
-#     def perform_create(self, serializer):
-#         user = self.request.user
-#         if not user.department:
-#             raise PermissionDenied("У вас нет назначенного отделения для создания дела.")
-#         serializer.save(
-#             creator=user, investigator=user, department=user.department
-#         )
-#
-#     def update(self, request, *args, **kwargs):
-#         user = request.user
-#         instance = self.get_object()
-#         old_instance = model_to_dict(instance)
-#
-#         # Вызываем оригинальный метод update
-#         response = super().update(request, *args, **kwargs)
-#
-#         # Получаем обновленный экземпляр
-#         new_instance = self.get_object()
-#         new_instance_dict = model_to_dict(new_instance)
-#
-#         # Определяем, какие поля были изменены
-#         changes = {}
-#         for field in new_instance_dict.keys():
-#             old_value = old_instance.get(field)
-#             new_value = new_instance_dict.get(field)
-#             if old_value != new_value:
-#                 changes[field] = {'old': old_value, 'new': new_value}
-#
-#         if changes:
-#             # Создаем запись в AuditEntry
-#             AuditEntry.objects.create(
-#                 object_id=instance.id,
-#                 object_name=instance.name,
-#                 table_name='case',
-#                 class_name='Case',
-#                 action='update',
-#                 fields=', '.join(changes.keys()),
-#                 data=json.dumps(changes, ensure_ascii=False, default=str),
-#                 user=user,
-#                 case=instance  # Ссылка на дело
-#             )
-#
-#         return response
-#
-#     @action(detail=False, methods=["get"])
-#     def get_by_barcode(self, request):
-#         barcode = request.query_params.get("barcode")
-#         if not barcode:
-#             return Response({"detail": "Требуется штрихкод."}, status=400)
-#
-#         user = request.user
-#
-#         # Ищем вещественное доказательство или группу по штрихкоду
-#         material_evidence = MaterialEvidence.objects.filter(barcode=barcode).first()
-#         evidence_group = EvidenceGroup.objects.filter(barcode=barcode).first()
-#
-#         # Определяем дело
-#         case = None
-#         if material_evidence:
-#             case = material_evidence.case
-#         elif evidence_group:
-#             case = evidence_group.case
-#
-#         if not case:
-#             return Response({"detail": "Дело не найдено."}, status=404)
-#
-#         # Проверяем права доступа
-#         if user.role == "REGION_HEAD" and case.department.region != user.region:
-#             raise PermissionDenied("У вас нет прав для доступа к этому делу.")
-#         elif user.role == "DEPARTMENT_HEAD" and case.department != user.department:
-#             raise PermissionDenied("У вас нет прав для доступа к этому делу.")
-#         elif (
-#                 user.role == "USER"
-#                 and case.creator != user
-#                 and case.investigator != user
-#         ):
-#             raise PermissionDenied("У вас нет прав для доступа к этому делу.")
-#
-#         # Возвращаем данные дела
-#         serializer = self.get_serializer(case)
-#         return Response(serializer.data)
 
 
 class MaterialEvidenceViewSet(viewsets.ModelViewSet):
@@ -793,20 +497,6 @@ class MaterialEvidenceViewSet(viewsets.ModelViewSet):
                 if old_value != new_value:
                     changes[field] = {'old': old_value, 'new': new_value}
 
-        # if changes:
-        #     # Создаем запись в AuditEntry
-        #     AuditEntry.objects.create(
-        #         object_id=instance.id,
-        #         object_name=instance.name,
-        #         table_name='materialevidence',
-        #         class_name='MaterialEvidence',
-        #         action='update',
-        #         fields=', '.join(changes.keys()),
-        #         data=json.dumps(changes, ensure_ascii=False, default=str),
-        #         user=user,
-        #         case=case  # Ссылка на дело
-        #     )
-
         return Response(serializer.data)
 
     def partial_update(self, request, *args, **kwargs):
@@ -893,7 +583,13 @@ class SessionViewSet(viewsets.ModelViewSet):
     queryset = Session.objects.all()
     serializer_class = SessionSerializer
     permission_classes = [IsAuthenticated]
-
+    
+    # Добавляем фильтры
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+    filterset_fields = {
+        'login': ['gte', 'lte'],  # Фильтрация по дате входа
+    }
+    
     def get_queryset(self):
         user = self.request.user
         queryset = self.queryset.select_related('user')
@@ -1050,28 +746,6 @@ def login_view(request):
         # logger.warning(f"Аутентификация не удалась для пользователя: {username}")
         return JsonResponse({"detail": "Неверные учетные данные"}, status=401)
 
-
-# @api_view(["POST"])
-# @permission_classes([AllowAny])
-# def login_view(request):
-#     username = request.data.get("username")
-#     password = request.data.get("password")
-#     # logger.info(f"Попытка входа: {username}")
-#     user = authenticate(request, username=username, password=password)
-#     if user is not None:
-#         # logger.info(f"Успешная аутентификация для пользователя: {user.username}")
-#         request.session['temp_user_id'] = user.id
-#         if user.biometric_registered:
-#             # Требуется биометрическая аутентификация через WebSocket
-#             return JsonResponse({"detail": "Требуется биометрическая аутентификация", "biometric_required": True})
-#         else:
-#             # Требуется регистрация биометрии через WebSocket
-#             return JsonResponse({"detail": "Требуется регистрация биометрии", "biometric_registration_required": True})
-#     else:
-#         # logger.warning(f"Аутентификация не удалась для пользователя: {username}")
-#         return JsonResponse({"detail": "Неверные учетные данные"}, status=401)
-
-
 @api_view(["POST"])
 def logout_view(request):
     user = request.user
@@ -1095,3 +769,14 @@ def check_auth(request):
 def current_user(request):
     serializer = UserSerializer(request.user)
     return Response(serializer.data)
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def download_certificate(request):
+    file_path = settings.CERTIFICATE_FILE_PATH
+    if os.path.exists(file_path):
+        response = FileResponse(open(file_path, 'rb'), content_type='application/x-x509-ca-cert')
+        response['Content-Disposition'] = 'attachment; filename="certificate.crt"'
+        return response
+    else:
+        return Response({'detail': 'Файл не найден.'}, status=404)

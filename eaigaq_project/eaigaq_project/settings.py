@@ -110,6 +110,8 @@ TEMPLATES = [
 # ASGI приложение для поддержки WebSocket и Channels
 ASGI_APPLICATION = 'eaigaq_project.routing.application'
 
+CERTIFICATE_FILE_PATH = '/app/server.crt'
+
 # WSGI приложение
 WSGI_APPLICATION = 'eaigaq_project.wsgi.application'
 

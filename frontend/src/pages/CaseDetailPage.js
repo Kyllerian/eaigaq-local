@@ -1,5 +1,7 @@
 // src/pages/CaseDetailPage.js
 
+// src/pages/CaseDetailPage.js
+
 import React, { useEffect, useState, useContext, useRef } from 'react';
 import axios from '../axiosConfig';
 import { useParams } from 'react-router-dom';
@@ -14,6 +16,7 @@ import {
 import {
   Close as CloseIcon,
   CheckCircle as CheckCircleIcon,
+  GetApp as GetAppIcon, // Импорт иконки для Excel
 } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
 import { AuthContext } from '../contexts/AuthContext';
@@ -29,6 +32,9 @@ import Notifyer from '../components/Notifyer';
 import { StyledButton } from '../components/ui/StyledComponents';
 import PrintButton from '../components/ui/PrintButton';
 import DialogChangeInvestigator from '../components/CaseDetailComponents/DialogChangeInvestigator';
+
+// Импорт библиотек для Excel
+import handleExportExcel from '../components/CaseDetailComponents/ExportExcelCaseDetail';
 
 const CaseDetailPage = () => {
   const { id } = useParams(); // Получаем ID дела из URL
@@ -222,25 +228,30 @@ const CaseDetailPage = () => {
           <BackButton />
           <Typography variant="h5">Детали дела</Typography>
           <Box sx={{ flexGrow: 1 }} />
-          {/* Кнопка "Экспорт" */}
+          {/* Кнопки "Экспорт PDF" и "Экспорт Excel" */}
           {canView && (
-            <PrintButton handlePrint={handlePrintReport} text={"Экспорт"} />
+            <Box sx={{ display: 'flex', gap: theme.spacing(1) }}>
+              <PrintButton handlePrint={handlePrintReport} text={"Экспорт PDF"} />
+              <StyledButton
+                onClick={() => handleExportExcel(caseItem, setSnackbar, changeLogs, InvestigatorName, canViewHistory, groups)}
+                startIcon={<GetAppIcon />}
+                sx={{ height: '40px' }}
+              >
+                <span style={{ height: '1ex', overflow: 'visible', lineHeight: '1ex', verticalAlign: 'bottom' }}>Экспорт Excel</span>
+              </StyledButton>
+            </Box>
           )}
 
           {/* Кнопка "Переназначить дело" */}
           {canChangeInvestigator && (
-
             <StyledButton
-              sx={{ mr: 2 }}
-
+              sx={{ mr: 2, ml: 2, height: '40px' }}
               onClick={handleOpenDialogChangeInvestigator}
               startIcon={<CheckCircleIcon />}
             >
-              <span style={{ height: '1ex', overflow: 'visible', lineHeight: '1ex', overflow: 'visible', verticalAlign: 'bottom' }}>{'Переназначить дело'}</span>
+              <span style={{ height: '1ex', overflow: 'visible', lineHeight: '1ex', verticalAlign: 'bottom' }}>{'Переназначить дело'}</span>
             </StyledButton>
-          )
-
-          }
+          )}
           {/* Кнопка "Активировать/Закрыть" */}
           {canEdit && (
             <Tooltip
@@ -252,6 +263,7 @@ const CaseDetailPage = () => {
                   backgroundColor: caseItem.active
                     ? theme.palette.error.main
                     : theme.palette.success.main,
+                  height: '40px',
                   '&:hover': {
                     backgroundColor: caseItem.active
                       ? theme.palette.error.dark
@@ -260,7 +272,7 @@ const CaseDetailPage = () => {
                 }}
                 startIcon={caseItem.active ? <CloseIcon /> : <CheckCircleIcon />}
               >
-                <span style={{ height: '1ex', overflow: 'visible', lineHeight: '1ex', overflow: 'visible', verticalAlign: 'bottom' }}>{caseItem.active ? 'Закрыть' : 'Активировать'}</span>
+                <span style={{ height: '1ex', overflow: 'visible', lineHeight: '1ex', verticalAlign: 'bottom' }}>{caseItem.active ? 'Закрыть' : 'Активировать'}</span>
               </StyledButton>
             </Tooltip>
           )}
@@ -305,12 +317,13 @@ const CaseDetailPage = () => {
       </Layout>
 
       {/* Компонент для печати отчета */}
-      <PrintReport reportRef={reportRef} caseItem={caseItem}
+      <PrintReport
+        reportRef={reportRef}
+        caseItem={caseItem}
         changeLogs={changeLogs}
         groups={groups}
         canViewHistory={canViewHistory}
       />
-
 
       {openDialogChangeInvestigator && (
         <DialogChangeInvestigator open={openDialogChangeInvestigator}
@@ -330,6 +343,337 @@ const CaseDetailPage = () => {
 };
 
 export default CaseDetailPage;
+
+// import React, { useEffect, useState, useContext, useRef } from 'react';
+// import axios from '../axiosConfig';
+// import { useParams } from 'react-router-dom';
+// import {
+//   Typography,
+//   Container,
+//   Box,
+//   Tabs,
+//   Tab,
+//   Tooltip,
+// } from '@mui/material';
+// import {
+//   Close as CloseIcon,
+//   CheckCircle as CheckCircleIcon,
+// } from '@mui/icons-material';
+// import { useTheme } from '@mui/material/styles';
+// import { AuthContext } from '../contexts/AuthContext';
+// import { useReactToPrint } from 'react-to-print';
+// import Layout from '../components/Layout';
+// import CaseDetailInfromation from '../components/CaseDetailComponents/Information';
+// import CaseDetailMatEvidence from '../components/CaseDetailComponents/MatEvidence';
+// import History from '../components/CaseDetailComponents/History';
+// import BackButton from '../components/Buttons/Back';
+// import PrintReport from '../components/CaseDetailComponents/PrintReport';
+// import Loading from '../components/Loading';
+// import Notifyer from '../components/Notifyer';
+// import { StyledButton } from '../components/ui/StyledComponents';
+// import PrintButton from '../components/ui/PrintButton';
+// import DialogChangeInvestigator from '../components/CaseDetailComponents/DialogChangeInvestigator';
+
+// const CaseDetailPage = () => {
+//   const { id } = useParams(); // Получаем ID дела из URL
+//   const { user } = useContext(AuthContext);
+//   const theme = useTheme();
+//   const [caseItem, setCaseItem] = useState(null);
+//   const [groups, setGroups] = useState([]);
+//   const [openDialogChangeInvestigator, setOpenDialogChangeInvestigator] = useState(false);
+//   const [InvestigatorName, setInvestigatorName] = useState(null);
+//   const [tabValue, setTabValue] = useState(0);
+//   const [snackbar, setSnackbar] = useState({
+//     open: false,
+//     message: '',
+//     severity: 'success',
+//   });
+
+//   // Реф для печати отчета
+//   const reportRef = useRef();
+
+//   // Состояние для хранения логов изменений
+//   const [changeLogs, setChangeLogs] = useState([]);
+
+//   // Состояние для предотвращения повторных запросов
+//   const [isStatusUpdating, setIsStatusUpdating] = useState(false);
+
+//   // Функция для печати отчета
+//   const handlePrintReport = useReactToPrint({
+//     contentRef: reportRef,
+//     documentTitle: `Отчет по делу ${caseItem?.name}`,
+//     pageStyle: `
+//       @media print {
+//         body {
+//           -webkit-print-color-adjust: exact;
+//         }
+//       }
+//     `,
+//   });
+
+//   // Проверяем, является ли текущий пользователь создателем или следователем дела
+//   const isCreatorOrInvestigator =
+//     user &&
+//     (user.id === caseItem?.creator || user.id === caseItem?.investigator);
+
+//   // Проверяем права просмотра
+//   const canView =
+//     isCreatorOrInvestigator ||
+//     user.role === 'DEPARTMENT_HEAD' ||
+//     user.role === 'REGION_HEAD';
+
+//   // Определяем, может ли пользователь редактировать дело
+//   const canEdit = isCreatorOrInvestigator && user.role !== 'REGION_HEAD';
+
+//   // Определяем, может ли пользователь добавлять группы
+//   const canAddGroup = isCreatorOrInvestigator && user.role !== 'REGION_HEAD';
+
+//   // Определяем, может ли пользователь видеть историю изменений
+//   const canViewHistory =
+//     (user.role === 'DEPARTMENT_HEAD' ||
+//       user.role === 'REGION_HEAD' ||
+//       isCreatorOrInvestigator) &&
+//     canView;
+
+//   const canChangeInvestigator = user.role === 'DEPARTMENT_HEAD' || user.role === 'REGION_HEAD';
+
+//   useEffect(() => {
+//     // Получаем детали дела
+//     axios
+//       .get(`/api/cases/${id}/`)
+//       .then((response) => {
+//         setCaseItem(response.data);
+
+//         // получаем следователя этого дела 
+//         axios
+//             .get(`/api/users/${response.data?.investigator}/`)
+//             .then((response) => {
+//               setInvestigatorName(response.data?.full_name);
+//             })
+//             .catch((error) => {
+//               console.error('Ошибка при получении полного имени следователя:', error);
+//               setSnackbar({
+//                 open: true,
+//                 message: 'Ошибка при загрузке дела.',
+//                 severity: 'error',
+//               });
+//             });
+//         })
+//       .catch((error) => {
+//         console.error('Ошибка при получении деталей дела:', error);
+//         setSnackbar({
+//           open: true,
+//           message: 'Ошибка при загрузке дела.',
+//           severity: 'error',
+//         });
+//       });
+
+//     // Получаем группы и связанные с ними вещественные доказательства
+//     axios
+//       .get(`/api/evidence-groups/?case=${id}`)
+//       .then((response) => {
+//         setGroups(response.data);
+//       })
+//       .catch((error) => {
+//         console.error('Ошибка при получении групп:', error);
+//         setSnackbar({
+//           open: true,
+//           message: 'Ошибка при загрузке групп.',
+//           severity: 'error',
+//         });
+//       });
+
+//     // Получаем историю изменений дела, если пользователь имеет право ее видеть
+//     if (canViewHistory) {
+//       axios
+//         .get(`/api/audit-entries/?case_id=${id}`)
+//         .then((response) => {
+//           setChangeLogs(response.data);
+//         })
+//         .catch((error) => {
+//           console.error('Ошибка при получении истории изменений:', error);
+//           setSnackbar({
+//             open: true,
+//             message: 'Ошибка при загрузке истории изменений.',
+//             severity: 'error',
+//           });
+//         });
+//     }
+//   }, [id, canViewHistory]);
+
+//   // Обработка вкладок
+//   const handleTabChange = (event, newValue) => {
+//     setTabValue(newValue);
+//   };
+
+//   // открытие/закрытие дела
+//   const handleStatusToggle = () => {
+//     const updatedStatus = !caseItem.active;
+//     axios
+//       .patch(`/api/cases/${id}/`, {
+//         active: updatedStatus,
+//       })
+//       .then((response) => {
+//         setCaseItem(response.data);
+//         setSnackbar({
+//           open: true,
+//           message: `Дело ${updatedStatus ? 'активировано' : 'закрыто'}.`,
+//           severity: 'success',
+//         });
+//       })
+//       .catch((error) => {
+//         console.error('Ошибка при изменении статуса дела:', error);
+//         setSnackbar({
+//           open: true,
+//           message: 'Ошибка при изменении статуса дела.',
+//           severity: 'error',
+//         });
+//       });
+//   };
+
+//   const handleOpenDialogChangeInvestigator = () => {
+//     setOpenDialogChangeInvestigator(true);
+//   }
+
+//   if (!caseItem) {
+//     return (
+//       <Loading />
+//     );
+//   }
+
+//   if (!canView) {
+//     return (
+//       <Container>
+//         <Typography variant="h6" color="error">
+//           У вас нет прав для просмотра этого дела.
+//         </Typography>
+//       </Container>
+//     );
+//   }
+
+//   return (
+//     <Box sx={{ backgroundColor: '#e9edf5', minHeight: '100vh' }}>
+//       {/* Основной контент */}
+//       <Layout>
+//         {/* Кнопка "Назад" и заголовок */}
+//         <Box
+//           sx={{
+//             display: 'flex',
+//             alignItems: 'center',
+//             mb: theme.spacing(2),
+//           }}
+//         >
+//           <BackButton />
+//           <Typography variant="h5">Детали дела</Typography>
+//           <Box sx={{ flexGrow: 1 }} />
+//           {/* Кнопка "Экспорт" */}
+//           {canView && (
+//             <PrintButton handlePrint={handlePrintReport} text={"Экспорт"} />
+//           )}
+
+//           {/* Кнопка "Переназначить дело" */}
+//           {canChangeInvestigator && (
+
+//             <StyledButton
+//               sx={{ mr: 2 }}
+
+//               onClick={handleOpenDialogChangeInvestigator}
+//               startIcon={<CheckCircleIcon />}
+//             >
+//               <span style={{ height: '1ex', overflow: 'visible', lineHeight: '1ex', overflow: 'visible', verticalAlign: 'bottom' }}>{'Переназначить дело'}</span>
+//             </StyledButton>
+//           )
+
+//           }
+//           {/* Кнопка "Активировать/Закрыть" */}
+//           {canEdit && (
+//             <Tooltip
+//               title={caseItem.active ? 'Закрыть дело' : 'Активировать дело'}
+//             >
+//               <StyledButton
+//                 onClick={handleStatusToggle}
+//                 sx={{
+//                   backgroundColor: caseItem.active
+//                     ? theme.palette.error.main
+//                     : theme.palette.success.main,
+//                   '&:hover': {
+//                     backgroundColor: caseItem.active
+//                       ? theme.palette.error.dark
+//                       : theme.palette.success.dark,
+//                   },
+//                 }}
+//                 startIcon={caseItem.active ? <CloseIcon /> : <CheckCircleIcon />}
+//               >
+//                 <span style={{ height: '1ex', overflow: 'visible', lineHeight: '1ex', overflow: 'visible', verticalAlign: 'bottom' }}>{caseItem.active ? 'Закрыть' : 'Активировать'}</span>
+//               </StyledButton>
+//             </Tooltip>
+//           )}
+//         </Box>
+
+//         {/* Вкладки */}
+//         <Tabs
+//           value={tabValue}
+//           onChange={handleTabChange}
+//           sx={{ marginBottom: theme.spacing(3) }}
+//           TabIndicatorProps={{ style: { backgroundColor: '#3d4785' } }}
+//           textColor="inherit"
+//         >
+//           <Tab label="Информация" value={0} />
+//           <Tab label="Вещдоки" value={1} />
+//           {canViewHistory && <Tab label="История изменений" value={2} />}
+//         </Tabs>
+
+//         {/* Вкладка "Информация" */}
+//         {tabValue === 0 && (
+//           <CaseDetailInfromation id={id} caseItem={caseItem} setSnackbar={setSnackbar} setCaseItem={setCaseItem} canEdit={canEdit} InvestigatorName={InvestigatorName} />
+//         )}
+
+//         {/* Вкладка "Вещдоки" */}
+//         {tabValue === 1 && (
+//           <CaseDetailMatEvidence
+//             id={id}
+//             canEdit={canEdit}
+//             canAddGroup={canAddGroup}
+//             groups={groups}
+//             setGroups={setGroups}
+//             setIsStatusUpdating={setIsStatusUpdating}
+//             isStatusUpdating={isStatusUpdating}
+//             setSnackbar={setSnackbar}
+//           />
+//         )}
+
+//         {/* Вкладка "История изменений" */}
+//         {canViewHistory && tabValue === 2 && (
+//           <History changeLogs={changeLogs} />
+//         )}
+//       </Layout>
+
+//       {/* Компонент для печати отчета */}
+//       <PrintReport reportRef={reportRef} caseItem={caseItem}
+//         changeLogs={changeLogs}
+//         groups={groups}
+//         canViewHistory={canViewHistory}
+//       />
+
+
+//       {openDialogChangeInvestigator && (
+//         <DialogChangeInvestigator open={openDialogChangeInvestigator}
+//           setOpenDialog={(open) => setOpenDialogChangeInvestigator(open)}
+//           user={user}
+//           caseItem={caseItem}
+//           setCaseItem={setCaseItem}
+//           setSnackbar={setSnackbar}
+//           id={id}
+//         />
+//       )}
+
+//       {/* Snackbar для уведомлений */}
+//       <Notifyer snackbarOpened={snackbar.open} setSnackbarOpen={setSnackbar} message={snackbar.message} severity={snackbar.severity} />
+//     </Box>
+//   );
+// };
+
+// export default CaseDetailPage;
 
 
 // // src/pages/CaseDetailPage.js

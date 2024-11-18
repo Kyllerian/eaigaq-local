@@ -10,7 +10,8 @@ import {
 } from '@mui/material';
 
 import { formatDate } from "../../../constants/formatDate";
-import LogoMVDKZ from "../../../assets/Logo_MVD_KZ.png";
+import LogoMVDKZ from "../../../assets/Logo_MVD_KZ.webp";
+import { TableCellWrap } from '../../ui/TableCell';
 
 export default function PrintSessionReport({ user, reportRef, exportData, exportFilters, departments, employees
 }) {
@@ -107,16 +108,16 @@ export default function PrintSessionReport({ user, reportRef, exportData, export
                             <TableBody>
                                 {exportData.map((session) => (
                                     <TableRow key={session.id}>
-                                        <TableCell>{session.user.last_name}</TableCell>
-                                        <TableCell>{session.user.first_name}</TableCell>
-                                        <TableCell>{session.user.rank}</TableCell>
-                                        <TableCell>{session.user.role_display}</TableCell>
-                                        <TableCell>{formatDate(session.login)}</TableCell>
-                                        <TableCell>
+                                        <TableCellWrap>{session.user.last_name}</TableCellWrap>
+                                        <TableCellWrap>{session.user.first_name}</TableCellWrap>
+                                        <TableCellWrap>{session.user.rank}</TableCellWrap>
+                                        <TableCellWrap>{session.user.role_display}</TableCellWrap>
+                                        <TableCellWrap>{formatDate(session.login)}</TableCellWrap>
+                                        <TableCellWrap>
                                             {session.logout
                                                 ? formatDate(session.logout)
                                                 : 'Активен'}
-                                        </TableCell>
+                                        </TableCellWrap>
                                     </TableRow>
                                 ))}
                                 {exportData.length === 0 && (

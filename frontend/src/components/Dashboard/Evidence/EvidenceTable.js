@@ -1,3 +1,4 @@
+import React, { useState, useEffect, useRef } from 'react';
 import {
     Button,
     IconButton,
@@ -9,8 +10,9 @@ import {
     TableHead,
     TableRow,
     Tooltip,
+    Box,
 } from '@mui/material';
-
+import Pagination from '@mui/material/Pagination';
 import {
     OpenInNew as OpenInNewIcon,
     Print as PrintIcon,
@@ -19,9 +21,9 @@ import { EVIDENCE_TYPES } from '../../../constants/evidenceTypes';
 import { StyledTableCell } from '../../ui/StyledComponents';
 import { useNavigate } from 'react-router-dom';
 import DialogSeenBarcode from '../../CaseDetailComponents/DialogSeenBarcode';
-import { useRef, useState } from 'react';
 import { useReactToPrint } from 'react-to-print';
-
+import { PaginationStyled } from '../../ui/PaginationUI';
+import calculateRowsPerPage from '../../../constants/calculateRowsPerPage';
 
 export default function EvidenceTable({ evidences, setSnackbar }) {
     const navigate = useNavigate();
@@ -43,9 +45,9 @@ export default function EvidenceTable({ evidences, setSnackbar }) {
             });
         }
     };
-    
+
     const handlePrintBarcode = useReactToPrint({
-        contentRef: barcodeRef,
+        content: () => barcodeRef.current,
         documentTitle: 'Штрихкод Вещдока',
         pageStyle: `
       @page {
@@ -73,11 +75,35 @@ export default function EvidenceTable({ evidences, setSnackbar }) {
     `,
     });
 
+    // Пагинация
+    const [page, setPage] = useState(1);
+    const [rowsPerPage, setRowsPerPage] = useState(10); // Начальное значение
+    const [totalPages, setTotalPages] = useState(1);
+
+    // Refs для измерения высоты
+    const tableContainerRef = useRef(null);
+    const tableRowRef = useRef(null);
+
+    const handleChangePage = (event, newPage) => {
+        setPage(newPage);
+    };
+
+    useEffect(() => {
+        calculateRowsPerPage(tableContainerRef, tableRowRef, evidences, setRowsPerPage, setTotalPages, page, setPage);
+        window.addEventListener('resize', calculateRowsPerPage(tableContainerRef, tableRowRef, evidences, setRowsPerPage, setTotalPages, page, setPage));
+        return () => {
+            window.removeEventListener('resize', calculateRowsPerPage(tableContainerRef, tableRowRef, evidences, setRowsPerPage, setTotalPages, page, setPage));
+        };
+    }, [evidences]);
+
+    // Пагинированные данные
+    const paginatedEvidences = evidences.slice((page - 1) * rowsPerPage, page * rowsPerPage);
+
     return (
         <>
-            {/* Hidden Print Component */}
+            {/* Таблица вещдоков */}
             <Paper elevation={1}>
-                <TableContainer>
+                <TableContainer ref={tableContainerRef}>
                     <Table
                         aria-label="Таблица вещдоков"
                         sx={{ tableLayout: 'fixed', minWidth: 650 }}
@@ -98,9 +124,9 @@ export default function EvidenceTable({ evidences, setSnackbar }) {
                             </TableRow>
                         </TableHead>
                         <TableBody>
-                            {evidences.length > 0 ? (
-                                evidences.map((evidence) => (
-                                    <TableRow key={evidence.id} hover>
+                            {paginatedEvidences.length > 0 ? (
+                                paginatedEvidences.map((evidence, index) => (
+                                    <TableRow key={evidence.id} hover ref={index === 0 ? tableRowRef : null}>
                                         <TableCell
                                             sx={{
                                                 whiteSpace: 'nowrap',
@@ -124,7 +150,13 @@ export default function EvidenceTable({ evidences, setSnackbar }) {
                                                 (type) => type.value === evidence.type
                                             )?.label || evidence.type}
                                         </TableCell>
-                                        <TableCell>
+                                        <TableCell
+                                            sx={{
+                                                whiteSpace: 'nowrap',
+                                                overflow: 'hidden',
+                                                textOverflow: 'ellipsis',
+                                            }}
+                                        >
                                             {evidence.case ? (
                                                 <Button
                                                     variant="text"
@@ -164,15 +196,19 @@ export default function EvidenceTable({ evidences, setSnackbar }) {
                         </TableBody>
                     </Table>
                 </TableContainer>
+                {/* Пагинация */}
+                {totalPages > 1 && (
+                    <PaginationStyled totalPages={totalPages} page={page} handleChangePage={handleChangePage} />
+                )}
             </Paper>
 
-            
             {/* Barcode Dialog */}
-            <DialogSeenBarcode open={openBarcodeDisplayDialog}
-                 setOpenBarcodeDialog={() => setOpenBarcodeDisplayDialog(false)}
-                 barcodeValueToDisplay={scannedBarcode}
-                 barcodeRef={barcodeRef}
-                 handlePrintBarcode={handlePrintBarcode}
+            <DialogSeenBarcode
+                open={openBarcodeDisplayDialog}
+                setOpenBarcodeDialog={() => setOpenBarcodeDisplayDialog(false)}
+                barcodeValueToDisplay={scannedBarcode}
+                barcodeRef={barcodeRef}
+                handlePrintBarcode={handlePrintBarcode}
             />
         </>
     );

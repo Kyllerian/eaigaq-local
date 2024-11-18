@@ -9,7 +9,7 @@ import {
     Typography,
 } from '@mui/material';
 
-import LogoMVDKZ from "../../../assets/Logo_MVD_KZ.png";
+import LogoMVDKZ from "../../../assets/Logo_MVD_KZ.webp";
 import { formatDate } from '../../../constants/formatDate';
 import { EVIDENCE_TYPES } from '../../../constants/evidenceTypes';
 import { TableCellWrap } from '../../ui/TableCell';

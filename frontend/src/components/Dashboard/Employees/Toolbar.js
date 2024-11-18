@@ -92,13 +92,14 @@ export default function EmployeesToolbar({ user, employeeSearchQuery, department
                     <StyledButton
                         onClick={handleOpenEmployeeDialog}
                         startIcon={<AddIcon />}
-                        sx={{ mr: 2 }}
+                        sx={{ mr: 2, height: '40px' }}
                     >
                         <span style={{ height: '1ex', overflow: 'visible', lineHeight: '1ex', overflow: 'visible', verticalAlign: 'bottom' }}>Добавить сотрудника</span>
                     </StyledButton>
                     <StyledButton
                         onClick={handleOpenExportDialog}
                         startIcon={<PrintIcon />}
+                        sx={{ height: '40px' }}
                     >
                         <span style={{ height: '1ex', overflow: 'visible', lineHeight: '1ex', overflow: 'visible', verticalAlign: 'bottom' }}>Экспорт отчета</span>
                     </StyledButton>
@@ -110,6 +111,7 @@ export default function EmployeesToolbar({ user, employeeSearchQuery, department
                             backgroundColor: selectedEmployee.is_active
                                 ? theme.palette.error.main
                                 : theme.palette.success.main,
+                            height: '40px',
                             '&:hover': {
                                 backgroundColor: selectedEmployee.is_active
                                     ? theme.palette.error.dark

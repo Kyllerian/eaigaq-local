@@ -52,12 +52,6 @@ export default function AffairsToolbar({ user, departments, searchQuery, handleS
                             ),
                         }}
                     />
-                    <StyledButton
-                        onClick={handleOpenBarcodeDialog}
-                        sx={{ height: '40px' }}
-                    >
-                        Сканировать штрихкод
-                    </StyledButton>
                     {user.role === 'REGION_HEAD' && (
                         <FormControl
                             sx={{ minWidth: 200 }}
@@ -84,6 +78,12 @@ export default function AffairsToolbar({ user, departments, searchQuery, handleS
                             </Select>
                         </FormControl>
                     )}
+                    <StyledButton
+                        onClick={handleOpenBarcodeDialog}
+                        sx={{ height: '40px' }}
+                    >
+                        Сканировать штрихкод
+                    </StyledButton>
                 </Box>
                 <Box
                     sx={{
@@ -98,6 +98,7 @@ export default function AffairsToolbar({ user, departments, searchQuery, handleS
                         <StyledButton
                             onClick={handleOpenCaseDialog}
                             startIcon={<AddIcon />}
+                            sx={{ height: '40px' }}
                         >
                             <span style={{ height: '1ex', overflow: 'visible', lineHeight: '1ex', overflow: 'visible', verticalAlign: 'bottom' }}>Добавить дело</span>
                         </StyledButton>
@@ -137,6 +138,7 @@ export default function AffairsToolbar({ user, departments, searchQuery, handleS
                         <StyledButton
                             onClick={handleOpenCaseDetails}
                             startIcon={<OpenInNewIcon />}
+                            sx={{ height: '40px' }}
                             disabled={!selectedCase}
                         >
                             <span style={{ height: '1ex', overflow: 'visible', lineHeight: '1ex', overflow: 'visible', verticalAlign: 'bottom' }}>Открыть дело</span>

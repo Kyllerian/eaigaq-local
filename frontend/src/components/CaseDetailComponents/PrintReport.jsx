@@ -10,12 +10,13 @@ import {
     Paper,
 } from '@mui/material';
 
-import LogoMVDKZ from '../../assets/Logo_MVD_KZ.png';
+import LogoMVDKZ from '../../assets/Logo_MVD_KZ.webp';
 import { fieldLabels } from '../../constants/fieldsLabels';
 import { EVIDENCE_TYPES } from '../../constants/evidenceTypes';
 import { evidenceStatuses } from '../../constants/evidenceStatuses';
 import { StyledTableCell } from '../ui/StyledComponents';
 import { formatDate } from '../../constants/formatDate';
+import { TableCellWrap } from '../ui/TableCell';
 
 export default function PrintReport({ caseItem, changeLogs, reportRef, groups, canViewHistory }) {
     // Получение отображаемого типа
@@ -141,42 +142,18 @@ export default function PrintReport({ caseItem, changeLogs, reportRef, groups, c
                                                 group.material_evidences.length > 0 ? (
                                                 group.material_evidences.map((evidence) => (
                                                     <TableRow key={evidence.id}>
-                                                        <TableCell
-                                                            style={{
-                                                                width: '25%',
-                                                                wordBreak: 'break-word',
-                                                                whiteSpace: 'normal',
-                                                            }}
-                                                        >
+                                                        <TableCellWrap>
                                                             {evidence.name}
-                                                        </TableCell>
-                                                        <TableCell
-                                                            style={{
-                                                                width: '25%',
-                                                                wordBreak: 'break-word',
-                                                                whiteSpace: 'normal',
-                                                            }}
-                                                        >
+                                                        </TableCellWrap>
+                                                        <TableCellWrap>
                                                             {evidence.description}
-                                                        </TableCell>
-                                                        <TableCell
-                                                            style={{
-                                                                width: '20%',
-                                                                wordBreak: 'break-word',
-                                                                whiteSpace: 'normal',
-                                                            }}
-                                                        >
-                                                            {getTypeLabel(evidence.type)} {/* Добавлено */}
-                                                        </TableCell>
-                                                        <TableCell
-                                                            style={{
-                                                                width: '30%',
-                                                                wordBreak: 'break-word',
-                                                                whiteSpace: 'normal',
-                                                            }}
-                                                        >
+                                                        </TableCellWrap>
+                                                        <TableCellWrap>
+                                                            {getTypeLabel(evidence.type)}
+                                                        </TableCellWrap>
+                                                        <TableCellWrap>
                                                             {getStatusLabel(evidence.status)}
-                                                        </TableCell>
+                                                        </TableCellWrap>
                                                     </TableRow>
                                                 ))
                                             ) : (
@@ -227,12 +204,12 @@ export default function PrintReport({ caseItem, changeLogs, reportRef, groups, c
                                     <TableBody>
                                         {changeLogs.map((log) => (
                                             <TableRow key={log.id}>
-                                                <TableCell>{formatDate(log.created)}</TableCell>
-                                                <TableCell>
+                                                <TableCellWrap>{formatDate(log.created)}</TableCellWrap>
+                                                <TableCellWrap>
                                                     {log.user ? log.user.full_name : 'Система'}
-                                                </TableCell>
-                                                <TableCell>{getActionMessage(log)}</TableCell>
-                                                <TableCell>
+                                                </TableCellWrap>
+                                                <TableCellWrap>{getActionMessage(log)}</TableCellWrap>
+                                                <TableCellWrap>
                                                     {(() => {
                                                         if (log.data && log.data.trim() !== '') {
                                                             try {
@@ -319,7 +296,7 @@ export default function PrintReport({ caseItem, changeLogs, reportRef, groups, c
                                                             return 'Нет данных об изменениях.';
                                                         }
                                                     })()}
-                                                </TableCell>
+                                                </TableCellWrap>
                                             </TableRow>
                                         ))}
                                     </TableBody>
