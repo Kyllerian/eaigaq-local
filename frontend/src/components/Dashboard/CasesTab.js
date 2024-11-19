@@ -1,20 +1,20 @@
 // src/components/CasesTab.js
 
-import { useState, useRef } from 'react';
+import {useState, useRef} from 'react';
 import axios from '../../axiosConfig';
-import { useNavigate } from 'react-router-dom';
+import {useNavigate} from 'react-router-dom';
 import AffairsToolbar from './Affairs/Toolbar';
 import AffairsTable from './Affairs/Table';
 import DialogNewAffairs from './Affairs/DialogNewAffairs';
 import DialogScanBarcode from './Affairs/DialogScanBarcode';
 
 const CasesTab = ({
-    user,
-    cases,
-    setCases,
-    departments,
-    setSnackbar,
-}) => {
+                      user,
+                      cases,
+                      setCases,
+                      departments,
+                      setSnackbar,
+                  }) => {
     const navigate = useNavigate();
     const [selectedCase, setSelectedCase] = useState(null);
     const [selectedDepartment, setSelectedDepartment] = useState('');
@@ -69,7 +69,7 @@ const CasesTab = ({
         setScannedBarcode(event.target.value);
     };
 
-    const handleBarcodeSubmit = (event) => {
+    const handleBarcodeSubmit = async (event) => {
         event.preventDefault();
 
         if (scannedBarcode.trim() === '') {
@@ -81,39 +81,28 @@ const CasesTab = ({
             return;
         }
 
-        axios
-            .get(`/api/material-evidences/?barcode=${scannedBarcode}`)
-            .then((response) => {
-                if (response.data.length > 0) {
-                    const evidence = response.data[0];
-                    if (evidence.case) {
-                        navigate(`/cases/${evidence.case.id}/`);
-                    } else {
-                        setSnackbar({
-                            open: true,
-                            message: 'Вещдок не связан с делом.',
-                            severity: 'info',
-                        });
-                    }
-                } else {
-                    setSnackbar({
-                        open: true,
-                        message: 'Вещдок не найден.',
-                        severity: 'error',
-                    });
-                }
-            })
-            .catch((error) => {
-                console.error('Ошибка при поиске вещдока по штрихкоду:', error);
-                setSnackbar({
-                    open: true,
-                    message: 'Ошибка при поиске вещдока.',
-                    severity: 'error',
-                });
-            })
-            .finally(() => {
-                handleCloseBarcodeDialog();
+        try {
+            const response = await axios.get('/api/cases/get_by_barcode/', {
+                params: {barcode: scannedBarcode},
             });
+            const caseData = response.data;
+            // Перенаправляем на страницу деталей дела
+            navigate(`/cases/${caseData.id}/`);
+        } catch (error) {
+            console.error(
+                'Ошибка при поиске дела по штрихкоду:',
+                error.response?.data || error
+            );
+            setSnackbar({
+                open: true,
+                message:
+                    error.response?.data?.detail ||
+                    'Ошибка при поиске дела по штрихкоду.',
+                severity: 'error',
+            });
+        } finally {
+            handleCloseBarcodeDialog();
+        }
     };
 
     // Обработчик изменения поиска
@@ -127,11 +116,11 @@ const CasesTab = ({
         const name = caseItem.name.toLowerCase();
         const description = caseItem.description.toLowerCase();
         const creatorName = caseItem.creator_name?.toLowerCase() || '';
-        const { id } = caseItem.department;
+        const {id} = caseItem.department;
         return ((
-            name.includes(query) ||
-            description.includes(query) ||
-            creatorName.includes(query)) && (id === selectedDepartment || selectedDepartment === '')
+                name.includes(query) ||
+                description.includes(query) ||
+                creatorName.includes(query)) && (id === selectedDepartment || selectedDepartment === '')
         );
     });
 
@@ -140,19 +129,20 @@ const CasesTab = ({
             {/* Поле поиска и кнопка штрихкода */}
             {/* Поля поиска и фильтрации */}
             <AffairsToolbar user={user}
-                departments={departments}
-                searchQuery={searchQuery}
-                handleSearchChange={handleSearchChange}
-                handleOpenBarcodeDialog={handleOpenBarcodeDialog}
-                handleDepartmentChange={handleDepartmentChange}
-                handleOpenCaseDialog={handleOpenCaseDialog}
-                selectedDepartment={selectedDepartment}
-                selectedCase={selectedCase}
-                handleOpenCaseDetails={handleOpenCaseDetails}
+                            departments={departments}
+                            searchQuery={searchQuery}
+                            handleSearchChange={handleSearchChange}
+                            handleOpenBarcodeDialog={handleOpenBarcodeDialog}
+                            handleDepartmentChange={handleDepartmentChange}
+                            handleOpenCaseDialog={handleOpenCaseDialog}
+                            selectedDepartment={selectedDepartment}
+                            selectedCase={selectedCase}
+                            handleOpenCaseDetails={handleOpenCaseDetails}
             />
 
             {/* Таблица дел */}
-            <AffairsTable user={user} cases={cases} handleCaseSelect={handleCaseSelect} selectedCase={selectedCase} filteredCases={filteredCases} />
+            <AffairsTable user={user} cases={cases} handleCaseSelect={handleCaseSelect} selectedCase={selectedCase}
+                          filteredCases={filteredCases}/>
 
             {/* Диалоги */}
             {user.role !== 'REGION_HEAD' && (
@@ -168,11 +158,11 @@ const CasesTab = ({
 
             {/* Диалог сканирования штрихкода */}
             <DialogScanBarcode openBarcodeDialog={openBarcodeDialog}
-                setOpenBarcodeDialog={setOpenBarcodeDialog}
-                barcodeInputRef={barcodeInputRef}
-                scannedBarcode={scannedBarcode}
-                handleBarcodeInputChange={handleBarcodeInputChange}
-                handleBarcodeSubmit={handleBarcodeSubmit}
+                               setOpenBarcodeDialog={setOpenBarcodeDialog}
+                               barcodeInputRef={barcodeInputRef}
+                               scannedBarcode={scannedBarcode}
+                               handleBarcodeInputChange={handleBarcodeInputChange}
+                               handleBarcodeSubmit={handleBarcodeSubmit}
             />
         </>
     );
