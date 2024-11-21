@@ -32,9 +32,6 @@ def on_user_logged_out(sender, request, user, **kwargs):
 # Signals for logging changes
 # ---------------------------
 
-# # Create a cache to store old instance data
-# from threading import local
-# _thread_locals = local()
 
 @receiver(pre_save, sender=Case)
 def store_old_case_instance(sender, instance, **kwargs):
@@ -47,41 +44,6 @@ def store_old_case_instance(sender, instance, **kwargs):
         instance._old_instance = None
 
 
-# @receiver(post_save, sender=Case)
-# def log_case_changes(sender, instance, created, **kwargs):
-#     action = 'create' if created else 'update'
-#     user = instance.creator if instance.creator else None
-#
-#     if not created:
-#         old_instance = getattr(instance, '_old_instance', None)
-#         if not old_instance:
-#             return
-#
-#         changes = {}
-#         for field in instance._meta.fields:
-#             field_name = field.name
-#             old_value = getattr(old_instance, field_name)
-#             new_value = getattr(instance, field_name)
-#             if old_value != new_value:
-#                 changes[field_name] = {'old': str(old_value), 'new': str(new_value)}
-#         if not changes:
-#             return
-#     else:
-#         # Для создания записи сохраняем все поля
-#         changes = model_to_dict(instance)
-#         changes = {k: str(v) for k, v in changes.items()}
-#
-#     AuditEntry.objects.create(
-#         object_id=instance.id,
-#         object_name=instance.name,
-#         table_name='case',
-#         class_name='Case',
-#         action=action,
-#         fields=', '.join(changes.keys()),
-#         data=json.dumps(changes, ensure_ascii=False, default=str),
-#         user=user,
-#         case=instance
-#     )
 
 
 @receiver(pre_save, sender=MaterialEvidence)

@@ -75,39 +75,6 @@ class UserSerializer(serializers.ModelSerializer):
         return user
 
 
-# class CaseSerializer(serializers.ModelSerializer):
-#     investigator = UserSerializer(read_only=False)
-#     creator_name = serializers.CharField(source='creator.get_full_name', read_only=True)
-#     department = DepartmentSerializer(read_only=True)
-#     department_id = serializers.PrimaryKeyRelatedField(
-#         queryset=Department.objects.all(),
-#         source='department',
-#         write_only=True,
-#         required=False
-#     )
-#     department_name = serializers.CharField(source='department.name', read_only=True)
-#     region_name = serializers.CharField(source='department.get_region_display', read_only=True)
-#
-#     class Meta:
-#         model = Case
-#         fields = [
-#             'id', 'name', 'description', 'active',
-#             'creator', 'creator_name', 'investigator',
-#             'department', 'department_id', 'department_name', 'created', 'updated', 'region_name'
-#         ]
-#         read_only_fields = [
-#             # 'creator', 'creator_name', 'investigator', 'department',
-#             # 'department_name', 'created', 'updated', 'region_name'
-#             'created', 'updated'
-#         ]
-#
-#     def create(self, validated_data):
-#         user = self.context['request'].user
-#         validated_data['creator'] = user
-#         validated_data['investigator'] = user
-#         validated_data['department'] = user.department
-#         return super().create(validated_data)
-
 
 class CaseSerializer(serializers.ModelSerializer):
     investigator = serializers.PrimaryKeyRelatedField(

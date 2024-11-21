@@ -12,7 +12,8 @@ import {
     Tooltip,
     Box,
 } from '@mui/material';
-import Pagination from '@mui/material/Pagination';
+import Loading from '../../Loading';
+
 import {
     OpenInNew as OpenInNewIcon,
     Print as PrintIcon,
@@ -25,7 +26,7 @@ import { useReactToPrint } from 'react-to-print';
 import { PaginationStyled } from '../../ui/PaginationUI';
 import calculateRowsPerPage from '../../../constants/calculateRowsPerPage';
 
-export default function EvidenceTable({ evidences, setSnackbar }) {
+export default function EvidenceTable({ evidences, isLoading, setSnackbar }) {
     const navigate = useNavigate();
 
     // Barcode Dialog
@@ -47,7 +48,7 @@ export default function EvidenceTable({ evidences, setSnackbar }) {
     };
 
     const handlePrintBarcode = useReactToPrint({
-        content: () => barcodeRef.current,
+        contentRef: barcodeRef,
         documentTitle: 'Штрихкод Вещдока',
         pageStyle: `
       @page {
@@ -94,7 +95,7 @@ export default function EvidenceTable({ evidences, setSnackbar }) {
         return () => {
             window.removeEventListener('resize', calculateRowsPerPage(tableContainerRef, tableRowRef, evidences, setRowsPerPage, setTotalPages, page, setPage));
         };
-    }, [evidences]);
+    }, [evidences, isLoading]);
 
     // Пагинированные данные
     const paginatedEvidences = evidences.slice((page - 1) * rowsPerPage, page * rowsPerPage);
@@ -124,75 +125,85 @@ export default function EvidenceTable({ evidences, setSnackbar }) {
                             </TableRow>
                         </TableHead>
                         <TableBody>
-                            {paginatedEvidences.length > 0 ? (
-                                paginatedEvidences.map((evidence, index) => (
-                                    <TableRow key={evidence.id} hover ref={index === 0 ? tableRowRef : null}>
-                                        <TableCell
-                                            sx={{
-                                                whiteSpace: 'nowrap',
-                                                overflow: 'hidden',
-                                                textOverflow: 'ellipsis',
-                                            }}
-                                        >
-                                            {evidence.name}
-                                        </TableCell>
-                                        <TableCell
-                                            sx={{
-                                                whiteSpace: 'nowrap',
-                                                overflow: 'hidden',
-                                                textOverflow: 'ellipsis',
-                                            }}
-                                        >
-                                            {evidence.description}
-                                        </TableCell>
-                                        <TableCell>
-                                            {EVIDENCE_TYPES.find(
-                                                (type) => type.value === evidence.type
-                                            )?.label || evidence.type}
-                                        </TableCell>
-                                        <TableCell
-                                            sx={{
-                                                whiteSpace: 'nowrap',
-                                                overflow: 'hidden',
-                                                textOverflow: 'ellipsis',
-                                            }}
-                                        >
-                                            {evidence.case ? (
-                                                <Button
-                                                    variant="text"
-                                                    color="primary"
-                                                    onClick={() =>
-                                                        navigate(`/cases/${evidence.case.id}/`)
-                                                    }
-                                                    startIcon={<OpenInNewIcon />}
-                                                >
-                                                    {evidence.case.name || 'Дело'}
-                                                </Button>
-                                            ) : (
-                                                'Не назначено'
-                                            )}
-                                        </TableCell>
-                                        <TableCell>
-                                            <Tooltip title="Печать штрихкода">
-                                                <IconButton
-                                                    color="primary"
-                                                    onClick={() =>
-                                                        handlePrintEvidenceBarcode(evidence)
-                                                    }
-                                                >
-                                                    <PrintIcon />
-                                                </IconButton>
-                                            </Tooltip>
-                                        </TableCell>
-                                    </TableRow>
-                                ))
-                            ) : (
-                                <TableRow>
-                                    <TableCell colSpan={5} align="center">
-                                        Нет результатов.
-                                    </TableCell>
-                                </TableRow>
-                            )}
+                            {isLoading ?
+                                (
+                                    <Loading />
+                                )
+                                :
+                                (
+                                    <>
+                                        {paginatedEvidences.length > 0 ? (
+                                            paginatedEvidences.map((evidence, index) => (
+                                                <TableRow key={evidence.id} hover ref={index === 0 ? tableRowRef : null}>
+                                                    <TableCell
+                                                        sx={{
+                                                            whiteSpace: 'nowrap',
+                                                            overflow: 'hidden',
+                                                            textOverflow: 'ellipsis',
+                                                        }}
+                                                    >
+                                                        {evidence.name}
+                                                    </TableCell>
+                                                    <TableCell
+                                                        sx={{
+                                                            whiteSpace: 'nowrap',
+                                                            overflow: 'hidden',
+                                                            textOverflow: 'ellipsis',
+                                                        }}
+                                                    >
+                                                        {evidence.description}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        {EVIDENCE_TYPES.find(
+                                                            (type) => type.value === evidence.type
+                                                        )?.label || evidence.type}
+                                                    </TableCell>
+                                                    <TableCell
+                                                        sx={{
+                                                            whiteSpace: 'nowrap',
+                                                            overflow: 'hidden',
+                                                            textOverflow: 'ellipsis',
+                                                        }}
+                                                    >
+                                                        {evidence.case ? (
+                                                            <Button
+                                                                variant="text"
+                                                                color="primary"
+                                                                onClick={() =>
+                                                                    navigate(`/cases/${evidence.case.id}/`)
+                                                                }
+                                                                startIcon={<OpenInNewIcon />}
+                                                            >
+                                                                {evidence.case.name || 'Дело'}
+                                                            </Button>
+                                                        ) : (
+                                                            'Не назначено'
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Tooltip title="Печать штрихкода">
+                                                            <IconButton
+                                                                color="primary"
+                                                                onClick={() =>
+                                                                    handlePrintEvidenceBarcode(evidence)
+                                                                }
+                                                            >
+                                                                <PrintIcon />
+                                                            </IconButton>
+                                                        </Tooltip>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))
+                                        ) : (
+                                            <TableRow>
+                                                <TableCell colSpan={5} align="center">
+                                                    Нет результатов.
+                                                </TableCell>
+                                            </TableRow>
+                                        )}
+                                    </>
+                                )
+                            }
                         </TableBody>
                     </Table>
                 </TableContainer>
