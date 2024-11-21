@@ -1,6 +1,8 @@
+# docker-compose.yml
 services:
   db:
     image: postgres:13
+    container_name: db
     env_file:
       - ./env/.env.db
     volumes:
@@ -15,22 +17,22 @@ services:
 
   redis:
     image: redis:latest
+    container_name: redis
     expose:
       - "6379"
-#    ports:
-#      - "6379:6379"
     networks:
       - webnet
-#    healthcheck:
-#      test: ["CMD", "redis-cli", "ping"]
-#      interval: 10s
-#      timeout: 5s
-#      retries: 5
+    # healthcheck:
+    #   test: ["CMD", "redis-cli", "ping"]
+    #   interval: 10s
+    #   timeout: 5s
+    #   retries: 5
 
   backend:
     build:
       context: .
       dockerfile: docker/Dockerfile.backend
+    container_name: backend
     env_file:
       - ./env/.env.backend
     depends_on:
@@ -38,6 +40,7 @@ services:
       - redis
     volumes:
       - static_volume:/app/staticfiles
+      - media_volume:/app/media  # 🆕 Добавляем том для медиа-файлов
     networks:
       - webnet
     expose:
@@ -60,11 +63,15 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile.backend
+    container_name: celery
     env_file:
       - ./env/.env.backend
     depends_on:
       - db
       - redis
+    volumes:
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media  # 🆕 Добавляем том для медиа-файлов
     networks:
       - webnet
     deploy:
@@ -79,26 +86,135 @@ services:
               capabilities: [ gpu ]
     runtime: nvidia
     init: true
-    command: ["celery", "-A", "eaigaq_project", "worker", "--loglevel=info","--pool=solo"]
+    command: ["celery", "-A", "eaigaq_project", "worker", "--loglevel=info", "--pool=solo"]
 
   nginx:
     build:
       context: .
       dockerfile: docker/Dockerfile.frontend
+    container_name: nginx
     depends_on:
       backend:
         condition: service_started
     ports:
       - "80:80"
       - "443:443"
-    networks:
-      - webnet
     volumes:
       - static_volume:/staticfiles
+      - media_volume:/media  # 🆕 Добавляем том для медиа-файлов
+    networks:
+      - webnet
 
 volumes:
   postgres_data:
   static_volume:
+  media_volume:  # 🆕 Объявляем том для медиа-файлов
 
 networks:
   webnet:
+
+# -------------old stable-----------------
+#services:
+#  db:
+#    image: postgres:13
+#    env_file:
+#      - ./env/.env.db
+#    volumes:
+#      - postgres_data:/var/lib/postgresql/data/
+#    networks:
+#      - webnet
+#    # healthcheck:
+#    #   test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER}"]
+#    #   interval: 10s
+#    #   timeout: 5s
+#    #   retries: 5
+#
+#  redis:
+#    image: redis:latest
+#    expose:
+#      - "6379"
+##    ports:
+##      - "6379:6379"
+#    networks:
+#      - webnet
+##    healthcheck:
+##      test: ["CMD", "redis-cli", "ping"]
+##      interval: 10s
+##      timeout: 5s
+##      retries: 5
+#
+#  backend:
+#    build:
+#      context: .
+#      dockerfile: docker/Dockerfile.backend
+#    env_file:
+#      - ./env/.env.backend
+#    depends_on:
+#      - db
+#      - redis
+#    volumes:
+#      - static_volume:/app/staticfiles
+#    networks:
+#      - webnet
+#    expose:
+#      - "8000"
+#    deploy:
+#      resources:
+#        limits:
+#          cpus: '8'
+#          memory: 8g
+#        reservations:
+#          devices:
+#            - driver: nvidia
+#              count: 1
+#              capabilities: [ gpu ]
+#    runtime: nvidia
+#    init: true
+#    command: ["daphne", "-b", "0.0.0.0", "-p", "8000", "eaigaq_project.asgi:application"]
+#
+#  celery:
+#    build:
+#      context: .
+#      dockerfile: docker/Dockerfile.backend
+#    env_file:
+#      - ./env/.env.backend
+#    depends_on:
+#      - db
+#      - redis
+#    networks:
+#      - webnet
+#    deploy:
+#      resources:
+#        limits:
+#          cpus: '8'
+#          memory: 8g
+#        reservations:
+#          devices:
+#            - driver: nvidia
+#              count: 1
+#              capabilities: [ gpu ]
+#    runtime: nvidia
+#    init: true
+#    command: ["celery", "-A", "eaigaq_project", "worker", "--loglevel=info","--pool=solo"]
+#
+#  nginx:
+#    build:
+#      context: .
+#      dockerfile: docker/Dockerfile.frontend
+#    depends_on:
+#      backend:
+#        condition: service_started
+#    ports:
+#      - "80:80"
+#      - "443:443"
+#    networks:
+#      - webnet
+#    volumes:
+#      - static_volume:/staticfiles
+#
+#volumes:
+#  postgres_data:
+#  static_volume:
+#
+#networks:
+#  webnet:

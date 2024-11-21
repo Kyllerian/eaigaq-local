@@ -43,6 +43,9 @@ COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
 # Копируем сборку React-приложения в директорию Nginx
 COPY --from=build /app/build /usr/share/nginx/html
 
+# Создаём директорию для медиа-файлов в Nginx
+RUN mkdir -p /media && chmod -R 755 /media
+
 # Открываем порт
 EXPOSE 80
 EXPOSE 443
