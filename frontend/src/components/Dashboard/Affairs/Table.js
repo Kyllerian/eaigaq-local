@@ -7,16 +7,15 @@ import {
     TableRow,
     TableBody,
     TableCell,
-    Box,
 } from '@mui/material';
-import Pagination from '@mui/material/Pagination';
 import { StyledTableCell } from '../../ui/StyledComponents';
 import { TableCellSx } from '../../ui/TableCell';
 import { formatDate } from '../../../constants/formatDate';
 import { PaginationStyled } from '../../ui/PaginationUI';
 import calculateRowsPerPage from '../../../constants/calculateRowsPerPage';
+import Loading from '../../Loading';
 
-export default function AffairsTable({ user, cases, handleCaseSelect, selectedCase, filteredCases }) {
+export default function AffairsTable({ user, isLoading, handleCaseSelect, selectedCase, filteredCases }) {
     // Состояние для пагинации
     const [page, setPage] = useState(1);
     const [rowsPerPage, setRowsPerPage] = useState(10); // Начальное значение, будет пересчитано
@@ -34,6 +33,7 @@ export default function AffairsTable({ user, cases, handleCaseSelect, selectedCa
     // Вызываем вычисление при монтировании и при изменении размеров окна
     useEffect(() => {
         calculateRowsPerPage(tableContainerRef, tableRowRef, filteredCases, setRowsPerPage, setTotalPages, page, setPage);
+        // setPage(1);
         window.addEventListener('resize', calculateRowsPerPage(tableContainerRef, tableRowRef, filteredCases, setRowsPerPage, setTotalPages, page, setPage));
         return () => {
             window.removeEventListener('resize', calculateRowsPerPage(tableContainerRef, tableRowRef, filteredCases, setRowsPerPage, setTotalPages, page, setPage));
@@ -78,46 +78,55 @@ export default function AffairsTable({ user, cases, handleCaseSelect, selectedCa
                             </TableRow>
                         </TableHead>
                         <TableBody>
-                            {paginatedCases.map((caseItem, index) => (
-                                <TableRow
-                                    key={caseItem.id}
-                                    hover
-                                    selected={selectedCase && selectedCase.id === caseItem.id}
-                                    onClick={() => handleCaseSelect(caseItem)}
-                                    style={{ cursor: 'pointer' }}
-                                    ref={index === 0 ? tableRowRef : null} // Реф на первую строку
-                                >
-                                    <TableCellSx component="th" scope="row">
-                                        {caseItem.name}
-                                    </TableCellSx>
-                                    <TableCellSx>
-                                        {caseItem.description}
-                                    </TableCellSx>
-                                    <TableCellSx>
-                                        {caseItem.creator_name}
-                                    </TableCellSx>
-                                    {user && user.role === 'REGION_HEAD' && (
-                                        <TableCellSx>
-                                            {caseItem.department_name ||
-                                                (caseItem.department && caseItem.department.name) ||
-                                                'Не указано'}
-                                        </TableCellSx>
-                                    )}
-                                    <TableCellSx>
-                                        {formatDate(caseItem.created)}
-                                    </TableCellSx>
-                                    <TableCellSx>
-                                        {formatDate(caseItem.updated)}
-                                    </TableCellSx>
-                                </TableRow>
-                            ))}
-                            {paginatedCases.length === 0 && (
-                                <TableRow>
-                                    <TableCell colSpan={user && user.role === 'REGION_HEAD' ? 4 : 3} align="center">
-                                        Нет результатов.
-                                    </TableCell>
-                                </TableRow>
-                            )}
+                            {isLoading ?
+                                (
+                                    <Loading />
+                                )
+                                :
+                                (
+                                    <>
+                                        {paginatedCases.map((caseItem, index) => (
+                                            <TableRow
+                                                key={caseItem.id}
+                                                hover
+                                                selected={selectedCase && selectedCase.id === caseItem.id}
+                                                onClick={() => handleCaseSelect(caseItem)}
+                                                style={{ cursor: 'pointer' }}
+                                                ref={index === 0 ? tableRowRef : null} // Реф на первую строку
+                                            >
+                                                <TableCellSx component="th" scope="row">
+                                                    {caseItem.name}
+                                                </TableCellSx>
+                                                <TableCellSx>
+                                                    {caseItem.description}
+                                                </TableCellSx>
+                                                <TableCellSx>
+                                                    {caseItem.creator_name}
+                                                </TableCellSx>
+                                                {user && user.role === 'REGION_HEAD' && (
+                                                    <TableCellSx>
+                                                        {caseItem.department_name ||
+                                                            (caseItem.department && caseItem.department.name) ||
+                                                            'Не указано'}
+                                                    </TableCellSx>
+                                                )}
+                                                <TableCellSx>
+                                                    {formatDate(caseItem.created)}
+                                                </TableCellSx>
+                                                <TableCellSx>
+                                                    {formatDate(caseItem.updated)}
+                                                </TableCellSx>
+                                            </TableRow>
+                                        ))}
+                                        {paginatedCases.length === 0 && (
+                                            <TableRow>
+                                                <TableCell colSpan={user && user.role === 'REGION_HEAD' ? 6 : 5} align="center">
+                                                    Нет результатов.
+                                                </TableCell>
+                                            </TableRow>
+                                        )}
+                                    </>
+                                )}
                         </TableBody>
                     </Table>
                 </TableContainer>

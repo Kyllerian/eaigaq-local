@@ -8,6 +8,9 @@ from django.utils import timezone
 import json
 from .models import Case, MaterialEvidence, AuditEntry, User
 
+from django.db.models.signals import post_save, post_delete
+from django.dispatch import receiver
+from .models import EvidenceGroup, Department
 
 @receiver(user_logged_in)
 def on_user_logged_in(sender, request, user, **kwargs):
@@ -107,3 +110,20 @@ def log_material_evidence_deletion(sender, instance, **kwargs):
         user=instance.created_by,
         case=instance.case
     )
+
+
+@receiver(post_save, sender=EvidenceGroup)
+def increment_evidence_group_count(sender, instance, created, **kwargs):
+    if created:
+        department = instance.case.department
+        department.evidence_group_count = department.evidence_group_count + 1
+        department.save()
+
+
+
+@receiver(post_delete, sender=EvidenceGroup)
+def decrement_evidence_group_count(sender, instance, **kwargs):
+    department = instance.case.department
+    if department.evidence_group_count > 0:
+        department.evidence_group_count = department.evidence_group_count - 1
+        department.save()

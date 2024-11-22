@@ -7,16 +7,16 @@ import {
     TableRow,
     TableBody,
     TableCell,
-    Box,
 } from '@mui/material';
-import Pagination from '@mui/material/Pagination';
 import { StyledTableCell } from '../../ui/StyledComponents';
 import { TableCellSx } from '../../ui/TableCell';
 import { PaginationStyled } from '../../ui/PaginationUI';
 import calculateRowsPerPage from '../../../constants/calculateRowsPerPage';
+import Loading from '../../Loading';
 
 export default function EmployeesTable({
     user,
+    isLoading,
     employees,
     selectedEmployeeDepartment,
     employeeSearchQuery,
@@ -38,6 +38,7 @@ export default function EmployeesTable({
 
     useEffect(() => {
         calculateRowsPerPage(tableContainerRef, tableRowRef, filteredEmployees, setRowsPerPage, setTotalPages, page, setPage);
+        setPage(1);
         window.addEventListener('resize', calculateRowsPerPage(tableContainerRef, tableRowRef, filteredEmployees, setRowsPerPage, setTotalPages, page, setPage));
         return () => {
             window.removeEventListener('resize', calculateRowsPerPage(tableContainerRef, tableRowRef, filteredEmployees, setRowsPerPage, setTotalPages, page, setPage));
@@ -113,50 +114,59 @@ export default function EmployeesTable({
                             </TableRow>
                         </TableHead>
                         <TableBody>
-                            {paginatedEmployees.length > 0 ? (
-                                paginatedEmployees.map((employee, index) => (
-                                    <TableRow
-                                        key={employee.id}
-                                        hover
-                                        selected={
-                                            selectedEmployee && selectedEmployee.id === employee.id
-                                        }
-                                        onClick={() => handleEmployeeSelect(employee)}
-                                        style={{ cursor: 'pointer' }}
-                                        ref={index === 0 ? tableRowRef : null}
-                                    >
-                                        <TableCellSx>
-                                            {employee.last_name}
-                                        </TableCellSx>
-                                        <TableCellSx>
-                                            {employee.first_name}
-                                        </TableCellSx>
-                                        <TableCellSx>
-                                            {employee.rank}
-                                        </TableCellSx>
-                                        <TableCellSx>
-                                            {employee.role_display}
-                                        </TableCellSx>
-                                        <TableCellSx>
-                                            {employee.email}
-                                        </TableCellSx>
-                                        <TableCellSx>
-                                            {employee.department
-                                                ? employee.department.name
-                                                : 'Не указано'}
-                                        </TableCellSx>
-                                        <TableCellSx>
-                                            {employee.is_active ? 'Активен' : 'Неактивен'}
-                                        </TableCellSx>
-                                    </TableRow>
-                                ))
-                            ) : (
-                                <TableRow>
-                                    <TableCell colSpan={7} align="center">
-                                        Нет результатов.
-                                    </TableCell>
-                                </TableRow>
-                            )}
+                            {isLoading ?
+                                (
+                                    <Loading />
+                                )
+                                :
+                                (
+                                    <>
+                                        {paginatedEmployees.length > 0 ? (
+                                            paginatedEmployees.map((employee, index) => (
+                                                <TableRow
+                                                    key={employee.id}
+                                                    hover
+                                                    selected={
+                                                        selectedEmployee && selectedEmployee.id === employee.id
+                                                    }
+                                                    onClick={() => handleEmployeeSelect(employee)}
+                                                    style={{ cursor: 'pointer' }}
+                                                    ref={index === 0 ? tableRowRef : null}
+                                                >
+                                                    <TableCellSx>
+                                                        {employee.last_name}
+                                                    </TableCellSx>
+                                                    <TableCellSx>
+                                                        {employee.first_name}
+                                                    </TableCellSx>
+                                                    <TableCellSx>
+                                                        {employee.rank}
+                                                    </TableCellSx>
+                                                    <TableCellSx>
+                                                        {employee.role_display}
+                                                    </TableCellSx>
+                                                    <TableCellSx>
+                                                        {employee.email}
+                                                    </TableCellSx>
+                                                    <TableCellSx>
+                                                        {employee.department
+                                                            ? employee.department.name
+                                                            : 'Не указано'}
+                                                    </TableCellSx>
+                                                    <TableCellSx>
+                                                        {employee.is_active ? 'Активен' : 'Неактивен'}
+                                                    </TableCellSx>
+                                                </TableRow>
+                                            ))
+                                        ) : (
+                                            <TableRow>
+                                                <TableCell colSpan={7} align="center">
+                                                    Нет результатов.
+                                                </TableCell>
+                                            </TableRow>
+                                        )}
+                                    </>
+                                )}
                         </TableBody>
                     </Table>
                 </TableContainer>

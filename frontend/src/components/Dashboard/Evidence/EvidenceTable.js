@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
     Button,
-    IconButton,
     Paper,
     Table,
     TableBody,
@@ -9,14 +8,11 @@ import {
     TableContainer,
     TableHead,
     TableRow,
-    Tooltip,
-    Box,
 } from '@mui/material';
 import Loading from '../../Loading';
 
 import {
     OpenInNew as OpenInNewIcon,
-    Print as PrintIcon,
 } from '@mui/icons-material';
 import { EVIDENCE_TYPES } from '../../../constants/evidenceTypes';
 import { StyledTableCell } from '../../ui/StyledComponents';
@@ -91,6 +87,7 @@ export default function EvidenceTable({ evidences, isLoading, setSnackbar }) {
 
     useEffect(() => {
         calculateRowsPerPage(tableContainerRef, tableRowRef, evidences, setRowsPerPage, setTotalPages, page, setPage);
+        setPage(1);
         window.addEventListener('resize', calculateRowsPerPage(tableContainerRef, tableRowRef, evidences, setRowsPerPage, setTotalPages, page, setPage));
         return () => {
             window.removeEventListener('resize', calculateRowsPerPage(tableContainerRef, tableRowRef, evidences, setRowsPerPage, setTotalPages, page, setPage));
@@ -111,17 +108,17 @@ export default function EvidenceTable({ evidences, isLoading, setSnackbar }) {
                     >
                         <TableHead>
                             <TableRow>
-                                <StyledTableCell sx={{ width: '15%' }}>
+                                <StyledTableCell sx={{ width: '25%' }}>
                                     Название ВД
                                 </StyledTableCell>
                                 <StyledTableCell sx={{ width: '35%' }}>
                                     Описание ВД
                                 </StyledTableCell>
-                                <StyledTableCell sx={{ width: '15%' }}>Тип ВД</StyledTableCell>
+                                <StyledTableCell sx={{ width: '10%' }}>Тип ВД</StyledTableCell>
                                 <StyledTableCell sx={{ width: '15%' }}>Дело</StyledTableCell>
-                                <StyledTableCell sx={{ width: '20%' }}>
+                                {/* <StyledTableCell sx={{ width: '20%' }}>
                                     Действия
-                                </StyledTableCell>
+                                </StyledTableCell> */}
                             </TableRow>
                         </TableHead>
                         <TableBody>
@@ -172,6 +169,11 @@ export default function EvidenceTable({ evidences, isLoading, setSnackbar }) {
                                                                 onClick={() =>
                                                                     navigate(`/cases/${evidence.case.id}/`)
                                                                 }
+                                                                sx={{
+                                                                    whiteSpace: 'nowrap',
+                                                                    overflow: 'hidden',
+                                                                    textOverflow: 'ellipsis',
+                                                                }}
                                                                 startIcon={<OpenInNewIcon />}
                                                             >
                                                                 {evidence.case.name || 'Дело'}
@@ -180,7 +182,7 @@ export default function EvidenceTable({ evidences, isLoading, setSnackbar }) {
                                                             'Не назначено'
                                                         )}
                                                     </TableCell>
-                                                    <TableCell>
+                                                    {/* <TableCell>
                                                         <Tooltip title="Печать штрихкода">
                                                             <IconButton
                                                                 color="primary"
@@ -191,12 +193,12 @@ export default function EvidenceTable({ evidences, isLoading, setSnackbar }) {
                                                                 <PrintIcon />
                                                             </IconButton>
                                                         </Tooltip>
-                                                    </TableCell>
+                                                    </TableCell> */}
                                                 </TableRow>
                                             ))
                                         ) : (
                                             <TableRow>
-                                                <TableCell colSpan={5} align="center">
+                                                <TableCell colSpan={4} align="center">
                                                     Нет результатов.
                                                 </TableCell>
                                             </TableRow>

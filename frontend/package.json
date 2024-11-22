@@ -23,7 +23,8 @@
     "jspdf": "^2.5.2",
     "svg-to-dataurl": "^1.0.0",
     "jsbarcode": "^3.11.6",
-    "react-to-print": "^3.0.1"
+    "react-to-print": "^3.0.1",
+    "react-dropzone": "^14.3.5"
   },
   "scripts": {
     "start": "react-scripts start",

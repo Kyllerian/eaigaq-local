@@ -5,6 +5,8 @@ import { evidenceStatuses } from '../../constants/evidenceStatuses';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { formatDate } from '../../constants/formatDate'; // Убедитесь, что путь корректен
+import getStatusLabel from '../../constants/getStatusLabel';
+import getActionMessage from '../../constants/getActionMessage';
 
 export default async function handleExportExcel(caseItem, setSnackbar, changeLogs, InvestigatorName, canViewHistory, groups) {
     if (!caseItem) {
@@ -249,32 +251,4 @@ export default async function handleExportExcel(caseItem, setSnackbar, changeLog
 const getTypeLabel = (value) => {
     const type = EVIDENCE_TYPES.find((type) => type.value === value);
     return type ? type.label : value;
-};
-
-// Получение отображаемого статуса
-const getStatusLabel = (value) => {
-    const status = evidenceStatuses.find((status) => status.value === value);
-    return status ? status.label : value;
-};
-
-// Получение сообщения действия
-const getActionMessage = (log) => {
-    if (log.class_name === 'Case' && log.action === 'create') {
-        return 'Создание дела';
-    } else if (log.class_name === 'Case' && log.action === 'update') {
-        return 'Изменение данных дела';
-    } else if (
-        log.class_name === 'MaterialEvidence' &&
-        log.action === 'create'
-    ) {
-        return `Добавлено вещественное доказательство: ${log.object_name || ''}`;
-    } else if (
-        log.class_name === 'MaterialEvidence' &&
-        log.action === 'update'
-    ) {
-        return `Изменение статуса вещественного доказательства: ${log.object_name || ''}`;
-    } else {
-        // Другие случаи
-        return `${log.class_name_display} - ${log.action}`;
-    }
 };

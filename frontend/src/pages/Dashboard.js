@@ -21,7 +21,6 @@ const Dashboard = () => {
   const { user } = useContext(AuthContext);
   const theme = useTheme();
 
-  const [cases, setCases] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [error, setError] = useState(null);
@@ -37,21 +36,8 @@ const Dashboard = () => {
     setTabValue(newValue);
   };
 
-  // Fetch Cases
-  const fetchCases = () => {
-    axios
-      .get('/api/cases/')
-      .then((response) => {
-        setCases(response.data);
-      })
-      .catch((error) => {
-        setError('Ошибка при загрузке дел.');
-      });
-  };
-
   useEffect(() => {
     if (!user) return;
-    fetchCases();
 
     if (user.role === 'DEPARTMENT_HEAD') {
       axios
@@ -123,10 +109,7 @@ const Dashboard = () => {
             <>
               <CasesTab
                 user={user}
-                cases={cases}
-                setCases={setCases}
                 departments={departments}
-                fetchCases={fetchCases}
                 snackbar={snackbar}
                 setSnackbar={setSnackbar}
                 setError={setError}

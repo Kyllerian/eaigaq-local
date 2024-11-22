@@ -41,7 +41,7 @@ class Department(models.Model):
         choices=Region.choices,
         default=Region.ASTANA
     )
-
+    evidence_group_count = models.IntegerField(_('Количество групп вещдоков'), default=0)
     def __str__(self):
         return f"{self.name} ({self.get_region_display()})"
 
@@ -151,6 +151,7 @@ class MaterialEvidenceStatus(models.TextChoices):
 
 class EvidenceGroup(models.Model):
     name = models.CharField(_('Название группы'), max_length=255)
+    storage_place = models.CharField(_('Место хранения'), max_length=64, blank=True, null=True)
     case = models.ForeignKey(
         Case, on_delete=models.CASCADE, related_name='evidence_groups', verbose_name=_('Дело')
     )

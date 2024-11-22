@@ -1,6 +1,5 @@
 // src/pages/CaseDetailPage.js
 
-// src/pages/CaseDetailPage.js
 
 import React, { useEffect, useState, useContext, useRef } from 'react';
 import axios from '../axiosConfig';
@@ -307,6 +306,7 @@ const CaseDetailPage = () => {
             setIsStatusUpdating={setIsStatusUpdating}
             isStatusUpdating={isStatusUpdating}
             setSnackbar={setSnackbar}
+            caseItem={caseItem}
           />
         )}
 

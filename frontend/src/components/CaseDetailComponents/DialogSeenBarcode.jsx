@@ -1,3 +1,6 @@
+// frontend/src/components/CaseDetailComponents/DialogSeenBarcode.jsx
+
+import React from 'react';
 import {
   Button,
   Dialog,
@@ -5,14 +8,22 @@ import {
   DialogContent,
   DialogActions,
 } from '@mui/material';
-
 import { useTheme } from '@mui/material/styles';
-
 import Barcode from 'react-barcode';
 import { StyledButton } from '../ui/StyledComponents';
 
-export default function DialogSeenBarcode({ open, setOpenBarcodeDialog, barcodeValueToDisplay, barcodeRef, handlePrintBarcode }) {
+export default function DialogSeenBarcode({
+  open,
+  setOpenBarcodeDialog,
+  barcodeValueToDisplay,
+  barcodeRef,
+  handlePrintBarcode,
+  groupName,
+}) {
   const theme = useTheme();
+
+  // Extract group number from groupName (e.g., from "Группа3" extract "3")
+  const groupNumber = groupName ? groupName.replace(/^\D+/g, '') : '';
 
   return (
     <>
@@ -31,13 +42,38 @@ export default function DialogSeenBarcode({ open, setOpenBarcodeDialog, barcodeV
         >
           {barcodeValueToDisplay && (
             <div id="barcode-container" ref={barcodeRef}>
-              <div id="barcode">
+              <div
+                id="barcode-wrapper"
+                style={{
+                  position: 'relative',
+                  display: 'inline-block',
+                }}
+              >
                 <Barcode
                   value={barcodeValueToDisplay}
                   format="EAN13"
                   displayValue={false}
                   margin={0}
                 />
+                {/* Hidden in dialog, shown when printing */}
+                <div
+                  id="left-text"
+                  style={{
+                    position: 'absolute',
+                    display: 'none',
+                  }}
+                >
+                  Группа
+                </div>
+                <div
+                  id="right-text"
+                  style={{
+                    position: 'absolute',
+                    display: 'none',
+                  }}
+                >
+                  {groupNumber}
+                </div>
               </div>
             </div>
           )}
@@ -50,3 +86,125 @@ export default function DialogSeenBarcode({ open, setOpenBarcodeDialog, barcodeV
     </>
   );
 }
+
+
+// // frontend/src/components/CaseDetailComponents/DialogSeenBarcode.jsx
+//
+// import React from 'react';
+// import {
+//   Button,
+//   Dialog,
+//   DialogTitle,
+//   DialogContent,
+//   DialogActions,
+// } from '@mui/material';
+// import { useTheme } from '@mui/material/styles';
+// import Barcode from 'react-barcode';
+// import { StyledButton } from '../ui/StyledComponents';
+//
+// export default function DialogSeenBarcode({
+//   open,
+//   setOpenBarcodeDialog,
+//   barcodeValueToDisplay,
+//   barcodeRef,
+//   handlePrintBarcode,
+//   groupName,
+// }) {
+//   const theme = useTheme();
+//
+//
+//   return (
+//     <>
+//       <Dialog
+//         open={open}
+//         onClose={() => setOpenBarcodeDialog(false)}
+//         maxWidth="xs"
+//         fullWidth
+//       >
+//         <DialogTitle>Штрихкод</DialogTitle>
+//         <DialogContent
+//           sx={{
+//             textAlign: 'center',
+//             padding: theme.spacing(2),
+//           }}
+//         >
+//           {barcodeValueToDisplay && (
+//             <div id="barcode-container" ref={barcodeRef}>
+//               <div id="barcode">
+//                 <Barcode
+//                   value={barcodeValueToDisplay}
+//                   format="EAN13"
+//                   displayValue={false}
+//                   margin={0}
+//                 />
+//               </div>
+//               <div id="group-name" style={{ display: 'none' }}>
+//                 {groupName}
+//               </div>
+//             </div>
+//           )}
+//         </DialogContent>
+//         <DialogActions>
+//           <Button onClick={() => setOpenBarcodeDialog(false)}>Закрыть</Button>
+//           <StyledButton onClick={handlePrintBarcode}>Печать</StyledButton>
+//         </DialogActions>
+//       </Dialog>
+//     </>
+//   );
+// }
+
+
+//----------------------
+// // frontend/src/components/CaseDetailComponents/DialogSeenBarcode.jsx
+// import {
+//   Button,
+//   Dialog,
+//   DialogTitle,
+//   DialogContent,
+//   DialogActions,
+// } from '@mui/material';
+//
+// import { useTheme } from '@mui/material/styles';
+//
+// import Barcode from 'react-barcode';
+// import { StyledButton } from '../ui/StyledComponents';
+//
+// export default function DialogSeenBarcode({ open, setOpenBarcodeDialog, barcodeValueToDisplay, barcodeRef, handlePrintBarcode }) {
+//   const theme = useTheme();
+//
+//   return (
+//     <>
+//       <Dialog
+//         open={open}
+//         onClose={() => setOpenBarcodeDialog(false)}
+//         maxWidth="xs"
+//         fullWidth
+//       >
+//         <DialogTitle>Штрихкод</DialogTitle>
+//         <DialogContent
+//           sx={{
+//             textAlign: 'center',
+//             padding: theme.spacing(2),
+//           }}
+//         >
+//           {barcodeValueToDisplay && (
+//             <div id="barcode-container" ref={barcodeRef}>
+//               <div id="barcode">
+//                 <Barcode
+//                   value={barcodeValueToDisplay}
+//                   format="EAN13"
+//                   displayValue={false}
+//                   margin={0}
+//                 />
+//               </div>
+//             </div>
+//           )}
+//         </DialogContent>
+//         <DialogActions>
+//           <Button onClick={() => setOpenBarcodeDialog(false)}>Закрыть</Button>
+//           <StyledButton onClick={handlePrintBarcode}>Печать</StyledButton>
+//         </DialogActions>
+//       </Dialog>
+//     </>
+//   );
+// }

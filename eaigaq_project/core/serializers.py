@@ -6,13 +6,14 @@ from .models import (
     Session, Camera, AuditEntry, EvidenceGroup, FaceEncoding, Region, Document
 )
 
-
 class DepartmentSerializer(serializers.ModelSerializer):
     region_display = serializers.CharField(source='get_region_display', read_only=True)
+    evidence_group_count = serializers.IntegerField(read_only=True)  # Добавлено поле
 
     class Meta:
         model = Department
-        fields = ['id', 'name', 'region', 'region_display']
+        fields = ['id', 'name', 'region', 'region_display', 'evidence_group_count']  # Добавили evidence_group_count
+
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -163,11 +164,20 @@ class DocumentSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'uploaded_at', 'uploaded_by', 'case', 'material_evidence']
 
+    # def validate(self, attrs):
+    #     case = attrs.get('case', None)
+    #     material_evidence = attrs.get('material_evidence', None)
+    #     if not case and not material_evidence:
+    #         raise serializers.ValidationError("Документ должен быть связан либо с делом, либо с вещественным доказательством.")
+    #     return attrs
+
     def validate(self, attrs):
-        case = attrs.get('case', None)
-        material_evidence = attrs.get('material_evidence', None)
+        # При обновлении проверяем, есть ли уже связанные объекты
+        case = attrs.get('case', self.instance.case if self.instance else None)
+        material_evidence = attrs.get('material_evidence', self.instance.material_evidence if self.instance else None)
         if not case and not material_evidence:
-            raise serializers.ValidationError("Документ должен быть связан либо с делом, либо с вещественным доказательством.")
+            raise serializers.ValidationError(
+                "Документ должен быть связан либо с делом, либо с вещественным доказательством.")
         return attrs
 
     def create(self, validated_data):
@@ -213,7 +223,7 @@ class EvidenceGroupSerializer(serializers.ModelSerializer):
     class Meta:
         model = EvidenceGroup
         fields = [
-            'id', 'name', 'case', 'created_by',
+            'id', 'name', 'storage_place', 'case', 'created_by',
             'created', 'updated', 'active', 'material_evidences', 'barcode'
         ]
         read_only_fields = ['created_by', 'created', 'updated', 'material_evidences', 'barcode']
@@ -329,7 +339,7 @@ class NestedEvidenceGroupSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = EvidenceGroup
-        fields = ['id', 'name', 'barcode', 'material_evidences']
+        fields = ['id', 'name', 'storage_place', 'barcode', 'material_evidences']
 
 
 class CaseDetailSerializer(serializers.ModelSerializer):

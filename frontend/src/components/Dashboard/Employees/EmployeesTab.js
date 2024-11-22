@@ -1,6 +1,6 @@
 // src/components/EmployeesTab.js
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from '../../../axiosConfig';
 import EmployeesToolbar from './Toolbar';
 import EmpolyeesTable from './Table';
@@ -18,7 +18,7 @@ const EmployeesTab = ({
     const [selectedEmployeeDepartment, setSelectedEmployeeDepartment] = useState('');
     const [selectedEmployee, setSelectedEmployee] = useState(null);
     const [openEmployeeDialog, setOpenEmployeeDialog] = useState(false);
-
+    const [isLoading, setIsLoading] = useState(true);
     const [openExportDialog, setOpenExportDialog] = useState(false);
 
     const handleEmployeeSearchChange = (event) => {
@@ -41,6 +41,11 @@ const EmployeesTab = ({
         setOpenEmployeeDialog(true);
     };
 
+    useEffect(() => {
+        if (!employees) return;
+        setIsLoading(false)
+    }, [employees]);
+
     const handleToggleActive = () => {
         if (selectedEmployee.id === user.id) {
             setSnackbar({
@@ -61,7 +66,6 @@ const EmployeesTab = ({
                     emp.id === selectedEmployee.id ? response.data : emp
                 );
                 setEmployees(updatedEmployees); // Теперь эта функция определена
-
                 setSnackbar({
                     open: true,
                     message: 'Статус сотрудника изменен.',
@@ -99,7 +103,7 @@ const EmployeesTab = ({
             />
 
             {/* Employees Table */}
-            <EmpolyeesTable user={user} employees={employees}
+            <EmpolyeesTable user={user} employees={employees} isLoading={isLoading}
                 selectedEmployeeDepartment={selectedEmployeeDepartment}
                 employeeSearchQuery={employeeSearchQuery}
                 selectedEmployee={selectedEmployee}
@@ -114,11 +118,11 @@ const EmployeesTab = ({
                 setOpenEmployeeDialog={setOpenEmployeeDialog}
                 setSnackbar={setSnackbar}
                 setEmployees={setEmployees}
-                employees={employees} 
+                employees={employees}
             />
 
             {/* Export Dialog */}
-            <DialogExportEmpolyees 
+            <DialogExportEmpolyees
                 user={user}
                 departments={departments}
                 employees={employees}

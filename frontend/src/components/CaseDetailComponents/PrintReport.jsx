@@ -17,6 +17,7 @@ import { evidenceStatuses } from '../../constants/evidenceStatuses';
 import { StyledTableCell } from '../ui/StyledComponents';
 import { formatDate } from '../../constants/formatDate';
 import { TableCellWrap } from '../ui/TableCell';
+import { TableHistoryChanges } from './TableHistoryChanges';
 
 export default function PrintReport({ caseItem, changeLogs, reportRef, groups, canViewHistory }) {
     // Получение отображаемого типа
@@ -36,17 +37,12 @@ export default function PrintReport({ caseItem, changeLogs, reportRef, groups, c
             return 'Создание дела';
         } else if (log.class_name === 'Case' && log.action === 'update') {
             return 'Изменение данных дела';
-        } else if (
-            log.class_name === 'MaterialEvidence' &&
-            log.action === 'create'
-        ) {
+        } else if (log.class_name === 'MaterialEvidence' && log.action === 'create') {
             return `Добавлено вещественное доказательство: ${log.object_name || ''}`;
-        } else if (
-            log.class_name === 'MaterialEvidence' &&
-            log.action === 'update'
-        ) {
-            return `Изменение статуса вещественного доказательства: ${log.object_name || ''
-                }`;
+        } else if (log.class_name === 'MaterialEvidence' && log.action === 'update') {
+            return `Изменение статуса вещественного доказательства: ${log.object_name || ''}`;
+        } else if (log.class_name === 'Document' && log.action === 'create') {
+            return `Добавлен файл: ${log.object_name || ''}`;
         } else {
             // Другие случаи
             return `${log.class_name_display} - ${log.action}`;
@@ -185,7 +181,8 @@ export default function PrintReport({ caseItem, changeLogs, reportRef, groups, c
                                 component={Paper}
                                 style={{ boxShadow: 'none' }}
                             >
-                                <Table
+                                <TableHistoryChanges style={{ tableLayout: 'fixed', width: '100%', fontSize: '12px', }} changeLogs={changeLogs} />
+                                {/* <Table
                                     aria-label="Таблица истории изменений"
                                     style={{
                                         tableLayout: 'fixed',
@@ -300,7 +297,7 @@ export default function PrintReport({ caseItem, changeLogs, reportRef, groups, c
                                             </TableRow>
                                         ))}
                                     </TableBody>
-                                </Table>
+                                </Table> */}
                             </TableContainer>
                         </div>
                     )}

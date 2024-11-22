@@ -10,7 +10,7 @@ from django.conf import settings
 
 from rest_framework import viewsets, filters
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework.parsers import MultiPartParser, FormParser  # Добавлено для обработки файлов
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser  # Добавлено для обработки файлов
 
 import json
 
@@ -162,6 +162,9 @@ class UserViewSet(viewsets.ModelViewSet):
 class DepartmentViewSet(viewsets.ModelViewSet):
     queryset = Department.objects.all()
     serializer_class = DepartmentSerializer
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ['region', 'evidence_group_count']
+    ordering_fields = ['evidence_group_count']
 
     def get_permissions(self):
         user = self.request.user
@@ -191,6 +194,40 @@ class DepartmentViewSet(viewsets.ModelViewSet):
             self.permission_denied(
                 self.request, message="Недостаточно прав для создания отделения"
             )
+
+
+# class DepartmentViewSet(viewsets.ModelViewSet):
+#     queryset = Department.objects.all()
+#     serializer_class = DepartmentSerializer
+#
+#     def get_permissions(self):
+#         user = self.request.user
+#         if user.role == "REGION_HEAD":
+#             permission_classes = [IsAuthenticated, IsRegionHead]
+#         else:
+#             permission_classes = [IsAuthenticated]
+#         return [permission() for permission in permission_classes]
+#
+#     def get_queryset(self):
+#         user = self.request.user
+#         if user.role == "REGION_HEAD":
+#             # Видит все отделения в своем регионе
+#             return Department.objects.filter(region=user.region)
+#         else:
+#             # Обычные пользователи не имеют доступа
+#             self.permission_denied(
+#                 self.request, message="Недостаточно прав для доступа к отделениям"
+#             )
+#
+#     def perform_create(self, serializer):
+#         user = self.request.user
+#         if user.role == "REGION_HEAD":
+#             # Может создавать отделения в своем регионе
+#             serializer.save(region=user.region)
+#         else:
+#             self.permission_denied(
+#                 self.request, message="Недостаточно прав для создания отделения"
+#             )
 
 
 class CaseViewSet(viewsets.ModelViewSet):
@@ -717,7 +754,7 @@ class DocumentViewSet(viewsets.ModelViewSet):
     queryset = Document.objects.all()
     serializer_class = DocumentSerializer
     permission_classes = [IsAuthenticated]
-    parser_classes = (MultiPartParser, FormParser)  # Необходимо для обработки загрузки файлов
+    parser_classes = (MultiPartParser, FormParser, JSONParser)  # Необходимо для обработки загрузки файлов
 
     def get_queryset(self):
         user = self.request.user
@@ -855,101 +892,51 @@ class DocumentViewSet(viewsets.ModelViewSet):
             case=case
         )
 
-# class DocumentViewSet(viewsets.ModelViewSet):
-#     queryset = Document.objects.all()
-#     serializer_class = DocumentSerializer
-#     permission_classes = [IsAuthenticated]
-#     parser_classes = (MultiPartParser, FormParser)  # Необходимо для обработки загрузки файлов
-#
-#     def get_queryset(self):
-#         user = self.request.user
-#         queryset = super().get_queryset()
-#
-#         # Фильтрация документов на основе роли пользователя
-#         if user.role == "REGION_HEAD":
-#             # Главный по региону видит документы в своём регионе
-#             queryset = queryset.filter(
-#                 Q(case__department__region=user.region) |
-#                 Q(material_evidence__case__department__region=user.region)
-#             )
-#         elif user.role == "DEPARTMENT_HEAD":
-#             # Главный по отделению видит документы в своём отделении
-#             queryset = queryset.filter(
-#                 Q(case__department=user.department) |
-#                 Q(material_evidence__case__department=user.department)
-#             )
-#         else:
-#             # Обычный пользователь видит документы, связанные с делами, где он является создателем или следователем
-#             queryset = queryset.filter(
-#                 Q(case__creator=user) |
-#                 Q(case__investigator=user) |
-#                 Q(material_evidence__case__creator=user) |
-#                 Q(material_evidence__case__investigator=user)
-#             )
-#
-#         # Добавляем возможность фильтрации по 'case_id' или 'material_evidence_id'
-#         case_id = self.request.query_params.get('case_id')
-#         material_evidence_id = self.request.query_params.get('material_evidence_id')
-#
-#         if case_id:
-#             queryset = queryset.filter(case_id=case_id)
-#         if material_evidence_id:
-#             queryset = queryset.filter(material_evidence_id=material_evidence_id)
-#
-#         return queryset
-#
-#     def perform_create(self, serializer):
-#         user = self.request.user
-#         case = serializer.validated_data.get('case', None)
-#         material_evidence = serializer.validated_data.get('material_evidence', None)
-#
-#         if not case and not material_evidence:
-#             raise ValidationError("Документ должен быть связан либо с делом, либо с вещественным доказательством.")
-#
-#         # Проверка прав доступа
-#         if case:
-#             if user.role == "REGION_HEAD":
-#                 if case.department.region != user.region:
-#                     raise PermissionDenied("Вы не можете добавлять документы к этому делу.")
-#             elif user.role == "DEPARTMENT_HEAD":
-#                 if case.department != user.department:
-#                     raise PermissionDenied("Вы не можете добавлять документы к этому делу.")
-#             else:
-#                 if case.creator != user and case.investigator != user:
-#                     raise PermissionDenied("Вы не можете добавлять документы к этому делу.")
-#         elif material_evidence:
-#             case = material_evidence.case
-#             if user.role == "REGION_HEAD":
-#                 if case.department.region != user.region:
-#                     raise PermissionDenied("Вы не можете добавлять документы к этому вещественному доказательству.")
-#             elif user.role == "DEPARTMENT_HEAD":
-#                 if case.department != user.department:
-#                     raise PermissionDenied("Вы не можете добавлять документы к этому вещественному доказательству.")
-#             else:
-#                 if case.creator != user and case.investigator != user:
-#                     raise PermissionDenied("Вы не можете добавлять документы к этому вещественному доказательству.")
-#
-#         serializer.save(uploaded_by=user)
-#
-#     def perform_destroy(self, instance):
-#         user = self.request.user
-#         case = instance.case or instance.material_evidence.case
-#
-#         # Проверка прав на удаление документа
-#         if user.role == "REGION_HEAD":
-#             if case.department.region != user.region:
-#                 raise PermissionDenied("Вы не можете удалять документы в этом деле.")
-#         elif user.role == "DEPARTMENT_HEAD":
-#             if case.department != user.department:
-#                 raise PermissionDenied("Вы не можете удалять документы в этом деле.")
-#         else:
-#             if case.creator != user and case.investigator != user:
-#                 raise PermissionDenied("Вы не можете удалять документы в этом деле.")
-#
-#         # Удаляем файл с диска при удалении объекта
-#         if instance.file:
-#             instance.file.delete(save=False)
-#         super().perform_destroy(instance)
+    def update(self, request, *args, **kwargs):
+        user = request.user
+        instance = self.get_object()
+
+        # Проверка прав доступа
+        case = instance.case or instance.material_evidence.case
+
+        if user.role == "REGION_HEAD":
+            if case.department.region != user.region:
+                raise PermissionDenied("Вы не можете изменять документы в этом деле.")
+        elif user.role == "DEPARTMENT_HEAD":
+            if case.department != user.department:
+                raise PermissionDenied("Вы не можете изменять документы в этом деле.")
+        else:
+            if case.creator != user and case.investigator != user:
+                raise PermissionDenied("Вы не можете изменять документы в этом деле.")
+
+        # Обновление объекта
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+
+        # # Подготовка данных для логирования
+        # validated_data = serializer.validated_data
+        # serializable_data = {}
+        # for key, value in validated_data.items():
+        #     if isinstance(value, models.Model):
+        #         serializable_data[key] = value.id
+        #     else:
+        #         serializable_data[key] = value
+        #
+        # # Логирование изменений
+        # AuditEntry.objects.create(
+        #     object_id=instance.id,
+        #     object_name=instance.description or instance.file.name,
+        #     table_name='document',
+        #     class_name='Document',
+        #     action='update',
+        #     fields=', '.join(serializer.validated_data.keys()),
+        #     data=json.dumps(serializable_data, ensure_ascii=False),
+        #     user=user,
+        #     case=case
+        # )
+
+        return Response(serializer.data)
 
 
 # ---------------------------

@@ -1,24 +1,26 @@
 // src/components/CasesTab.js
 
-import {useState, useRef} from 'react';
+import { useState, useRef, useEffect } from 'react';
 import axios from '../../axiosConfig';
-import {useNavigate} from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import AffairsToolbar from './Affairs/Toolbar';
 import AffairsTable from './Affairs/Table';
 import DialogNewAffairs from './Affairs/DialogNewAffairs';
 import DialogScanBarcode from './Affairs/DialogScanBarcode';
 
 const CasesTab = ({
-                      user,
-                      cases,
-                      setCases,
-                      departments,
-                      setSnackbar,
-                  }) => {
+    user,
+    departments,
+    setSnackbar,
+    setError
+}) => {
+
+    const [cases, setCases] = useState([]);
     const navigate = useNavigate();
     const [selectedCase, setSelectedCase] = useState(null);
     const [selectedDepartment, setSelectedDepartment] = useState('');
     const [openCaseDialog, setOpenCaseDialog] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
 
     // Обработка выбора отделения для фильтрации
     const handleDepartmentChange = (event) => {
@@ -32,6 +34,26 @@ const CasesTab = ({
     const [openBarcodeDialog, setOpenBarcodeDialog] = useState(false);
     const [scannedBarcode, setScannedBarcode] = useState('');
     const barcodeInputRef = useRef();
+
+
+    // Fetch Cases
+    const fetchCases = () => {
+        axios
+            .get('/api/cases/')
+            .then((response) => {
+                setCases(response.data);
+                setIsLoading(false);
+            })
+            .catch((error) => {
+                setError('Ошибка при загрузке дел.');
+            });
+    };
+
+    useEffect(() => {
+        if (!user) return;
+        fetchCases();
+    }, [user]);
+
 
     const handleCaseSelect = (caseItem) => {
         if (selectedCase && selectedCase.id === caseItem.id) {
@@ -83,7 +105,7 @@ const CasesTab = ({
 
         try {
             const response = await axios.get('/api/cases/get_by_barcode/', {
-                params: {barcode: scannedBarcode},
+                params: { barcode: scannedBarcode },
             });
             const caseData = response.data;
             // Перенаправляем на страницу деталей дела
@@ -116,11 +138,11 @@ const CasesTab = ({
         const name = caseItem.name.toLowerCase();
         const description = caseItem.description.toLowerCase();
         const creatorName = caseItem.creator_name?.toLowerCase() || '';
-        const {id} = caseItem.department;
+        const { id } = caseItem.department;
         return ((
-                name.includes(query) ||
-                description.includes(query) ||
-                creatorName.includes(query)) && (id === selectedDepartment || selectedDepartment === '')
+            name.includes(query) ||
+            description.includes(query) ||
+            creatorName.includes(query)) && (id === selectedDepartment || selectedDepartment === '')
         );
     });
 
@@ -129,20 +151,20 @@ const CasesTab = ({
             {/* Поле поиска и кнопка штрихкода */}
             {/* Поля поиска и фильтрации */}
             <AffairsToolbar user={user}
-                            departments={departments}
-                            searchQuery={searchQuery}
-                            handleSearchChange={handleSearchChange}
-                            handleOpenBarcodeDialog={handleOpenBarcodeDialog}
-                            handleDepartmentChange={handleDepartmentChange}
-                            handleOpenCaseDialog={handleOpenCaseDialog}
-                            selectedDepartment={selectedDepartment}
-                            selectedCase={selectedCase}
-                            handleOpenCaseDetails={handleOpenCaseDetails}
+                departments={departments}
+                searchQuery={searchQuery}
+                handleSearchChange={handleSearchChange}
+                handleOpenBarcodeDialog={handleOpenBarcodeDialog}
+                handleDepartmentChange={handleDepartmentChange}
+                handleOpenCaseDialog={handleOpenCaseDialog}
+                selectedDepartment={selectedDepartment}
+                selectedCase={selectedCase}
+                handleOpenCaseDetails={handleOpenCaseDetails}
             />
 
             {/* Таблица дел */}
-            <AffairsTable user={user} cases={cases} handleCaseSelect={handleCaseSelect} selectedCase={selectedCase}
-                          filteredCases={filteredCases}/>
+            <AffairsTable user={user} isLoading={isLoading} handleCaseSelect={handleCaseSelect} selectedCase={selectedCase}
+                filteredCases={filteredCases} />
 
             {/* Диалоги */}
             {user.role !== 'REGION_HEAD' && (
@@ -158,11 +180,11 @@ const CasesTab = ({
 
             {/* Диалог сканирования штрихкода */}
             <DialogScanBarcode openBarcodeDialog={openBarcodeDialog}
-                               setOpenBarcodeDialog={setOpenBarcodeDialog}
-                               barcodeInputRef={barcodeInputRef}
-                               scannedBarcode={scannedBarcode}
-                               handleBarcodeInputChange={handleBarcodeInputChange}
-                               handleBarcodeSubmit={handleBarcodeSubmit}
+                setOpenBarcodeDialog={setOpenBarcodeDialog}
+                barcodeInputRef={barcodeInputRef}
+                scannedBarcode={scannedBarcode}
+                handleBarcodeInputChange={handleBarcodeInputChange}
+                handleBarcodeSubmit={handleBarcodeSubmit}
             />
         </>
     );

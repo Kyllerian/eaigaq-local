@@ -20,7 +20,7 @@ router.register(r'sessions', SessionViewSet)
 router.register(r'cameras', CameraViewSet)
 router.register(r'audit-entries', AuditEntryViewSet)
 router.register(r'evidence-groups', EvidenceGroupViewSet, basename='evidence-group')
-router.register(r'documents', DocumentViewSet)  # Регистрируем DocumentViewSet
+router.register(r'documents', DocumentViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),
