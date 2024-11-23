@@ -1,6 +1,6 @@
 // src/components/CasesTab.js
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import axios from '../../axiosConfig';
 import { useNavigate } from 'react-router-dom';
 import AffairsToolbar from './Affairs/Toolbar';
@@ -132,19 +132,26 @@ const CasesTab = ({
         setSearchQuery(event.target.value);
     };
 
-    // Фильтрация дел на основе поискового запроса
-    const filteredCases = cases.filter((caseItem) => {
-        const query = searchQuery.toLowerCase();
-        const name = caseItem.name.toLowerCase();
-        const description = caseItem.description.toLowerCase();
-        const creatorName = caseItem.creator_name?.toLowerCase() || '';
-        const { id } = caseItem.department;
-        return ((
-            name.includes(query) ||
-            description.includes(query) ||
-            creatorName.includes(query)) && (id === selectedDepartment || selectedDepartment === '')
-        );
-    });
+    // Фильтрация дел на основе поискового запроса и фильтров
+    const filteredCases = useMemo(() => {
+        return cases.filter((caseItem) => {
+            const query = searchQuery.toLowerCase();
+            const name = caseItem.name.toLowerCase();
+            const description = caseItem.description.toLowerCase();
+            const creatorName = caseItem.creator_name?.toLowerCase() || '';
+            const departmentId = caseItem.department.id;
+            console.log('adasdasdasd')
+            return (
+                (
+                    name.includes(query) ||
+                    description.includes(query) ||
+                    creatorName.includes(query)
+                ) && (
+                    departmentId === selectedDepartment || selectedDepartment === ''
+                )
+            );
+        });
+    }, [cases, searchQuery, selectedDepartment]);
 
     return (
         <>

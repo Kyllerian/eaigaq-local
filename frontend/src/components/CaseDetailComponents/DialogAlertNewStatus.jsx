@@ -71,7 +71,7 @@ export default function DialogAlertNewStatus({
 
   return (
     <Dialog open={open} onClose={handleCloseDialog} fullWidth maxWidth="sm">
-      <DialogTitle>Изменение статуса на "Уничтожен"</DialogTitle>
+      <DialogTitle>Изменение статуса вещественного доказателства</DialogTitle>
       <DialogContent>
         {loading ? (
           <CircularProgress />

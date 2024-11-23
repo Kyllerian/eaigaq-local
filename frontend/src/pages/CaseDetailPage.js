@@ -98,6 +98,30 @@ const CaseDetailPage = () => {
 
   const canChangeInvestigator = user.role === 'DEPARTMENT_HEAD' || user.role === 'REGION_HEAD';
 
+  const handlePrint = (type) => {
+
+    if (type === 'pdf') {
+      // Получаем историю изменений дела, если пользователь имеет право ее видеть
+      if (canViewHistory) {
+        axios
+          .get(`/api/audit-entries/?case_id=${id}`)
+          .then((response) => {
+            setChangeLogs(response.data);
+          })
+          .catch((error) => {
+            console.error('Ошибка при получении истории изменений:', error);
+            setSnackbar({
+              open: true,
+              message: 'Ошибка при загрузке истории изменений.',
+              severity: 'error',
+            });
+          });
+      }
+      handlePrintReport();
+    } else if (type === 'excel') {
+      handleExportExcel(caseItem, setSnackbar, changeLogs, InvestigatorName, canViewHistory, groups)
+    }
+  };
   useEffect(() => {
     // Получаем детали дела
     axios
@@ -107,19 +131,19 @@ const CaseDetailPage = () => {
 
         // получаем следователя этого дела 
         axios
-            .get(`/api/users/${response.data?.investigator}/`)
-            .then((response) => {
-              setInvestigatorName(response.data?.full_name);
-            })
-            .catch((error) => {
-              console.error('Ошибка при получении полного имени следователя:', error);
-              setSnackbar({
-                open: true,
-                message: 'Ошибка при загрузке дела.',
-                severity: 'error',
-              });
+          .get(`/api/users/${response.data?.investigator}/`)
+          .then((response) => {
+            setInvestigatorName(response.data?.full_name);
+          })
+          .catch((error) => {
+            console.error('Ошибка при получении полного имени следователя:', error);
+            setSnackbar({
+              open: true,
+              message: 'Ошибка при загрузке дела.',
+              severity: 'error',
             });
-        })
+          });
+      })
       .catch((error) => {
         console.error('Ошибка при получении деталей дела:', error);
         setSnackbar({
@@ -162,6 +186,26 @@ const CaseDetailPage = () => {
     }
   }, [id, canViewHistory]);
 
+  useEffect(() => {
+    if (tabValue === 2) {
+      // Получаем историю изменений дела, если пользователь имеет право ее видеть
+      if (canViewHistory) {
+        axios
+          .get(`/api/audit-entries/?case_id=${id}`)
+          .then((response) => {
+            setChangeLogs(response.data);
+          })
+          .catch((error) => {
+            console.error('Ошибка при получении истории изменений:', error);
+            setSnackbar({
+              open: true,
+              message: 'Ошибка при загрузке истории изменений.',
+              severity: 'error',
+            });
+          });
+      }
+    }
+  }, [tabValue])
   // Обработка вкладок
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
@@ -230,9 +274,9 @@ const CaseDetailPage = () => {
           {/* Кнопки "Экспорт PDF" и "Экспорт Excel" */}
           {canView && (
             <Box sx={{ display: 'flex', gap: theme.spacing(1) }}>
-              <PrintButton handlePrint={handlePrintReport} text={"Экспорт PDF"} />
+              <PrintButton handlePrint={() => handlePrint('pdf')} text={"Экспорт PDF"} />
               <StyledButton
-                onClick={() => handleExportExcel(caseItem, setSnackbar, changeLogs, InvestigatorName, canViewHistory, groups)}
+                onClick={() => handlePrint('excel')}
                 startIcon={<GetAppIcon />}
                 sx={{ height: '40px' }}
               >
@@ -444,7 +488,7 @@ export default CaseDetailPage;
 //       .then((response) => {
 //         setCaseItem(response.data);
 
-//         // получаем следователя этого дела 
+//         // получаем следователя этого дела
 //         axios
 //             .get(`/api/users/${response.data?.investigator}/`)
 //             .then((response) => {
