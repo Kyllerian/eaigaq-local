@@ -11,6 +11,10 @@
     "@testing-library/jest-dom": "^5.17.0",
     "@testing-library/react": "^13.4.0",
     "@testing-library/user-event": "^13.5.0",
+    "@mui/x-date-pickers": "^7.22.3",
+    "dayjs": "^1.11.13",
+    "@mui/x-date-pickers-pro": "^7.22.3",
+    "@mui/x-data-grid-pro": "^7.22.3",
     "axios": "^1.7.7",
     "exceljs": "^4.4.0",
     "file-saver": "^2.0.5",
@@ -24,7 +28,9 @@
     "svg-to-dataurl": "^1.0.0",
     "jsbarcode": "^3.11.6",
     "react-to-print": "^3.0.1",
-    "react-dropzone": "^14.3.5"
+    "react-dropzone": "^14.3.5",
+    "react-query": "^3.39.3",
+    "date-fns": "^4.1.0"
   },
   "scripts": {
     "start": "react-scripts start",

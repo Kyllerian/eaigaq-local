@@ -7,6 +7,8 @@ services:
       - ./env/.env.db
     volumes:
       - postgres_data:/var/lib/postgresql/data/
+    ports:
+      - "5432:5432"  # Добавьте эту строку
     networks:
       - webnet
     # healthcheck:

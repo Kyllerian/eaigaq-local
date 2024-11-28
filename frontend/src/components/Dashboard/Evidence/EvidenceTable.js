@@ -1,4 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+// src/components/Evidence/EvidenceTable.js
+
+import React, { useState, useRef } from 'react';
 import {
     Button,
     Paper,
@@ -10,17 +12,13 @@ import {
     TableRow,
 } from '@mui/material';
 import Loading from '../../Loading';
-
 import {
     OpenInNew as OpenInNewIcon,
 } from '@mui/icons-material';
-import { EVIDENCE_TYPES } from '../../../constants/evidenceTypes';
 import { StyledTableCell } from '../../ui/StyledComponents';
 import { useNavigate } from 'react-router-dom';
 import DialogSeenBarcode from '../../CaseDetailComponents/DialogSeenBarcode';
 import { useReactToPrint } from 'react-to-print';
-import { PaginationStyled } from '../../ui/PaginationUI';
-import calculateRowsPerPage from '../../../constants/calculateRowsPerPage';
 
 export default function EvidenceTable({ evidences, isLoading, setSnackbar }) {
     const navigate = useNavigate();
@@ -47,175 +45,140 @@ export default function EvidenceTable({ evidences, isLoading, setSnackbar }) {
         contentRef: barcodeRef,
         documentTitle: 'Штрихкод Вещдока',
         pageStyle: `
-      @page {
-        size: 58mm 40mm;
-        margin: 0;
-      }
-      @media print {
-        body {
-          margin: 0;
-        }
-        #barcode-container {
-          width: 58mm;
-          height: 40mm;
-          padding: 6.36mm;
-          box-sizing: border-box;
-          display: flex;
-          justify-content: center;
-          align-items: center;
-        }
-        #barcode svg {
-          width: auto;
-          height: 70%;
-        }
-      }
-    `,
+          @page {
+            size: 58mm 40mm;
+            margin: 0;
+          }
+          @media print {
+            body {
+              margin: 0;
+            }
+            #barcode-container {
+              width: 58mm;
+              height: 40mm;
+              padding: 6.36mm;
+              box-sizing: border-box;
+              display: flex;
+              justify-content: center;
+              align-items: center;
+            }
+            #barcode svg {
+              width: auto;
+              height: 70%;
+            }
+          }
+        `,
     });
-
-    // Пагинация
-    const [page, setPage] = useState(1);
-    const [rowsPerPage, setRowsPerPage] = useState(10); // Начальное значение
-    const [totalPages, setTotalPages] = useState(1);
-
-    // Refs для измерения высоты
-    const tableContainerRef = useRef(null);
-    const tableRowRef = useRef(null);
-
-    const handleChangePage = (event, newPage) => {
-        setPage(newPage);
-    };
-
-    useEffect(() => {
-        calculateRowsPerPage(tableContainerRef, tableRowRef, evidences, setRowsPerPage, setTotalPages, page, setPage);
-        setPage(1);
-        window.addEventListener('resize', calculateRowsPerPage(tableContainerRef, tableRowRef, evidences, setRowsPerPage, setTotalPages, page, setPage));
-        return () => {
-            window.removeEventListener('resize', calculateRowsPerPage(tableContainerRef, tableRowRef, evidences, setRowsPerPage, setTotalPages, page, setPage));
-        };
-    }, [evidences, isLoading]);
-
-    // Пагинированные данные
-    const paginatedEvidences = evidences.slice((page - 1) * rowsPerPage, page * rowsPerPage);
 
     return (
         <>
-            {/* Таблица вещдоков */}
+            {/* Таблица вещественных доказательств */}
             <Paper elevation={1}>
-                <TableContainer ref={tableContainerRef}>
+                <TableContainer sx={{ maxHeight: '70vh', overflowY: 'auto' }}>
                     <Table
-                        aria-label="Таблица вещдоков"
+                        aria-label="Таблица вещественных доказательств"
+                        stickyHeader
                         sx={{ tableLayout: 'fixed', minWidth: 650 }}
                     >
                         <TableHead>
                             <TableRow>
-                                <StyledTableCell sx={{ width: '25%' }}>
+                                <StyledTableCell sx={{ width: '20%' }}>
                                     Название ВД
                                 </StyledTableCell>
-                                <StyledTableCell sx={{ width: '35%' }}>
+                                <StyledTableCell sx={{ width: '25%' }}>
                                     Описание ВД
                                 </StyledTableCell>
                                 <StyledTableCell sx={{ width: '10%' }}>Тип ВД</StyledTableCell>
                                 <StyledTableCell sx={{ width: '15%' }}>Дело</StyledTableCell>
-                                {/* <StyledTableCell sx={{ width: '20%' }}>
-                                    Действия
-                                </StyledTableCell> */}
+                                <StyledTableCell sx={{ width: '15%' }}>Отделение</StyledTableCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>
-                            {isLoading ?
-                                (
-                                    <Loading />
-                                )
-                                :
-                                (
-                                    <>
-                                        {paginatedEvidences.length > 0 ? (
-                                            paginatedEvidences.map((evidence, index) => (
-                                                <TableRow key={evidence.id} hover ref={index === 0 ? tableRowRef : null}>
-                                                    <TableCell
-                                                        sx={{
-                                                            whiteSpace: 'nowrap',
-                                                            overflow: 'hidden',
-                                                            textOverflow: 'ellipsis',
-                                                        }}
-                                                    >
-                                                        {evidence.name}
-                                                    </TableCell>
-                                                    <TableCell
-                                                        sx={{
-                                                            whiteSpace: 'nowrap',
-                                                            overflow: 'hidden',
-                                                            textOverflow: 'ellipsis',
-                                                        }}
-                                                    >
-                                                        {evidence.description}
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        {EVIDENCE_TYPES.find(
-                                                            (type) => type.value === evidence.type
-                                                        )?.label || evidence.type}
-                                                    </TableCell>
-                                                    <TableCell
-                                                        sx={{
-                                                            whiteSpace: 'nowrap',
-                                                            overflow: 'hidden',
-                                                            textOverflow: 'ellipsis',
-                                                        }}
-                                                    >
-                                                        {evidence.case ? (
-                                                            <Button
-                                                                variant="text"
-                                                                color="primary"
-                                                                onClick={() =>
-                                                                    navigate(`/cases/${evidence.case.id}/`)
-                                                                }
-                                                                sx={{
-                                                                    whiteSpace: 'nowrap',
-                                                                    overflow: 'hidden',
-                                                                    textOverflow: 'ellipsis',
-                                                                }}
-                                                                startIcon={<OpenInNewIcon />}
-                                                            >
-                                                                {evidence.case.name || 'Дело'}
-                                                            </Button>
-                                                        ) : (
-                                                            'Не назначено'
-                                                        )}
-                                                    </TableCell>
-                                                    {/* <TableCell>
-                                                        <Tooltip title="Печать штрихкода">
-                                                            <IconButton
-                                                                color="primary"
-                                                                onClick={() =>
-                                                                    handlePrintEvidenceBarcode(evidence)
-                                                                }
-                                                            >
-                                                                <PrintIcon />
-                                                            </IconButton>
-                                                        </Tooltip>
-                                                    </TableCell> */}
-                                                </TableRow>
-                                            ))
-                                        ) : (
-                                            <TableRow>
-                                                <TableCell colSpan={4} align="center">
-                                                    Нет результатов.
+                            {isLoading ? (
+                                <TableRow>
+                                    <TableCell colSpan={5} align="center">
+                                        <Loading />
+                                    </TableCell>
+                                </TableRow>
+                            ) : (
+                                <>
+                                    {evidences.length > 0 ? (
+                                        evidences.map((evidence) => (
+                                            <TableRow key={evidence.id} hover>
+                                                <TableCell
+                                                    sx={{
+                                                        whiteSpace: 'nowrap',
+                                                        overflow: 'hidden',
+                                                        textOverflow: 'ellipsis',
+                                                    }}
+                                                >
+                                                    {evidence.name}
+                                                </TableCell>
+                                                <TableCell
+                                                    sx={{
+                                                        whiteSpace: 'nowrap',
+                                                        overflow: 'hidden',
+                                                        textOverflow: 'ellipsis',
+                                                    }}
+                                                >
+                                                    {evidence.description}
+                                                </TableCell>
+                                                <TableCell>
+                                                    {evidence.type_display}
+                                                </TableCell>
+                                                <TableCell
+                                                    sx={{
+                                                        whiteSpace: 'nowrap',
+                                                        overflow: 'hidden',
+                                                        textOverflow: 'ellipsis',
+                                                    }}
+                                                >
+                                                    {evidence.case_id ? (
+                                                        <Button
+                                                            variant="text"
+                                                            color="primary"
+                                                            onClick={() =>
+                                                                navigate(`/cases/${evidence.case_id}/`)
+                                                            }
+                                                            sx={{
+                                                                whiteSpace: 'nowrap',
+                                                                overflow: 'hidden',
+                                                                textOverflow: 'ellipsis',
+                                                            }}
+                                                            startIcon={<OpenInNewIcon />}
+                                                        >
+                                                            {evidence.case_name || 'Дело'}
+                                                        </Button>
+                                                    ) : (
+                                                        'Не назначено'
+                                                    )}
+                                                </TableCell>
+                                                <TableCell
+                                                    sx={{
+                                                        whiteSpace: 'nowrap',
+                                                        overflow: 'hidden',
+                                                        textOverflow: 'ellipsis',
+                                                    }}
+                                                >
+                                                    {evidence.department_name || 'Не указано'}
                                                 </TableCell>
                                             </TableRow>
-                                        )}
-                                    </>
-                                )
-                            }
+                                        ))
+                                    ) : (
+                                        <TableRow>
+                                            <TableCell colSpan={5} align="center">
+                                                Нет результатов.
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                </>
+                            )}
                         </TableBody>
                     </Table>
                 </TableContainer>
-                {/* Пагинация */}
-                {totalPages > 1 && (
-                    <PaginationStyled totalPages={totalPages} page={page} handleChangePage={handleChangePage} />
-                )}
             </Paper>
 
-            {/* Barcode Dialog */}
+            {/* Диалог для отображения штрихкода */}
             <DialogSeenBarcode
                 open={openBarcodeDisplayDialog}
                 setOpenBarcodeDialog={() => setOpenBarcodeDisplayDialog(false)}

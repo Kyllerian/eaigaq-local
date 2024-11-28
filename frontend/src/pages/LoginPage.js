@@ -36,7 +36,7 @@ const Screen = styled(Box)(({ theme }) => ({
 const InputField = styled(TextField)(({ theme }) => ({
   background: '#fff',
   borderRadius: '20px',
-  boxShadow: '0 0 2em rgba(0, 0, 0, 0.05)',
+  // boxShadow: '0 0 2em rgba(0, 0, 0, 0.05)',
   marginBottom: '1em',
   '& .MuiInputBase-root': {
     borderRadius: '20px',

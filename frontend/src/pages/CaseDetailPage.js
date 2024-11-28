@@ -273,7 +273,7 @@ const CaseDetailPage = () => {
           <Box sx={{ flexGrow: 1 }} />
           {/* Кнопки "Экспорт PDF" и "Экспорт Excel" */}
           {canView && (
-            <Box sx={{ display: 'flex', gap: theme.spacing(1) }}>
+            <Box sx={{ display: 'flex', mr: 2 }}>
               <PrintButton handlePrint={() => handlePrint('pdf')} text={"Экспорт PDF"} />
               <StyledButton
                 onClick={() => handlePrint('excel')}
@@ -288,7 +288,7 @@ const CaseDetailPage = () => {
           {/* Кнопка "Переназначить дело" */}
           {canChangeInvestigator && (
             <StyledButton
-              sx={{ mr: 2, ml: 2, height: '40px' }}
+              sx={{ mr: 2, height: '40px' }}
               onClick={handleOpenDialogChangeInvestigator}
               startIcon={<CheckCircleIcon />}
             >

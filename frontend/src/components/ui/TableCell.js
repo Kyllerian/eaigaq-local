@@ -1,11 +1,13 @@
-import { forwardRef, useRef, useEffect, useState } from 'react';
-import {
-    TableCell,
-} from '@mui/material';
+// frontend/src/components/ui/TableCell.js
 
-const TableCellSx = forwardRef(({ children, ...props }, ref) => {
+import React, { forwardRef, useRef, useState, useEffect, useCallback } from 'react';
+import { TableCell } from '@mui/material';
+
+// Компонент TableCellSx для ячеек с обрезкой текста
+export const TableCellSx = forwardRef(({ children, ...props }, ref) => {
     return (
-        <TableCell ref={ref}
+        <TableCell
+            ref={ref}
             sx={{
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
@@ -15,68 +17,100 @@ const TableCellSx = forwardRef(({ children, ...props }, ref) => {
         >
             {children}
         </TableCell>
-    )
-})
+    );
+});
 
-TableCellSx.displayName = "TableCellSx";
+TableCellSx.displayName = 'TableCellSx';
 
-
-const TableCellWrap = forwardRef(({ children, ...props }, ref) => {
+// Компонент TableCellWrap для ячеек с переносом текста
+export const TableCellWrap = forwardRef(({ children, ...props }, ref) => {
     return (
-        <TableCell ref={ref}
+        <TableCell
+            ref={ref}
             sx={{
-                whiteSpace: 'wrap',
-                textWrap: 'wrap',
-                overflowWrap: 'anywhere',
+                whiteSpace: 'normal',
+                wordBreak: 'break-word',
             }}
             {...props}
         >
             {children}
         </TableCell>
-    )
-})
+    );
+});
 
-TableCellWrap.displayName = "TableCellWrap";
+TableCellWrap.displayName = 'TableCellWrap';
 
-const ResizableTableCell = (({ width, onResize, children, ...props }) => {
+// Компонент ResizableTableCell для ячеек с возможностью изменения ширины
+export const ResizableTableCell = ({ width, onResize, children, ...props }) => {
     const cellRef = useRef(null);
+    const [currentWidth, setCurrentWidth] = useState(width);
     const [isResizing, setIsResizing] = useState(false);
+    const startXRef = useRef(0);
+    const startWidthRef = useRef(0);
 
     const handleMouseDown = (e) => {
         setIsResizing(true);
+        startXRef.current = e.clientX;
+        startWidthRef.current = cellRef.current.offsetWidth;
+        e.preventDefault();
     };
 
-    const handleMouseMove = (e) => {
-        if (!isResizing) return;
-        const newWidth = e.clientX - cellRef.current.getBoundingClientRect().left;
-        if (newWidth > 50) { // Минимальная ширина 50px
-            onResize(newWidth);
+    const handleMouseMove = useCallback(
+        (e) => {
+            if (!isResizing) return;
+            const deltaX = e.clientX - startXRef.current;
+            let newWidth = startWidthRef.current + deltaX;
+            if (newWidth < 50) {
+                newWidth = 50; // Минимальная ширина 50px
+            }
+            setCurrentWidth(newWidth);
+            if (onResize) {
+                onResize(newWidth);
+            }
+        },
+        [isResizing, onResize]
+    );
+
+    const handleMouseUp = useCallback(() => {
+        if (isResizing) {
+            setIsResizing(false);
         }
-    };
-
-    const handleMouseUp = () => {
-        setIsResizing(false);
-    };
+    }, [isResizing]);
 
     useEffect(() => {
         if (isResizing) {
             document.addEventListener('mousemove', handleMouseMove);
             document.addEventListener('mouseup', handleMouseUp);
+            document.body.style.cursor = 'col-resize';
         } else {
+            document.body.style.cursor = 'default';
             document.removeEventListener('mousemove', handleMouseMove);
             document.removeEventListener('mouseup', handleMouseUp);
         }
         return () => {
+            document.body.style.cursor = 'default';
             document.removeEventListener('mousemove', handleMouseMove);
             document.removeEventListener('mouseup', handleMouseUp);
         };
-    }, [isResizing]);
+    }, [isResizing, handleMouseMove, handleMouseUp]);
 
     return (
         <TableCell
             {...props}
             ref={cellRef}
-            style={{ width, minWidth: width, maxWidth: width, position: 'relative', userSelect: 'none', borderRight: '1px rgba(0,0,0,0.4) solid', textAlign: 'center', textOverflow: 'ellipsis', overflow: 'hidden', }}
+            style={{
+                width: currentWidth,
+                minWidth: currentWidth,
+                maxWidth: currentWidth,
+                position: 'relative',
+                userSelect: 'none',
+                padding: '8px',
+                boxSizing: 'border-box',
+                borderRight: '1px solid rgba(224, 224, 224, 1)',
+                backgroundColor: '#f5f5f5',
+                fontWeight: 'bold',
+                ...props.style,
+            }}
         >
             {children}
             <div
@@ -85,14 +119,14 @@ const ResizableTableCell = (({ width, onResize, children, ...props }) => {
                     position: 'absolute',
                     top: 0,
                     right: 0,
-                    width: '5px',
+                    width: '10px',
                     cursor: 'col-resize',
                     userSelect: 'none',
                     height: '100%',
+                    zIndex: 1,
                 }}
             />
         </TableCell>
     );
-});
+};
 
-export { TableCellSx, TableCellWrap, ResizableTableCell }

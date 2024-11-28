@@ -6,6 +6,7 @@ import { Link } from 'react-router-dom';
 
 const StyledAppBar = styled(AppBar)(({ theme }) => ({
   backgroundColor: '#1976d2', // Основной цвет AppBar
+  //backgroundColor: '#273353'//'#202A44'
 }));
 
 const Logo = styled('img')(({ theme }) => ({
