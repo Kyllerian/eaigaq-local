@@ -72,7 +72,7 @@ export default function AffairsToolbar(props) {
     return (
         <>
             {/* Поля поиска и фильтрации */}
-            <Box sx={{ mb: theme.spacing(3) }}>
+            <Box>
                 <Box
                     sx={{
                         display: 'flex',

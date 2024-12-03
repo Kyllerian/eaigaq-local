@@ -2,6 +2,7 @@ import {
     Typography,
     TableContainer,
     Paper,
+    Box,
 } from '@mui/material';
 
 import { useTheme } from '@mui/material/styles';
@@ -16,9 +17,12 @@ export default function History({ changeLogs, }) {
                 <Typography variant="h6" gutterBottom>
                     История изменений
                 </Typography>
-                <TableContainer component={Paper}>
-                    <TableHistoryChanges changeLogs={changeLogs}  />
-                </TableContainer>
+
+                <Box sx={{ position: 'relative', display: 'flex', flexDirection: 'column' }}>
+                    <Paper sx={{ width: '100%', mt: 2, p: 2, boxShadow: 3, boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
+                        <TableHistoryChanges changeLogs={changeLogs} />
+                    </Paper>
+                </Box>
             </Paper>
         </>
     );

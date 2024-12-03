@@ -9,7 +9,7 @@ export default function getActionMessage(log) {
         log.class_name === 'MaterialEvidence' &&
         log.action === 'create'
     ) {
-        return `Добавлено вещественное доказательство: ${log.object_name || ''}`;
+        return `Добавлено вещественное доказательство ${/*log.object_name ||*/ ''}`;
     } else if (
         log.class_name === 'MaterialEvidence' &&
         log.action === 'update'

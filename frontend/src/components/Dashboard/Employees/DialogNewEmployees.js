@@ -1,3 +1,5 @@
+// frontend/src/components/Dashboard/Employees/DialogNewEmployees.js
+
 import {
     Button,
     FormControl,
@@ -15,15 +17,14 @@ import { useRef, useState } from 'react';
 import { useReactToPrint } from 'react-to-print';
 import { StyledTextField } from '../../ui/StyledTextfield';
 
-export default function DialogNewEmpolyees({
-    user,
-    departments,
-    setSnackbar,
-    setEmployees,
-    employees,
-    openEmployeeDialog,
-    setOpenEmployeeDialog,
-}) {
+export default function DialogNewEmployees({
+                                               user,
+                                               departments,
+                                               setSnackbar,
+                                               openEmployeeDialog,
+                                               setOpenEmployeeDialog,
+                                               refetchEmployees, // Добавляем функцию для обновления списка сотрудников
+                                           }) {
     // Ссылки и состояния
     const loginDetailsRef = useRef();
 
@@ -169,8 +170,8 @@ export default function DialogNewEmpolyees({
         axios
             .post('/api/users/', employeeData)
             .then((response) => {
-                // Обновляем список сотрудников
-                setEmployees([...employees, response.data]);
+                // Обновляем список сотрудников через refetch
+                refetchEmployees();
 
                 setNewEmployeeCreated(response.data);
                 setOpenPrintDialog(true);
@@ -348,6 +349,7 @@ export default function DialogNewEmpolyees({
     );
 }
 
+// // frontend/src/components/Dashboard/Employees/DialogNewEmployees.js
 // import {
 //     Button,
 //     FormControl,
@@ -365,13 +367,16 @@ export default function DialogNewEmpolyees({
 // import { useReactToPrint } from 'react-to-print';
 // import { StyledTextField } from '../../ui/StyledTextfield';
 //
-//
-// export default function DialogNewEmpolyees({ user, departments, setSnackbar, setEmployees, employees,
-//     openEmployeeDialog, setOpenEmployeeDialog,
+// export default function DialogNewEmpolyees({
+//     user,
+//     departments,
+//     setSnackbar,
+//     setEmployees,
+//     employees,
+//     openEmployeeDialog,
+//     setOpenEmployeeDialog,
 // }) {
-//
-//
-//     // Added loginDetailsRef and handlePrintLoginDetails
+//     // Ссылки и состояния
 //     const loginDetailsRef = useRef();
 //
 //     const [newEmployee, setNewEmployee] = useState({
@@ -386,14 +391,15 @@ export default function DialogNewEmpolyees({
 //         department: '',
 //         phone_number: '',
 //     });
+//
+//     const [errors, setErrors] = useState({
+//         password: '',
+//         confirm_password: '',
+//     });
+//
 //     const [employeePassword, setEmployeePassword] = useState('');
 //     const [newEmployeeCreated, setNewEmployeeCreated] = useState(null);
 //     const [openPrintDialog, setOpenPrintDialog] = useState(false);
-//
-//
-//
-//
-//
 //
 //     const handlePrintLoginDetails = useReactToPrint({
 //         contentRef: loginDetailsRef,
@@ -406,15 +412,64 @@ export default function DialogNewEmpolyees({
 //     const handleEmployeeInputChange = (event) => {
 //         const { name, value } = event.target;
 //         setNewEmployee({ ...newEmployee, [name]: value });
+//
+//         // Выполняем валидацию
+//         let newErrors = { ...errors };
+//
+//         if (name === 'password') {
+//             if (value.length < 8) {
+//                 newErrors.password = 'Пароль должен содержать минимум 8 символов.';
+//             } else {
+//                 newErrors.password = '';
+//             }
+//
+//             // Проверяем подтверждение пароля, если оно не пустое
+//             if (newEmployee.confirm_password) {
+//                 if (value !== newEmployee.confirm_password) {
+//                     newErrors.confirm_password = 'Пароли не совпадают.';
+//                 } else {
+//                     newErrors.confirm_password = '';
+//                 }
+//             }
+//         }
+//
+//         if (name === 'confirm_password') {
+//             if (value !== newEmployee.password) {
+//                 newErrors.confirm_password = 'Пароли не совпадают.';
+//             } else {
+//                 newErrors.confirm_password = '';
+//             }
+//         }
+//
+//         setErrors(newErrors);
 //     };
 //
 //     const handleEmployeeFormSubmit = (event) => {
 //         event.preventDefault();
 //
+//         // Проверяем наличие ошибок перед отправкой
+//         if (errors.password || errors.confirm_password) {
+//             setSnackbar({
+//                 open: true,
+//                 message: 'Пожалуйста, исправьте ошибки в форме.',
+//                 severity: 'error',
+//             });
+//             return;
+//         }
+//
 //         if (newEmployee.password !== newEmployee.confirm_password) {
 //             setSnackbar({
 //                 open: true,
 //                 message: 'Пароли не совпадают. Пожалуйста, попробуйте еще раз.',
+//                 severity: 'error',
+//             });
+//             return;
+//         }
+//
+//         if (newEmployee.password.length < 8) {
+//             setSnackbar({
+//                 open: true,
+//                 message: 'Пароль должен содержать минимум 8 символов.',
 //                 severity: 'error',
 //             });
 //             return;
@@ -490,6 +545,7 @@ export default function DialogNewEmpolyees({
 //                 });
 //             });
 //     };
+//
 //     const handleCloseEmployeeDialog = () => {
 //         setOpenEmployeeDialog(false);
 //         setNewEmployee({
@@ -504,45 +560,82 @@ export default function DialogNewEmpolyees({
 //             department: '',
 //             phone_number: '',
 //         });
-//         // setEmployeePassword('');
+//         setErrors({
+//             password: '',
+//             confirm_password: '',
+//         });
 //     };
-//
 //
 //     const handleClosePrintDialog = () => {
 //         setOpenPrintDialog(false);
 //         setNewEmployeeCreated(null);
 //         setEmployeePassword('');
 //     };
+//
 //     return (
 //         <>
-//             <DashboardDialog open={openEmployeeDialog} setOpen={setOpenEmployeeDialog} title={"Добавить нового сотрудника"}  >
+//             <DashboardDialog
+//                 open={openEmployeeDialog}
+//                 setOpen={setOpenEmployeeDialog}
+//                 title={'Добавить нового сотрудника'}
+//             >
 //                 {{
 //                     content: (
 //                         <>
-//                             <StyledTextField autoFocus label="Имя пользователя" name="username" value={newEmployee.username} onChange={handleEmployeeInputChange} required />
-//                             <StyledTextField label="Пароль" name="password" type="password" value={newEmployee.password} onChange={handleEmployeeInputChange} required />
-//                             <StyledTextField label="Подтвердите пароль" name="confirm_password" type="password" value={newEmployee.confirm_password} onChange={handleEmployeeInputChange} required />
-//                             <StyledTextField label="Имя"
+//                             <StyledTextField
+//                                 autoFocus
+//                                 label="Имя пользователя"
+//                                 name="username"
+//                                 value={newEmployee.username}
+//                                 onChange={handleEmployeeInputChange}
+//                                 required
+//                             />
+//                             <StyledTextField
+//                                 label="Пароль"
+//                                 name="password"
+//                                 type="password"
+//                                 value={newEmployee.password}
+//                                 onChange={handleEmployeeInputChange}
+//                                 required
+//                                 error={Boolean(errors.password)}
+//                                 helperText={errors.password}
+//                             />
+//                             <StyledTextField
+//                                 label="Подтвердите пароль"
+//                                 name="confirm_password"
+//                                 type="password"
+//                                 value={newEmployee.confirm_password}
+//                                 onChange={handleEmployeeInputChange}
+//                                 required
+//                                 error={Boolean(errors.confirm_password)}
+//                                 helperText={errors.confirm_password}
+//                             />
+//                             <StyledTextField
+//                                 label="Имя"
 //                                 name="first_name"
 //                                 value={newEmployee.first_name}
 //                                 onChange={handleEmployeeInputChange}
 //                             />
-//                             <StyledTextField label="Фамилия"
+//                             <StyledTextField
+//                                 label="Фамилия"
 //                                 name="last_name"
 //                                 value={newEmployee.last_name}
 //                                 onChange={handleEmployeeInputChange}
 //                             />
-//                             <StyledTextField label="Электронная почта"
+//                             <StyledTextField
+//                                 label="Электронная почта"
 //                                 name="email"
 //                                 value={newEmployee.email}
 //                                 onChange={handleEmployeeInputChange}
 //                             />
-//                             <StyledTextField label="Номер телефона"
+//                             <StyledTextField
+//                                 label="Номер телефона"
 //                                 name="phone_number"
 //                                 value={newEmployee.phone_number}
 //                                 onChange={handleEmployeeInputChange}
 //                             />
-//                             <StyledTextField label="Звание"
+//                             <StyledTextField
+//                                 label="Звание"
 //                                 name="rank"
 //                                 value={newEmployee.rank}
 //                                 onChange={handleEmployeeInputChange}
@@ -589,12 +682,11 @@ export default function DialogNewEmpolyees({
 //                             <Button onClick={handleCloseEmployeeDialog}>Отмена</Button>
 //                             <StyledButton onClick={handleEmployeeFormSubmit}>Создать</StyledButton>
 //                         </>
-//                     )
+//                     ),
 //                 }}
 //             </DashboardDialog>
 //
-//
-//             {/* Print Dialog */}
+//             {/* Диалог для печати */}
 //             <DialogPrintNewEmp
 //                 newEmployeeCreated={newEmployeeCreated}
 //                 handlePrintLoginDetails={handlePrintLoginDetails}

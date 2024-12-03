@@ -367,6 +367,7 @@ const CaseDetailPage = () => {
         changeLogs={changeLogs}
         groups={groups}
         canViewHistory={canViewHistory}
+        currentUser={user}
       />
 
       {openDialogChangeInvestigator && (

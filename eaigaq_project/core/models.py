@@ -46,7 +46,6 @@ class Department(models.Model):
     def __str__(self):
         return f"{self.name} ({self.get_region_display()})"
 
-
 class User(AbstractUser):
     phone_number = models.CharField(_('Номер телефона'), max_length=20, blank=True)
     rank = models.CharField(_('Звание'), max_length=50, blank=True)
@@ -56,7 +55,8 @@ class User(AbstractUser):
         null=True,
         blank=True,
         related_name='users',
-        verbose_name=_('Отделение')
+        verbose_name=_('Отделение'),
+        db_index=True  # Добавляем индекс на поле department
     )
     region = models.CharField(
         _('Регион'),
@@ -64,6 +64,7 @@ class User(AbstractUser):
         choices=Region.choices,
         null=True,
         blank=True,
+        db_index=True  # Добавляем индекс на поле region
     )
     ROLE_CHOICES = [
         ('REGION_HEAD', _('Главный пользователь региона')),
@@ -75,8 +76,20 @@ class User(AbstractUser):
         max_length=20,
         choices=ROLE_CHOICES,
         default='USER',
+        db_index=True  # Добавляем индекс на поле role
     )
-    biometric_registered = models.BooleanField(_('Биометрия зарегистрирована'), default=False)
+    biometric_registered = models.BooleanField(_('Биометрия зарегистрирована'), default=False, db_index=True)  # Индекс
+    is_active = models.BooleanField(_('Активен'), default=True, db_index=True)  # Индекс
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['username']),
+            models.Index(fields=['first_name']),
+            models.Index(fields=['last_name']),
+            models.Index(fields=['email']),
+            models.Index(fields=['phone_number']),
+            models.Index(fields=['rank']),
+        ]
 
     def __str__(self):
         return f"{self.get_full_name()} - ({self.rank})"
@@ -101,6 +114,60 @@ class User(AbstractUser):
 
         super(User, self).save(*args, **kwargs)
 
+# class User(AbstractUser):
+#     phone_number = models.CharField(_('Номер телефона'), max_length=20, blank=True)
+#     rank = models.CharField(_('Звание'), max_length=50, blank=True)
+#     department = models.ForeignKey(
+#         Department,
+#         on_delete=models.SET_NULL,
+#         null=True,
+#         blank=True,
+#         related_name='users',
+#         verbose_name=_('Отделение')
+#     )
+#     region = models.CharField(
+#         _('Регион'),
+#         max_length=50,
+#         choices=Region.choices,
+#         null=True,
+#         blank=True,
+#     )
+#     ROLE_CHOICES = [
+#         ('REGION_HEAD', _('Главный пользователь региона')),
+#         ('DEPARTMENT_HEAD', _('Главный по отделению')),
+#         ('USER', _('Обычный пользователь')),
+#     ]
+#     role = models.CharField(
+#         _('Роль'),
+#         max_length=20,
+#         choices=ROLE_CHOICES,
+#         default='USER',
+#     )
+#     biometric_registered = models.BooleanField(_('Биометрия зарегистрирована'), default=False)
+#
+#     def __str__(self):
+#         return f"{self.get_full_name()} - ({self.rank})"
+#
+#     # Автоматическое установление региона при сохранении
+#     def save(self, *args, **kwargs):
+#         # Сохраняем текущее значение biometric_registered
+#         biometric_registered = self.biometric_registered
+#
+#         if self.role == 'REGION_HEAD':
+#             # Для главы региона позволяем установить регион вручную
+#             pass  # Не меняем self.region
+#         else:
+#             # Для остальных устанавливаем регион на основе отделения
+#             if self.department and self.department.region:
+#                 self.region = self.department.region
+#             else:
+#                 self.region = None  # Если отделение не указано, регион тоже не установлен
+#
+#         # Восстанавливаем значение biometric_registered
+#         self.biometric_registered = biometric_registered
+#
+#         super(User, self).save(*args, **kwargs)
+
 
 class FaceEncoding(models.Model):
     user = models.ForeignKey(
@@ -116,6 +183,15 @@ class FaceEncoding(models.Model):
     def __str__(self):
         return f"Кодировка лица для {self.user.username} от {self.created_at.strftime('%Y-%m-%d %H:%M:%S')}"
 
+class CaseStatus(models.TextChoices):
+    REGISTERED = 'REGISTERED', _('Зарегистрировано')
+    UNDER_INVESTIGATION = 'UNDER_INVESTIGATION', _('На стадии досудебного расследования')
+    SUSPENDED = 'SUSPENDED', _('Приостановлено')
+    DISMISSED = 'DISMISSED', _('Прекращено')
+    REFERRED_TO_COURT = 'REFERRED_TO_COURT', _('Передано в суд')
+    RETURNED_BY_PROSECUTOR = 'RETURNED_BY_PROSECUTOR', _('Возвращено прокурором')
+    CLOSED = 'CLOSED', _('Закрыто (завершено)')
+    COURT_PROCEEDING_COMPLETED = 'COURT_PROCEEDING_COMPLETED', _('Судебное разбирательство завершено')
 
 class Case(models.Model):
     name = models.CharField(_('Название дела'), max_length=255)
@@ -135,6 +211,13 @@ class Case(models.Model):
         related_name='cases',
         verbose_name=_('Отделение')
     )
+    status = models.CharField(
+        _('Статус'),
+        max_length=32,
+        choices=CaseStatus.choices,
+        default=CaseStatus.REGISTERED,
+        db_index=True
+    )
     active = models.BooleanField(_('Активно'), default=True, db_index=True)
     created = models.DateTimeField(_('Создано'), default=timezone.now, db_index=True)
     updated = models.DateTimeField(_('Обновлено'), auto_now=True)
@@ -143,35 +226,13 @@ class Case(models.Model):
         indexes = [
             models.Index(fields=['name']),
             models.Index(fields=['description']),
+            models.Index(fields=['status']),
         ]
 
     def __str__(self):
         return self.name
+    
 
-# class Case(models.Model):
-#     name = models.CharField(_('Название дела'), max_length=255)
-#     description = models.TextField(_('Описание дела'))
-#     investigator = models.ForeignKey(
-#         User, on_delete=models.CASCADE, related_name='cases', verbose_name=_('Следователь')
-#     )
-#     creator = models.ForeignKey(
-#         User, on_delete=models.SET_NULL, null=True, blank=True, related_name='cases_created',
-#         verbose_name=_('Создатель')
-#     )
-#     department = models.ForeignKey(
-#         Department,
-#         on_delete=models.SET_NULL,
-#         null=True,
-#         blank=True,
-#         related_name='cases',
-#         verbose_name=_('Отделение')
-#     )
-#     active = models.BooleanField(_('Активно'), default=True)
-#     created = models.DateTimeField(_('Создано'), default=timezone.now)
-#     updated = models.DateTimeField(_('Обновлено'), auto_now=True)
-#
-#     def __str__(self):
-#         return self.name
 
 
 class MaterialEvidenceStatus(models.TextChoices):
@@ -316,13 +377,30 @@ class MaterialEvidenceEvent(models.Model):
 
 
 class Session(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sessions', verbose_name=_('Пользователь'))
-    login = models.DateTimeField(_('Вход'), default=timezone.now)
-    logout = models.DateTimeField(_('Выход'), null=True, blank=True)
-    active = models.BooleanField(_('Активна'), default=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sessions', verbose_name=_('Пользователь'), db_index=True)
+    login = models.DateTimeField(_('Вход'), default=timezone.now, db_index=True)
+    logout = models.DateTimeField(_('Выход'), null=True, blank=True, db_index=True)
+    active = models.BooleanField(_('Активна'), default=True, db_index=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['login']),
+            models.Index(fields=['logout']),
+            models.Index(fields=['active']),
+        ]
 
     def __str__(self):
         return f"Сессия пользователя {self.user} от {self.login.strftime('%Y-%m-%d %H:%M:%S')}"
+
+
+# class Session(models.Model):
+#     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sessions', verbose_name=_('Пользователь'))
+#     login = models.DateTimeField(_('Вход'), default=timezone.now)
+#     logout = models.DateTimeField(_('Выход'), null=True, blank=True)
+#     active = models.BooleanField(_('Активна'), default=True)
+#
+#     def __str__(self):
+#         return f"Сессия пользователя {self.user} от {self.login.strftime('%Y-%m-%d %H:%M:%S')}"
 
 
 class CameraType(models.TextChoices):
