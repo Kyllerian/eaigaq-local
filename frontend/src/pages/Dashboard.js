@@ -167,6 +167,7 @@ export default Dashboard;
 //   Alert,
 // } from '@mui/material';
 // import { useTheme } from '@mui/material/styles';
+// import { useTheme } from '@mui/material/styles';
 // import { AuthContext } from '../contexts/AuthContext';
 // import Layout from '../components/Layout';
 // import Notifyer from '../components/Notifyer';
@@ -257,7 +258,6 @@ export default Dashboard;
 //           </Alert>
 //         )}
 //
-//         {/* Вкладка "Дела" */}
 //         {(tabValue === 0 ||
 //           (user &&
 //             user.role !== 'DEPARTMENT_HEAD' &&
@@ -274,7 +274,6 @@ export default Dashboard;
 //             </>
 //           )}
 //
-//         {/* Вкладка "Сотрудники" */}
 //         {tabValue === 1 &&
 //           (user.role === 'DEPARTMENT_HEAD' || user.role === 'REGION_HEAD') && (
 //             <>
@@ -288,7 +287,6 @@ export default Dashboard;
 //             </>
 //           )}
 //
-//         {/* Вкладка "Поиск Вещдоков" */}
 //         {tabValue === 2 && (
 //           <EvidenceSearchTab setSnackbar={setSnackbar} />
 //         )}
@@ -303,3 +301,4 @@ export default Dashboard;
 // };
 //
 // export default Dashboard;
+

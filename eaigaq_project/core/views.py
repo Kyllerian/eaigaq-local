@@ -677,6 +677,12 @@ class MaterialEvidenceViewSet(viewsets.ModelViewSet):
         department_id = self.request.query_params.get("case__department")
         case_id = self.request.query_params.get("case_id")
 
+        # Фильтрация по штрихкоду, если указан параметр 'barcode'
+        barcode = self.request.query_params.get("barcode")
+        if barcode:
+            queryset = queryset.filter(barcode=barcode)
+
+        # Фильтрация на основе роли пользователя
         # Базовый фильтр на основе роли пользователя
         base_q_filter = Q()
 
@@ -836,23 +842,40 @@ class EvidenceGroupViewSet(viewsets.ModelViewSet):
     serializer_class = EvidenceGroupSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+    # Добавляем фильтры
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+    filterset_fields = {
+        'barcode': ['exact'],  # Добавляем возможность фильтрации по штрихкоду
+        'case': ['exact'],
+    }
+    search_fields = ['name']
+
     def get_queryset(self):
         user = self.request.user
-        case_id = self.request.query_params.get("case")
-        queryset = self.queryset
+        queryset = super().get_queryset()
 
+        # Фильтрация по штрихкоду, если указан параметр 'barcode'
+        barcode = self.request.query_params.get("barcode")
+        if barcode:
+            queryset = queryset.filter(barcode=barcode)
+
+        # Фильтрация по ID дела, если указан параметр 'case'
+        case_id = self.request.query_params.get("case")
         if case_id:
             queryset = queryset.filter(case_id=case_id)
 
+        # Фильтрация на основе роли пользователя
         if user.role == "REGION_HEAD":
-            return queryset.filter(case__department__region=user.region)
+            queryset = queryset.filter(case__department__region=user.region)
         elif user.role == "DEPARTMENT_HEAD":
-            return queryset.filter(case__department=user.department)
+            queryset = queryset.filter(case__department=user.department)
         else:
             # Пользователь видит группы в делах, где он является создателем или следователем
-            return queryset.filter(
+            queryset = queryset.filter(
                 Q(case__creator=user) | Q(case__investigator=user)
             )
+
+        return queryset
 
     def perform_create(self, serializer):
         user = self.request.user
