@@ -99,7 +99,7 @@ services:
       backend:
         condition: service_started
     ports:
-      - "80:80"
+#      - "80:80"
       - "443:443"
     volumes:
       - static_volume:/staticfiles

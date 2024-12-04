@@ -33,20 +33,6 @@ export default function DialogScanBarcode({ openBarcodeDialog, setOpenBarcodeDia
                                     }
                                 }}
                             />
-                            {/* <TextField
-                                autoFocus
-                                inputRef={barcodeInputRef}
-                                margin="dense"
-                                label="Штрихкод"
-                                value={scannedBarcode}
-                                onChange={handleBarcodeInputChange}
-                                fullWidth
-                                onKeyPress={(event) => {
-                                    if (event.key === 'Enter') {
-                                        handleBarcodeSubmit(event);
-                                    }
-                                }}
-                            /> */}
                         </>
                     ),
                     actions: (

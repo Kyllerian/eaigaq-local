@@ -90,7 +90,7 @@ const EmployeesTab = ({ user, departments, setSnackbar }) => {
     const calculatePageSize = useCallback(() => {
         const height = window.innerHeight;
         const availableHeight = height - headerAndFiltersHeight - footerHeight;
-        let calculatedPageSize = Math.floor(availableHeight / rowHeight) - 8;
+        let calculatedPageSize = Math.floor(availableHeight / rowHeight) - 7;
         return calculatedPageSize > 0 ? calculatedPageSize : 1; // Минимум 1 элемент на странице
     }, [headerAndFiltersHeight, footerHeight, rowHeight]);
 

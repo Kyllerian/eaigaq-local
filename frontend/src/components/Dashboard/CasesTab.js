@@ -87,7 +87,7 @@ const CasesTab = ({
         const headerHeight = isSmallScreen ? 300 : 200; // Header and filter heights
         const footerHeight = 56; // Pagination height
         const availableHeight = height - headerHeight - footerHeight;
-        let calculatedPageSize = Math.floor(availableHeight / itemHeight) - 4; // Subtract 4 rows
+        let calculatedPageSize = Math.floor(availableHeight / itemHeight) - 3; // Subtract 4 rows
         return calculatedPageSize > 0 ? calculatedPageSize : 10; // Minimum 10 items per page
     }, [isSmallScreen]);
 
