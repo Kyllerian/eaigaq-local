@@ -24,9 +24,13 @@ export const AuthProvider = ({children}) => {
     const fetchCurrentUser = async () => {
         try {
             const response = await axios.get('/api/current-user/');
+            if(sessionStorage.getItem('user_authentificated')){
             console.log('Текущий пользователь:', response.data);
             setUser(response.data);
             return response.data;
+            }else {
+                await logout();
+            }
         } catch (error) {
             console.log('Ошибка при получении текущего пользователя:', error.response?.status);
             if (error.response && error.response.status === 403) {
@@ -58,6 +62,7 @@ export const AuthProvider = ({children}) => {
                 // Полностью аутентифицированный пользователь, получаем его данные
                 setBiometricRequired(false);
                 setBiometricRegistrationRequired(false);
+                sessionStorage.setItem('user_authentificated', 'true');
                 const currentUser = await fetchCurrentUser();
                 return {success: true};
             }
@@ -72,6 +77,8 @@ export const AuthProvider = ({children}) => {
                 return {success: true, biometricRegistrationRequired: true};
             } else {
                 // Полностью аутентифицированный пользователь, получаем его данные
+                sessionStorage.setItem('user_authentificated', 'true');
+                console.log('asdfasfasf')
                 const currentUser = await fetchCurrentUser();
                 return {success: true};
             }
@@ -89,8 +96,10 @@ export const AuthProvider = ({children}) => {
         try {
             await axios.post('/api/logout/');
             setUser(null);
+            sessionStorage.removeItem('user_authentificated');
             setBiometricRequired(false);
             setBiometricRegistrationRequired(false);
+            window.location.reload();
         } catch (error) {
             console.error('Ошибка при логауте:', error);
         }

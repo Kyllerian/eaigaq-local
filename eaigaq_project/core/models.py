@@ -20,7 +20,7 @@ class Region(models.TextChoices):
     ATYRAU = 'ATYRAU', _('Атырауская область')
     EAST_KAZAKHSTAN = 'EAST_KAZAKHSTAN', _('Восточно-Казахстанская область')
     ZHAMBYL = 'ZHAMBYL', _('Жамбылская область')
-    WEST_KAZAKHSTAN = 'WEST_KAZAKHSTAN', _('Западно-Казахстанская область')  # Corrected 'WEST_KAZAKHСТАН' to 'WEST_KAZAKHSTAN'
+    WEST_KAZAKHSTAN = 'WEST_KAZAKHSTAN', _('Западно-Казахстанская область')
     KARAGANDA = 'KARAGANDA', _('Карагандинская область')
     KOSTANAY = 'KOSTANAY', _('Костанайская область')
     KYZYLORDA = 'KYZYLORDA', _('Кызылординская область')
@@ -41,10 +41,10 @@ class Department(models.Model):
         choices=Region.choices,
         default=Region.ASTANA
     )
+    evidence_group_count = models.IntegerField(_('Количество групп вещдоков'), default=0)
 
     def __str__(self):
         return f"{self.name} ({self.get_region_display()})"
-
 
 class User(AbstractUser):
     phone_number = models.CharField(_('Номер телефона'), max_length=20, blank=True)
@@ -55,7 +55,8 @@ class User(AbstractUser):
         null=True,
         blank=True,
         related_name='users',
-        verbose_name=_('Отделение')
+        verbose_name=_('Отделение'),
+        db_index=True  # Добавляем индекс на поле department
     )
     region = models.CharField(
         _('Регион'),
@@ -63,6 +64,7 @@ class User(AbstractUser):
         choices=Region.choices,
         null=True,
         blank=True,
+        db_index=True  # Добавляем индекс на поле region
     )
     ROLE_CHOICES = [
         ('REGION_HEAD', _('Главный пользователь региона')),
@@ -74,8 +76,20 @@ class User(AbstractUser):
         max_length=20,
         choices=ROLE_CHOICES,
         default='USER',
+        db_index=True  # Добавляем индекс на поле role
     )
-    biometric_registered = models.BooleanField(_('Биометрия зарегистрирована'), default=False)
+    biometric_registered = models.BooleanField(_('Биометрия зарегистрирована'), default=False, db_index=True)  # Индекс
+    is_active = models.BooleanField(_('Активен'), default=True, db_index=True)  # Индекс
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['username']),
+            models.Index(fields=['first_name']),
+            models.Index(fields=['last_name']),
+            models.Index(fields=['email']),
+            models.Index(fields=['phone_number']),
+            models.Index(fields=['rank']),
+        ]
 
     def __str__(self):
         return f"{self.get_full_name()} - ({self.rank})"
@@ -100,6 +114,60 @@ class User(AbstractUser):
 
         super(User, self).save(*args, **kwargs)
 
+# class User(AbstractUser):
+#     phone_number = models.CharField(_('Номер телефона'), max_length=20, blank=True)
+#     rank = models.CharField(_('Звание'), max_length=50, blank=True)
+#     department = models.ForeignKey(
+#         Department,
+#         on_delete=models.SET_NULL,
+#         null=True,
+#         blank=True,
+#         related_name='users',
+#         verbose_name=_('Отделение')
+#     )
+#     region = models.CharField(
+#         _('Регион'),
+#         max_length=50,
+#         choices=Region.choices,
+#         null=True,
+#         blank=True,
+#     )
+#     ROLE_CHOICES = [
+#         ('REGION_HEAD', _('Главный пользователь региона')),
+#         ('DEPARTMENT_HEAD', _('Главный по отделению')),
+#         ('USER', _('Обычный пользователь')),
+#     ]
+#     role = models.CharField(
+#         _('Роль'),
+#         max_length=20,
+#         choices=ROLE_CHOICES,
+#         default='USER',
+#     )
+#     biometric_registered = models.BooleanField(_('Биометрия зарегистрирована'), default=False)
+#
+#     def __str__(self):
+#         return f"{self.get_full_name()} - ({self.rank})"
+#
+#     # Автоматическое установление региона при сохранении
+#     def save(self, *args, **kwargs):
+#         # Сохраняем текущее значение biometric_registered
+#         biometric_registered = self.biometric_registered
+#
+#         if self.role == 'REGION_HEAD':
+#             # Для главы региона позволяем установить регион вручную
+#             pass  # Не меняем self.region
+#         else:
+#             # Для остальных устанавливаем регион на основе отделения
+#             if self.department and self.department.region:
+#                 self.region = self.department.region
+#             else:
+#                 self.region = None  # Если отделение не указано, регион тоже не установлен
+#
+#         # Восстанавливаем значение biometric_registered
+#         self.biometric_registered = biometric_registered
+#
+#         super(User, self).save(*args, **kwargs)
+
 
 class FaceEncoding(models.Model):
     user = models.ForeignKey(
@@ -115,6 +183,15 @@ class FaceEncoding(models.Model):
     def __str__(self):
         return f"Кодировка лица для {self.user.username} от {self.created_at.strftime('%Y-%m-%d %H:%M:%S')}"
 
+class CaseStatus(models.TextChoices):
+    REGISTERED = 'REGISTERED', _('Зарегистрировано')
+    UNDER_INVESTIGATION = 'UNDER_INVESTIGATION', _('На стадии досудебного расследования')
+    SUSPENDED = 'SUSPENDED', _('Приостановлено')
+    DISMISSED = 'DISMISSED', _('Прекращено')
+    REFERRED_TO_COURT = 'REFERRED_TO_COURT', _('Передано в суд')
+    RETURNED_BY_PROSECUTOR = 'RETURNED_BY_PROSECUTOR', _('Возвращено прокурором')
+    CLOSED = 'CLOSED', _('Закрыто (завершено)')
+    COURT_PROCEEDING_COMPLETED = 'COURT_PROCEEDING_COMPLETED', _('Судебное разбирательство завершено')
 
 class Case(models.Model):
     name = models.CharField(_('Название дела'), max_length=255)
@@ -123,7 +200,8 @@ class Case(models.Model):
         User, on_delete=models.CASCADE, related_name='cases', verbose_name=_('Следователь')
     )
     creator = models.ForeignKey(
-        User, on_delete=models.SET_NULL, null=True, blank=True, related_name='cases_created', verbose_name=_('Создатель')
+        User, on_delete=models.SET_NULL, null=True, blank=True, related_name='cases_created',
+        verbose_name=_('Создатель')
     )
     department = models.ForeignKey(
         Department,
@@ -133,12 +211,28 @@ class Case(models.Model):
         related_name='cases',
         verbose_name=_('Отделение')
     )
-    active = models.BooleanField(_('Активно'), default=True)
-    created = models.DateTimeField(_('Создано'), default=timezone.now)
+    status = models.CharField(
+        _('Статус'),
+        max_length=32,
+        choices=CaseStatus.choices,
+        default=CaseStatus.REGISTERED,
+        db_index=True
+    )
+    active = models.BooleanField(_('Активно'), default=True, db_index=True)
+    created = models.DateTimeField(_('Создано'), default=timezone.now, db_index=True)
     updated = models.DateTimeField(_('Обновлено'), auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['name']),
+            models.Index(fields=['description']),
+            models.Index(fields=['status']),
+        ]
 
     def __str__(self):
         return self.name
+    
+
 
 
 class MaterialEvidenceStatus(models.TextChoices):
@@ -151,11 +245,13 @@ class MaterialEvidenceStatus(models.TextChoices):
 
 class EvidenceGroup(models.Model):
     name = models.CharField(_('Название группы'), max_length=255)
+    storage_place = models.CharField(_('Место хранения'), max_length=64, blank=True, null=True)
     case = models.ForeignKey(
         Case, on_delete=models.CASCADE, related_name='evidence_groups', verbose_name=_('Дело')
     )
     created_by = models.ForeignKey(
-        User, on_delete=models.SET_NULL, null=True, related_name='evidence_groups_created', verbose_name=_('Создано пользователем')
+        User, on_delete=models.SET_NULL, null=True, related_name='evidence_groups_created',
+        verbose_name=_('Создано пользователем')
     )
     barcode = models.CharField(_('Штрихкод'), max_length=13, unique=True, blank=True, null=True)
     created = models.DateTimeField(_('Создано'), default=timezone.now)
@@ -187,6 +283,7 @@ class EvidenceGroup(models.Model):
     def __str__(self):
         return self.name
 
+
 class MaterialEvidenceType(models.TextChoices):
     FIREARM = 'FIREARM', _('Огнестрельное оружие')
     COLD_WEAPON = 'COLD_WEAPON', _('Холодное оружие')
@@ -209,25 +306,34 @@ class MaterialEvidence(models.Model):
         verbose_name=_('Группа')
     )
     created_by = models.ForeignKey(
-        User, on_delete=models.SET_NULL, null=True, related_name='material_evidences_created', verbose_name=_('Создано пользователем')
+        User, on_delete=models.SET_NULL, null=True, related_name='material_evidences_created',
+        verbose_name=_('Создано пользователем')
     )
     status = models.CharField(
         _('Статус'),
         max_length=20,
         choices=MaterialEvidenceStatus.choices,
         default=MaterialEvidenceStatus.IN_STORAGE,
+        db_index=True,  # Добавляем индекс
     )
     barcode = models.CharField(_('Штрихкод'), max_length=13, unique=True, blank=True, null=True)
-    created = models.DateTimeField(_('Создано'), default=timezone.now)
+    created = models.DateTimeField(_('Создано'), default=timezone.now, db_index=True)  # Добавляем индекс
     updated = models.DateTimeField(_('Обновлено'), auto_now=True)
-    active = models.BooleanField(_('Активно'), default=True)
+    active = models.BooleanField(_('Активно'), default=True, db_index=True)  # Добавляем индекс
 
     type = models.CharField(
         _('Тип ВД'),
         max_length=20,
         choices=MaterialEvidenceType.choices,
-        default=MaterialEvidenceType.OTHER,  # Значение по умолчанию
+        default=MaterialEvidenceType.OTHER,
+        db_index=True,  # Добавляем индекс
     )
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['name']),
+            models.Index(fields=['description']),
+        ]
 
     def save(self, *args, **kwargs):
         if not self.barcode:
@@ -235,10 +341,10 @@ class MaterialEvidence(models.Model):
         super(MaterialEvidence, self).save(*args, **kwargs)
 
     def generate_unique_barcode(self):
+        # Здесь можно улучшить генерацию штрихкода для избежания потенциальных коллизий
+        # Например, использовать UUID или другую стратегию
         while True:
-            # Генерируем случайное 12-значное число
             number = ''.join([str(random.randint(0, 9)) for _ in range(12)])
-            # Вычисляем контрольную цифру (EAN-13)
             total = 0
             for idx, digit in enumerate(number):
                 if idx % 2 == 0:
@@ -247,7 +353,6 @@ class MaterialEvidence(models.Model):
                     total += int(digit) * 3
             checksum = (10 - (total % 10)) % 10
             barcode = number + str(checksum)
-            # Проверяем уникальность
             if not MaterialEvidence.objects.filter(barcode=barcode).exists():
                 return barcode
 
@@ -272,13 +377,30 @@ class MaterialEvidenceEvent(models.Model):
 
 
 class Session(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sessions', verbose_name=_('Пользователь'))
-    login = models.DateTimeField(_('Вход'), default=timezone.now)
-    logout = models.DateTimeField(_('Выход'), null=True, blank=True)
-    active = models.BooleanField(_('Активна'), default=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sessions', verbose_name=_('Пользователь'), db_index=True)
+    login = models.DateTimeField(_('Вход'), default=timezone.now, db_index=True)
+    logout = models.DateTimeField(_('Выход'), null=True, blank=True, db_index=True)
+    active = models.BooleanField(_('Активна'), default=True, db_index=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['login']),
+            models.Index(fields=['logout']),
+            models.Index(fields=['active']),
+        ]
 
     def __str__(self):
         return f"Сессия пользователя {self.user} от {self.login.strftime('%Y-%m-%d %H:%M:%S')}"
+
+
+# class Session(models.Model):
+#     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sessions', verbose_name=_('Пользователь'))
+#     login = models.DateTimeField(_('Вход'), default=timezone.now)
+#     logout = models.DateTimeField(_('Выход'), null=True, blank=True)
+#     active = models.BooleanField(_('Активна'), default=True)
+#
+#     def __str__(self):
+#         return f"Сессия пользователя {self.user} от {self.login.strftime('%Y-%m-%d %H:%M:%S')}"
 
 
 class CameraType(models.TextChoices):
@@ -314,122 +436,45 @@ class AuditEntry(models.Model):
     data = models.TextField(_('Данные'))
     created = models.DateTimeField(_('Создано'), default=timezone.now)
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, verbose_name=_('Пользователь'))
-    case = models.ForeignKey(Case, on_delete=models.CASCADE, null=True, blank=True, related_name='audit_entries', verbose_name=_('Дело'))
+    case = models.ForeignKey(Case, on_delete=models.CASCADE, null=True, blank=True, related_name='audit_entries',
+                             verbose_name=_('Дело'))
 
     def __str__(self):
         return f"Аудит {self.action} на {self.class_name} пользователем {self.user}"
 
 
-# # ---------------------------
-# # Signals for logging changes
-# # ---------------------------
-#
-# # # Create a cache to store old instance data
-# # from threading import local
-# # _thread_locals = local()
-#
-# @receiver(pre_save, sender=Case)
-# def store_old_case_instance(sender, instance, **kwargs):
-#     if instance.pk:
-#         try:
-#             instance._old_instance = sender.objects.get(pk=instance.pk)
-#         except sender.DoesNotExist:
-#             instance._old_instance = None
-#     else:
-#         instance._old_instance = None
-#
-# @receiver(post_save, sender=Case)
-# def log_case_changes(sender, instance, created, **kwargs):
-#     action = 'create' if created else 'update'
-#     user = instance.creator if instance.creator else None
-#
-#     if not created:
-#         old_instance = getattr(instance, '_old_instance', None)
-#         if not old_instance:
-#             return
-#
-#         changes = {}
-#         for field in instance._meta.fields:
-#             field_name = field.name
-#             old_value = getattr(old_instance, field_name)
-#             new_value = getattr(instance, field_name)
-#             if old_value != new_value:
-#                 changes[field_name] = {'old': str(old_value), 'new': str(new_value)}
-#         if not changes:
-#             return
-#     else:
-#         # Для создания записи сохраняем все поля
-#         changes = model_to_dict(instance)
-#         changes = {k: str(v) for k, v in changes.items()}
-#
-#     AuditEntry.objects.create(
-#         object_id=instance.id,
-#         object_name=instance.name,
-#         table_name='case',
-#         class_name='Case',
-#         action=action,
-#         fields=', '.join(changes.keys()),
-#         data=json.dumps(changes, ensure_ascii=False, default=str),
-#         user=user,
-#         case=instance
-#     )
-#
-# @receiver(pre_save, sender=MaterialEvidence)
-# def store_old_material_evidence_instance(sender, instance, **kwargs):
-#     if instance.pk:
-#         try:
-#             instance._old_instance = sender.objects.get(pk=instance.pk)
-#         except sender.DoesNotExist:
-#             instance._old_instance = None
-#     else:
-#         instance._old_instance = None
-#
-# @receiver(post_save, sender=MaterialEvidence)
-# def log_material_evidence_changes(sender, instance, created, **kwargs):
-#     action = 'create' if created else 'update'
-#     user = instance.created_by if instance.created_by else None
-#
-#     if not created:
-#         old_instance = getattr(instance, '_old_instance', None)
-#         if not old_instance:
-#             return
-#
-#         changes = {}
-#         for field in instance._meta.fields:
-#             field_name = field.name
-#             old_value = getattr(old_instance, field_name)
-#             new_value = getattr(instance, field_name)
-#             if old_value != new_value:
-#                 changes[field_name] = {'old': str(old_value), 'new': str(new_value)}
-#         if not changes:
-#             return
-#     else:
-#         # Для создания записи сохраняем все поля
-#         changes = model_to_dict(instance)
-#         changes = {k: str(v) for k, v in changes.items()}
-#
-#     AuditEntry.objects.create(
-#         object_id=instance.id,
-#         object_name=instance.name,
-#         table_name='materialevidence',
-#         class_name='MaterialEvidence',
-#         action=action,
-#         fields=', '.join(changes.keys()),
-#         data=json.dumps(changes, ensure_ascii=False, default=str),
-#         user=user,
-#         case=instance.case
-#     )
-#
-# @receiver(post_delete, sender=MaterialEvidence)
-# def log_material_evidence_deletion(sender, instance, **kwargs):
-#     AuditEntry.objects.create(
-#         object_id=instance.id,
-#         object_name=instance.name,
-#         table_name='materialevidence',
-#         class_name='MaterialEvidence',
-#         action='delete',
-#         fields='',
-#         data='',
-#         user=instance.created_by,
-#         case=instance.case
-#     )
+# Добавляем новую модель для документов
+class Document(models.Model):
+    file = models.FileField(_('Файл'), upload_to='documents/%Y/%m/%d/')
+    uploaded_at = models.DateTimeField(_('Дата загрузки'), auto_now_add=True)
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='uploaded_documents',
+        verbose_name=_('Загружено пользователем')
+    )
+    case = models.ForeignKey(
+        Case,
+        on_delete=models.CASCADE,
+        related_name='documents',
+        null=True,
+        blank=True,
+        verbose_name=_('Дело')
+    )
+    material_evidence = models.ForeignKey(
+        MaterialEvidence,
+        on_delete=models.CASCADE,
+        related_name='documents',
+        null=True,
+        blank=True,
+        verbose_name=_('Вещественное доказательство')
+    )
+    description = models.TextField(_('Описание'), blank=True)
+
+    def __str__(self):
+        return f"Документ {self.id} загружен {self.uploaded_by}"
+
+    def save(self, *args, **kwargs):
+        if not self.case and not self.material_evidence:
+            raise ValueError('Документ должен быть связан либо с делом, либо с вещественным доказательством.')
+        super(Document, self).save(*args, **kwargs)

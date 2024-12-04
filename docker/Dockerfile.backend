@@ -1,6 +1,5 @@
 # docker/Dockerfile.backend
 
-
 # Используем базовый образ с установленными CUDA, dlib и OpenCV
 FROM kyllerian/aigaq-base:v1.4
 
@@ -15,6 +14,15 @@ RUN pip3 install --no-cache-dir -r requirements.txt
 # Копируем проект в рабочую директорию
 COPY eaigaq_project/ /app/
 
+# Создаём директорию для медиа-файлов и назначаем соответствующие права
+RUN mkdir -p /app/media && chmod -R 755 /app/media
+
+# Устанавливаем переменную окружения для пути к медиа-файлам
+ENV MEDIA_ROOT=/app/media
+
+# Копируем SSL-сертификат (если требуется)
+COPY ssl/server.crt /app/server.crt
+
 # Копируем скрипт точки входа
 COPY docker/entrypoint.sh /app/
 
@@ -26,3 +34,36 @@ EXPOSE 8000
 
 # Устанавливаем точку входа
 ENTRYPOINT ["/app/entrypoint.sh"]
+
+
+
+#---------------old stable--------------
+# docker/Dockerfile.backend
+
+
+# Используем базовый образ с установленными CUDA, dlib и OpenCV
+#FROM kyllerian/aigaq-base:v1.4
+
+# Устанавливаем рабочую директорию внутри контейнера
+#WORKDIR /app
+#ENV PYTHONUNBUFFERED 1
+
+# Копируем requirements.txt и устанавливаем зависимости Python
+#COPY eaigaq_project/requirements.txt /app/
+#RUN pip3 install --no-cache-dir -r requirements.txt
+
+#COPY ssl/server.crt server.crt
+# Копируем проект в рабочую директорию
+#COPY eaigaq_project/ /app/
+
+# Копируем скрипт точки входа
+#COPY docker/entrypoint.sh /app/
+
+# Делаем скрипт исполняемым
+#RUN chmod +x /app/entrypoint.sh
+
+# Открываем порт для приложения
+#EXPOSE 8000
+
+# Устанавливаем точку входа
+#ENTRYPOINT ["/app/entrypoint.sh"]

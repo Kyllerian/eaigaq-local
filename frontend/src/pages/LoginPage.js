@@ -4,10 +4,8 @@ import React, { useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../contexts/AuthContext';
 import {
-  Avatar,
   Button,
   TextField,
-  Paper,
   Box,
   Typography,
   Alert,
@@ -16,10 +14,12 @@ import {
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
+import LoginIcon from '@mui/icons-material/Login';
+
 import MailOutlineIcon from '@mui/icons-material/MailOutline';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
-import LogoMVDKZ from '../assets/Logo_MVD_KZ.png';
+import LogoMVDKZ from '../assets/Logo_MVD_KZ.webp';
 
 // Создаём стилизованный компонент с использованием Material-UI styled API
 const Screen = styled(Box)(({ theme }) => ({
@@ -36,14 +36,36 @@ const Screen = styled(Box)(({ theme }) => ({
 const InputField = styled(TextField)(({ theme }) => ({
   background: '#fff',
   borderRadius: '20px',
-  boxShadow: '0 0 2em rgba(0, 0, 0, 0.05)',
+  // boxShadow: '0 0 2em rgba(0, 0, 0, 0.05)',
   marginBottom: '1em',
   '& .MuiInputBase-root': {
     borderRadius: '20px',
+    border: '1px solid rgba(0, 0, 0, 0.2)',
+  },
+  '& .MuiFormLabel-root': {
+    background: 'white',
+    paddingLeft: '6px',
+    paddingRight: '6px',
+  },
+  '& .MuiInputBase-input': {
+    paddingLeft: '8px',
   },
   '& .MuiOutlinedInput-notchedOutline': {
     border: 'none',
   },
+  '& .MuiInputBase-input:-webkit-autofill':
+  // input:-webkit-autofill:hover,
+  // input:-webkit-autofill:focus,
+  // input:-webkit-autofill:active
+  {
+    WebkitBackgroundClip: 'text',
+    // WebkitTextFillColor: '#ffffff',
+    transition: 'background-color 5000s ease-in-out 0s',
+    boxShadow: 'rgba(35, 35, 35, 0.0) 0px 0px 20px 20px inset',
+  },
+  '& .MuiFormLabel-asterisk': {
+    display: 'none'
+  }
 }));
 
 function LoginPage() {
@@ -110,7 +132,7 @@ function LoginPage() {
           Вход
         </Typography>
         {error && (
-          <Alert severity="error" sx={{ width: '100%', mb: 2 }}>
+          <Alert severity="error" sx={{ width: 'auto', mb: 2 }}>
             {error}
           </Alert>
         )}
@@ -131,7 +153,8 @@ function LoginPage() {
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
-                  <MailOutlineIcon color="action" />
+                  <LoginIcon color="action" />
+                  {/* <MailOutlineIcon color="action" /> */}
                 </InputAdornment>
               ),
             }}
@@ -193,6 +216,9 @@ function LoginPage() {
             mt: 2,
           }}
         >
+          <Button component="a" href={`${process.env.REACT_APP_BACKEND_URL}api/download/certificate/`} download sx={{ fontSize: '0.6rem', textDecoration: 'underline', mx: 'auto', display: 'flex' }}>
+            Скачать сертификат
+          </Button>
         </Box>
       </Screen>
     </Box>

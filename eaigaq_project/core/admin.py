@@ -11,7 +11,8 @@ from .models import (
     MaterialEvidenceEvent,
     Session,
     Camera,
-    AuditEntry
+    AuditEntry,
+    Document
 )
 
 
@@ -61,13 +62,25 @@ class CustomUserAdmin(UserAdmin):
     search_fields = ('username', 'first_name', 'last_name', 'email')
     ordering = ('username',)
 
-
 @admin.register(Department)
 class DepartmentAdmin(admin.ModelAdmin):
-    list_display = ('name', 'region')
+    list_display = ('name', 'region', 'evidence_group_count')
     search_fields = ('name',)
     list_filter = ('region',)
+    readonly_fields = ('evidence_group_count',)  # Поле только для чтения
 
+    fieldsets = (
+        (None, {
+            'fields': ('name', 'region', 'evidence_group_count')
+        }),
+    )
+
+# @admin.register(Department)
+# class DepartmentAdmin(admin.ModelAdmin):
+#     list_display = ('name', 'region')
+#     search_fields = ('name',)
+#     list_filter = ('region',)
+#
 
 @admin.register(Case)
 class CaseAdmin(admin.ModelAdmin):
@@ -121,3 +134,17 @@ class AuditEntryAdmin(admin.ModelAdmin):
     )
     search_fields = ('table_name', 'class_name', 'action', 'user__username')
     list_filter = ('action', 'created')
+
+@admin.register(Document)
+class DocumentAdmin(admin.ModelAdmin):
+    list_display = (
+        'id', 'file', 'uploaded_by', 'uploaded_at', 'case', 'material_evidence', 'description'
+    )
+    search_fields = ('description', 'file')
+    list_filter = ('uploaded_at', 'uploaded_by')
+    readonly_fields = ('uploaded_at', 'uploaded_by')
+
+    def save_model(self, request, obj, form, change):
+        if not obj.uploaded_by:
+            obj.uploaded_by = request.user
+        super().save_model(request, obj, form, change)

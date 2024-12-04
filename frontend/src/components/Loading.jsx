@@ -1,3 +1,4 @@
+// frontend/src/components/Loading.jsx
 /** @jsxImportSource @emotion/react */
 import { css, keyframes } from '@emotion/react';
 
