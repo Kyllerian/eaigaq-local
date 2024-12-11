@@ -140,7 +140,7 @@ const CasesTab = ({
     useEffect(() => {
         setSelectedCase(null);
     }, [sortConfig])
-    
+
     useEffect(() => {
         if (isError) {
             console.error('Ошибка при получении дел:', error);
@@ -279,32 +279,117 @@ const CasesTab = ({
             }
             try {
                 const workbook = new ExcelJS.Workbook();
-                const worksheet = workbook.addWorksheet('Отчет');
+                const worksheet = workbook.addWorksheet('Отчет', {
+                    pageSetup: { orientation: 'landscape' }
+                });
 
                 // Add headers
                 worksheet.columns = [
-                    { header: 'Название дела', key: 'name', width: 30 },
-                    { header: 'Описание дела', key: 'description', width: 30 },
-                    { header: 'Следователь', key: 'investigator_name', width: 25 },
-                    { header: 'Отделение', key: 'department_name', width: 30 },
-                    { header: 'Дата создания', key: 'created', width: 20 },
-                    { header: 'Дата обновления', key: 'updated', width: 20 },
+                    { header: 'Название и описание', key: 'name_description', width: 61 },
+                    // { header: 'Описание дела', key: 'description', width: 30 },
+                    { header: 'Следователь, отделение и регион', key: 'investigator_department_region', width: 25 },
+                    // { header: 'Отделение', key: 'department_name', width: 30 },
+                    { header: 'Дата создания и обновления', key: 'created_and_updated', width: 28 },
+                    // { header: 'Дата обновления', key: 'updated', width: 20 },
                 ];
 
                 // Add data
                 exportData.forEach((caseItem) => {
+
+                    const nameDescription = `${caseItem.name}\n${caseItem.description}`;
+                    const investigatorDepartmentRegion = `${caseItem.investigator_name || 'Не указано'}\n${caseItem.department_name || 'Не указано'}\n${caseItem.region_name || 'Не указано'}`;
+                    const createdAndUpdated = `Создано: ${formatDate(caseItem.created)}\nОбновлено: ${formatDate(caseItem.updated)}`;
                     worksheet.addRow({
-                        name: caseItem.name,
-                        description: caseItem.description,
-                        investigator_name: caseItem.investigator_name || 'Не указано',
-                        department_name: caseItem.department_name || 'Не указано',
-                        created: formatDate(caseItem.created),
-                        updated: formatDate(caseItem.updated),
+                        name_description: nameDescription,
+                        // description: caseItem.description,
+                        investigator_department_region: investigatorDepartmentRegion,
+                        // department_name: caseItem.department_name || 'Не указано',
+                        created_and_updated: createdAndUpdated,
+                        // updated: formatDate(caseItem.updated),
                     });
+
+                    // Применяем перенос текста для ячеек с несколькими строками
+                    const lastRow = worksheet.lastRow;
+                    lastRow.getCell('name_description').alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+                    lastRow.getCell('investigator_department_region').alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+                    lastRow.getCell('created_and_updated').alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+
+                    // Рассчитываем высоту строки на основе количества символов
+                    const calculateRowHeight = (text, charPerLine) => {
+                        const lines = text.split('\n').reduce((acc, line) => {
+                            return acc + Math.ceil(line.length / charPerLine);
+                        }, 0);
+                        return lines + 1;
+                    };
+
+                    const maxLines = Math.max(
+                        calculateRowHeight(nameDescription, 50), // Предполагаем, что в одну строку помещается 50 символов
+                        calculateRowHeight(investigatorDepartmentRegion, 50),
+                        calculateRowHeight(createdAndUpdated, 50)
+                    );
+
+                    lastRow.height = maxLines * 20; // 15 - высота одной строки
                 });
 
-                // Apply styles to headers
-                worksheet.getRow(1).font = { bold: true };
+                // Применяем стили к заголовкам
+                const headerRow = worksheet.getRow(1);
+                headerRow.font = { bold: true };
+                headerRow.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+                headerRow.eachCell((cell) => {
+                    cell.border = {
+                        top: { style: 'thin' },
+                        left: { style: 'thin' },
+                        bottom: { style: 'thin' },
+                        right: { style: 'thin' },
+                    };
+                    cell.fill = {
+                        type: 'pattern',
+                        pattern: 'solid',
+                        fgColor: { argb: 'FFD3D3D3' }, // Светло-серый цвет заливки для заголовков
+                    };
+                    cell.alignment = { wrapText: true };
+                });
+
+                // Применяем стили к остальным ячейкам
+                worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+                    if (rowNumber === 1) return; // Заголовки уже обработаны
+                    row.alignment = { wrapText: true };
+
+                    row.eachCell({ includeEmpty: true }, (cell) => {
+                        // Устанавливаем границы для каждой ячейки
+                        cell.border = {
+                            top: { style: 'thin' },
+                            left: { style: 'thin' },
+                            bottom: { style: 'thin' },
+                            right: { style: 'thin' },
+                        };
+
+                        // Чередующаяся заливка для строк (зебра-полосы)
+                        if (rowNumber % 2 === 0) {
+                            cell.fill = {
+                                type: 'pattern',
+                                pattern: 'solid',
+                                fgColor: { argb: 'FFEFEFEF' }, // Светло-серый цвет заливки для четных строк
+                            };
+                        } else {
+                            cell.fill = {
+                                type: 'pattern',
+                                pattern: 'solid',
+                                fgColor: { argb: 'FFFFFFFF' }, // Белый цвет заливки для нечетных строк
+                            };
+                        }
+
+                        // Устанавливаем перенос текста, если еще не установлен
+                        if (cell.alignment && !cell.alignment.wrapText) {
+                            cell.alignment = { wrapText: true };
+                        }
+                    });
+
+                    // Опционально: Устанавливаем высоту строки, если не установлена
+                    if (!row.height) {
+                        row.height = 20; // Настройте по необходимости
+                    }
+                });
 
                 worksheet.eachRow({ includeEmpty: true }, (row) => {
                     row.alignment = { wrapText: true };
@@ -332,6 +417,13 @@ const CasesTab = ({
     const [openBarcodeDialog, setOpenBarcodeDialog] = useState(false);
     const [scannedBarcode, setScannedBarcode] = useState('');
     const barcodeInputRef = useRef();
+
+    // Фиксированные высоты строк и заголовков
+    const rowHeight = 52; // Стандартная высота строки
+    const headerHeight = 56; // Высота заголовка таблицы
+    // Устанавливаем высоту таблицы
+    const tableHeight = (cases.length > 0 ? Math.min(cases.length, pageSize) : 7) * rowHeight + headerHeight;
+
 
     const handleOpenBarcodeDialog = () => {
         setOpenBarcodeDialog(true);
@@ -364,7 +456,7 @@ const CasesTab = ({
 
         try {
             const response = await axios.get('/api/cases/get_by_barcode/', {
-                params: { barcode: scannedBarcode },
+                params: { barcode: scannedBarcode.length === 13 ? scannedBarcode : "0" + scannedBarcode },
             });
             const caseData = response.data;
             // Redirect to case detail page
@@ -416,7 +508,7 @@ const CasesTab = ({
                     selectedCase={selectedCase}
                     sortConfig={sortConfig}
                     setSortConfig={setSortConfig}
-
+                    tableHeight={tableHeight}
                 />
 
                 {/* Pagination */}

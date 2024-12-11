@@ -243,104 +243,7 @@ class UserViewSet(viewsets.ModelViewSet):
         else:
             raise PermissionDenied("У вас нет прав для доступа к этому ресурсу.")
 
-# class UserViewSet(viewsets.ModelViewSet):
-#     queryset = User.objects.all()
-#     serializer_class = UserSerializer
-#     permission_classes = [permissions.IsAuthenticated]
-#
-#     def get_queryset(self):
-#         user = self.request.user
-#
-#         if user.role == "REGION_HEAD":
-#             # Главный по региону видит всех сотрудников своего региона
-#             return self.queryset.filter(region=user.region)
-#         elif user.role == "DEPARTMENT_HEAD":
-#             # Главный по отделению видит всех сотрудников своего отделения
-#             return self.queryset.filter(department=user.department)
-#         else:
-#             # Обычные пользователи видят только себя
-#             return self.queryset.filter(id=user.id)
-#
-#     def perform_create(self, serializer):
-#         user = self.request.user
-#
-#         if user.role == "REGION_HEAD":
-#             # REGION_HEAD может создавать пользователей в своем регионе
-#             new_user_region = serializer.validated_data.get("region")
-#             department = serializer.validated_data.get("department")
-#
-#             # Если указан отделение, проверяем, что оно принадлежит региону пользователя
-#             if department and department.region != user.region:
-#                 raise PermissionDenied(
-#                     "Вы не можете назначить пользователя в отделение другого региона."
-#                 )
-#
-#             # Если регион не указан, устанавливаем регион пользователя
-#             if not new_user_region:
-#                 serializer.validated_data["region"] = user.region
-#             else:
-#                 # Проверяем, что указанный регион совпадает с регионом пользователя
-#                 if new_user_region != user.region:
-#                     raise PermissionDenied(
-#                         "Вы не можете создавать пользователей в другом регионе."
-#                     )
-#
-#             serializer.save()
-#         elif user.role == "DEPARTMENT_HEAD":
-#             department = user.department
-#             serializer.validated_data["department"] = department
-#             serializer.validated_data[
-#                 "role"] = "USER"  # DEPARTMENT_HEAD может создавать только пользователей с ролью USER
-#
-#             # Регион будет установлен автоматически в модели User
-#             serializer.validated_data.pop("region", None)
-#
-#             serializer.save()
-#         else:
-#             raise PermissionDenied("У вас нет прав для создания пользователей.")
-#
-#     def update(self, request, *args, **kwargs):
-#         user = request.user
-#         instance = self.get_object()
-#
-#         # Проверяем права на изменение is_active
-#         if "is_active" in request.data:
-#             if user.role == "REGION_HEAD":
-#                 # REGION_HEAD может изменять is_active для сотрудников своего региона
-#                 if instance.region != user.region:
-#                     raise PermissionDenied(
-#                         "Вы не можете изменять статус этого пользователя."
-#                     )
-#             elif user.role == "DEPARTMENT_HEAD":
-#                 # DEPARTMENT_HEAD может изменять is_active для сотрудников своего отделения
-#                 if instance.department != user.department:
-#                     raise PermissionDenied(
-#                         "Вы не можете изменять статус этого пользователя."
-#                     )
-#             else:
-#                 raise PermissionDenied(
-#                     "У вас нет прав для изменения этого пользователя."
-#                 )
-#
-#         # Проверяем, что DEPARTMENT_HEAD не может менять роль пользователя
-#         if "role" in request.data and user.role == "DEPARTMENT_HEAD":
-#             if request.data["role"] != "USER":
-#                 raise PermissionDenied(
-#                     "Вы не можете изменять роль пользователя."
-#                 )
-#
-#         return super().update(request, *args, **kwargs)
-#
-#     @action(detail=False, methods=["get"])
-#     def all_departments(self, request):
-#         # Для REGION_HEAD возвращаем всех сотрудников региона
-#         user = self.request.user
-#         if user.role == "REGION_HEAD":
-#             users = self.queryset.filter(region=user.region)
-#             serializer = self.get_serializer(users, many=True)
-#             return Response(serializer.data)
-#         else:
-#             raise PermissionDenied("У вас нет прав для доступа к этому ресурсу.")
+
 
 
 class DepartmentViewSet(viewsets.ModelViewSet):
@@ -986,75 +889,6 @@ class SessionViewSet(viewsets.ModelViewSet):
         return queryset
 
 
-# class SessionViewSet(viewsets.ModelViewSet):
-#     queryset = Session.objects.all()
-#     serializer_class = SessionSerializer
-#     permission_classes = [IsAuthenticated]
-#
-#     # Добавляем фильтры
-#     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
-#     filterset_fields = {
-#         'login': ['gte', 'lte'],  # Фильтрация по дате входа
-#     }
-#
-#     def get_queryset(self):
-#         user = self.request.user
-#         queryset = self.queryset.select_related('user')
-#
-#         # Получаем параметры фильтрации из запроса
-#         user_id = self.request.query_params.get('user_id')
-#         department_id = self.request.query_params.get('department_id')
-#         region = self.request.query_params.get('region')
-#
-#         # Базовый фильтр на основе роли пользователя
-#         if user.role == "REGION_HEAD":
-#             queryset = queryset.filter(user__region=user.region)
-#             # Проверяем, что запрашиваемый регион соответствует региону пользователя
-#             if region and region != user.region:
-#                 raise PermissionDenied("Вы не можете просматривать данные другого региона.")
-#
-#             # Проверяем отделение
-#             if department_id:
-#                 try:
-#                     department = Department.objects.get(id=department_id)
-#                 except Department.DoesNotExist:
-#                     raise PermissionDenied("Отделение не найдено.")
-#                 if department.region != user.region:
-#                     raise PermissionDenied("Вы не можете просматривать данные этого отделения.")
-#                 queryset = queryset.filter(user__department_id=department_id)
-#
-#             # Проверяем пользователя
-#             if user_id:
-#                 try:
-#                     selected_user = User.objects.get(id=user_id)
-#                 except User.DoesNotExist:
-#                     raise PermissionDenied("Пользователь не найден.")
-#                 if selected_user.region != user.region:
-#                     raise PermissionDenied("Вы не можете просматривать данные этого пользователя.")
-#                 queryset = queryset.filter(user_id=user_id)
-#
-#         elif user.role == "DEPARTMENT_HEAD":
-#             queryset = queryset.filter(user__department=user.department)
-#             # Проверяем, что запрашиваемое отделение соответствует отделению пользователя
-#             if department_id and int(department_id) != user.department.id:
-#                 raise PermissionDenied("Вы не можете просматривать данные другого отделения.")
-#
-#             # Проверяем пользователя
-#             if user_id:
-#                 try:
-#                     selected_user = User.objects.get(id=user_id)
-#                 except User.DoesNotExist:
-#                     raise PermissionDenied("Пользователь не найден.")
-#                 if selected_user.department != user.department:
-#                     raise PermissionDenied("Вы не можете просматривать данные этого пользователя.")
-#                 queryset = queryset.filter(user_id=user_id)
-#
-#         else:
-#             queryset = queryset.filter(user=user)
-#             # Обычные пользователи не могут применять фильтры
-#
-#         return queryset
-
 
 class CameraViewSet(viewsets.ModelViewSet):
     queryset = Camera.objects.all()
@@ -1342,31 +1176,7 @@ def login_view(request):
     else:
         return JsonResponse({"detail": "Неверные учетные данные"}, status=401)
 
-# @api_view(["POST"])
-# @permission_classes([AllowAny])
-# def login_view(request):
-#     username = request.data.get("username")
-#     password = request.data.get("password")
-#     # logger.info(f"Попытка входа: {username}")
-#     user = authenticate(request, username=username, password=password)
-#     if user is not None:
-#         # logger.info(f"Успешная аутентификация для пользователя: {user.username}")
-#         request.session['temp_user_id'] = user.id
-#
-#         if 'archive' in username:
-#             # Прямо логиним пользователя без биометрической аутентификации
-#             login(request, user)
-#             return JsonResponse({"detail": "Успешный вход в систему", "login_successful": True})
-#
-#         if user.biometric_registered:
-#             # Требуется биометрическая аутентификация через WebSocket
-#             return JsonResponse({"detail": "Требуется биометрическая аутентификация", "biometric_required": True})
-#         else:
-#             # Требуется регистрация биометрии через WebSocket
-#             return JsonResponse({"detail": "Требуется регистрация биометрии", "biometric_registration_required": True})
-#     else:
-#         # logger.warning(f"Аутентификация не удалась для пользователя: {username}")
-#         return JsonResponse({"detail": "Неверные учетные данные"}, status=401)
+
 
 
 @api_view(["POST"])
@@ -1380,15 +1190,6 @@ def logout_view(request):
     else:
         return JsonResponse({"detail": "Пользователь не аутентифицирован"}, status=400)
 
-
-# @api_view(["POST"])
-# def logout_view(request):
-#     user = request.user
-#     if user.is_authenticated:
-#         logout(request)
-#         return JsonResponse({"detail": "Вы успешно вышли из системы"})
-#     else:
-#         return JsonResponse({"detail": "Пользователь не аутентифицирован"}, status=400)
 
 
 @api_view(["GET"])

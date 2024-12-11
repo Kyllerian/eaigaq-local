@@ -20,6 +20,7 @@ export default function AffairsTable({
     selectedCase,
     sortConfig,
     setSortConfig,
+    tableHeight
 }) {
     const theme = useTheme();
     const tableContainerRef = useRef(null);
@@ -276,7 +277,10 @@ export default function AffairsTable({
                 }}
             >
                 {isLoading ? (
-                    <Loading />
+                    // <Loading />
+                    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: tableHeight }}>
+                        <Loading />
+                    </Box>
                 ) : (
 
                     <StyledDataGridPro rows={rows}

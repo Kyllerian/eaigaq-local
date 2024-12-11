@@ -5,7 +5,7 @@ from rest_framework import routers
 from .views import (
     UserViewSet, DepartmentViewSet, CaseViewSet, MaterialEvidenceViewSet,
     MaterialEvidenceEventViewSet, SessionViewSet, CameraViewSet, AuditEntryViewSet,
-    EvidenceGroupViewSet, DocumentViewSet,  # Добавляем DocumentViewSet
+    EvidenceGroupViewSet, DocumentViewSet,
     get_csrf_token, login_view, logout_view, check_auth, current_user,
     download_certificate
 )

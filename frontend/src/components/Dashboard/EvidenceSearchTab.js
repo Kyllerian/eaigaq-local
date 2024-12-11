@@ -194,7 +194,7 @@ const EvidenceSearchTab = ({ setSnackbar }) => {
     const totalPages = Math.ceil(totalCount / pageSize);
 
     // Устанавливаем tableHeight на основе количества строк
-    const tableHeight = (evidences.length > 0 ? Math.min(evidences.length, pageSize) : 1) * rowHeight + headerHeight;
+    const tableHeight = (evidences.length > 0 ? Math.min(evidences.length, pageSize) : 7) * rowHeight + headerHeight;
 
     useEffect(() => {
         if (isError) {
@@ -278,6 +278,7 @@ const EvidenceSearchTab = ({ setSnackbar }) => {
             handleExportMenuClose();
             const exportParams = {
                 ...params,
+                page: 1,
                 page_size: totalCount || 1000, // Получаем все записи
             };
 
@@ -314,6 +315,76 @@ const EvidenceSearchTab = ({ setSnackbar }) => {
         [params, totalCount, setSnackbar]
     );
 
+    // // Обработчик экспорта в Excel
+    // const handleExportExcel = useCallback(
+    //     async (exportData) => {
+    //         if (exportData.length === 0) {
+    //             setSnackbar({
+    //                 open: true,
+    //                 message: 'Нет данных для экспорта.',
+    //                 severity: 'warning',
+    //             });
+    //             setLoading(false);
+    //             return;
+    //         }
+    //         try {
+    //             const workbook = new ExcelJS.Workbook();
+    //             const worksheet = workbook.addWorksheet('Отчет');
+
+    //             // Добавляем заголовки
+    //             worksheet.columns = [
+    //                 { header: 'Название ВД', key: 'name', width: 30 },
+    //                 { header: 'Описание ВД', key: 'description', width: 30 },
+    //                 { header: 'Тип ВД', key: 'type_display', width: 20 },
+    //                 { header: 'Статус ВД', key: 'status_display', width: 20 },
+    //                 { header: 'Дело', key: 'case_name', width: 30 },
+    //                 { header: 'Создатель дела', key: 'creator_name', width: 30 },
+    //                 { header: 'Следователь', key: 'investigator_name', width: 30 },
+    //                 { header: 'Отделение', key: 'department_name', width: 30 },
+    //                 { header: 'Дата создания', key: 'created', width: 20 },
+    //             ];
+
+    //             // Добавляем данные
+    //             exportData.forEach((evidence) => {
+    //                 worksheet.addRow({
+    //                     name: evidence.name,
+    //                     description: evidence.description,
+    //                     type_display: evidence.type_display,
+    //                     status_display: evidence.status_display,
+    //                     case_name: evidence.case_name || 'Не назначено',
+    //                     creator_name: evidence.creator_name || 'Не указано',
+    //                     investigator_name: evidence.investigator_name || 'Не указано',
+    //                     department_name: evidence.department_name || 'Не указано',
+    //                     created: formatDate(evidence.created),
+    //                 });
+    //             });
+
+    //             // Применяем стили к заголовкам
+    //             worksheet.getRow(1).font = { bold: true };
+
+    //             worksheet.eachRow({ includeEmpty: true }, (row) => {
+    //                 row.alignment = { wrapText: true };
+    //             });
+
+    //             // Генерируем буфер
+    //             const buffer = await workbook.xlsx.writeBuffer();
+
+    //             // Сохраняем файл
+    //             const blob = new Blob([buffer], { type: 'application/octet-stream' });
+    //             saveAs(blob, 'Отчет_по_вещественным_доказательствам.xlsx');
+    //         } catch (error) {
+    //             console.error('Ошибка при экспорте в Excel:', error);
+    //             setSnackbar({
+    //                 open: true,
+    //                 message: 'Ошибка при экспорте в Excel.',
+    //                 severity: 'error',
+    //             });
+    //         } finally {
+    //             setLoading(false);
+    //         }
+    //     },
+    //     [setSnackbar]
+    // );
     // Обработчик экспорта в Excel
     const handleExportExcel = useCallback(
         async (exportData) => {
@@ -328,41 +399,136 @@ const EvidenceSearchTab = ({ setSnackbar }) => {
             }
             try {
                 const workbook = new ExcelJS.Workbook();
-                const worksheet = workbook.addWorksheet('Отчет');
+                const worksheet = workbook.addWorksheet('Отчет', {
+                    pageSetup: { orientation: 'landscape' }
+                });
 
                 // Добавляем заголовки
                 worksheet.columns = [
-                    { header: 'Название ВД', key: 'name', width: 30 },
-                    { header: 'Описание ВД', key: 'description', width: 30 },
-                    { header: 'Тип ВД', key: 'type_display', width: 20 },
-                    { header: 'Статус ВД', key: 'status_display', width: 20 },
-                    { header: 'Дело', key: 'case_name', width: 30 },
-                    { header: 'Создатель дела', key: 'creator_name', width: 30 },
-                    { header: 'Следователь', key: 'investigator_name', width: 30 },
-                    { header: 'Отделение', key: 'department_name', width: 30 },
-                    { header: 'Дата создания', key: 'created', width: 20 },
+                    { header: '№', key: 'number', width: 5 }, // Приблизительно 3%
+                    { header: 'ВД', key: 'vd', width: 30 }, // Приблизительно 25%
+                    { header: 'Тип и статус ВД', key: 'type_status', width: 20 }, // 12% + 8%
+                    { header: 'Дело', key: 'case_name', width: 25 }, // 15%
+                    { header: 'Следователь', key: 'investigator_name', width: 25 }, // 12%
+                    { header: 'Отделение и регион', key: 'department_region', width: 30 }, // 15% + 15%
+                    { header: 'Дата создания', key: 'created_barcode', width: 30 }, // 18%
                 ];
 
                 // Добавляем данные
-                exportData.forEach((evidence) => {
+                exportData.forEach((evidence, index) => {
+                    // Объединяем необходимые поля
+                    const vd = `${evidence.name}\n${evidence.description}`;
+                    const type_status = `${evidence.type_display}\n${evidence.status_display}`;
+                    const department_region = `${evidence.department_name || 'Не указано'}\n${evidence.region_name || 'Не указано'}`;
+                    const created = formatDate(evidence.created);
+                    const barcode = evidence.barcode ? evidence.barcode : '';
+
                     worksheet.addRow({
-                        name: evidence.name,
-                        description: evidence.description,
-                        type_display: evidence.type_display,
-                        status_display: evidence.status_display,
+                        number: index + 1,
+                        vd: vd,
+                        type_status: type_status,
                         case_name: evidence.case_name || 'Не назначено',
-                        creator_name: evidence.creator_name || 'Не указано',
                         investigator_name: evidence.investigator_name || 'Не указано',
-                        department_name: evidence.department_name || 'Не указано',
-                        created: formatDate(evidence.created),
+                        department_region: department_region,
+                        created_barcode: created + (barcode ? `\n${barcode}` : ''),
                     });
+
+                    // Применяем перенос текста для ячеек с несколькими строками
+                    const lastRow = worksheet.lastRow;
+                    lastRow.getCell('vd').alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+                    lastRow.getCell('type_status').alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+                    lastRow.getCell('case_name').alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+                    lastRow.getCell('investigator_name').alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+                    lastRow.getCell('department_region').alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+                    lastRow.getCell('created_barcode').alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+
+                    // Рассчитываем высоту строки на основе количества символов
+                    const calculateRowHeight = (text, charPerLine) => {
+                        const lines = text.split('\n').reduce((acc, line) => {
+                            return acc + Math.ceil(line.length / charPerLine);
+                        }, 0);
+                        return lines + 3;
+                    };
+
+                    const maxLines = Math.max(
+                        calculateRowHeight(vd, 30), // Предполагаем, что в одну строку помещается 50 символов
+                        calculateRowHeight(type_status, 50),
+                        calculateRowHeight(department_region, 50),
+                    );
+                    console.log('maxLines',maxLines)
+                    lastRow.height = maxLines * 22; // 15 - высота одной строки
                 });
 
                 // Применяем стили к заголовкам
-                worksheet.getRow(1).font = { bold: true };
+                const headerRow = worksheet.getRow(1);
+                headerRow.font = { bold: true };
+                headerRow.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+                headerRow.height = 20;
+                headerRow.eachCell((cell) => {
+                    cell.border = {
+                        top: { style: 'thin' },
+                        left: { style: 'thin' },
+                        bottom: { style: 'thin' },
+                        right: { style: 'thin' },
+                    };
+                    cell.fill = {
+                        type: 'pattern',
+                        pattern: 'solid',
+                        fgColor: { argb: 'FFD3D3D3' }, // Светло-серый цвет заливки для заголовков
+                    };
+                    cell.alignment = { wrapText: true };
+                });
 
-                worksheet.eachRow({ includeEmpty: true }, (row) => {
-                    row.alignment = { wrapText: true };
+                // Применяем стили к данным
+                worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+                    row.alignment = { vertical: 'top', horizontal: 'left', wrapText: true };
+                    // row.height = 40; // Увеличиваем высоту строк для обтекания текста
+
+                    // Добавляем границы
+                    row.eachCell((cell) => {
+                        cell.border = {
+                            top: { style: 'thin' },
+                            left: { style: 'thin' },
+                            bottom: { style: 'thin' },
+                            right: { style: 'thin' },
+                        };
+
+                        // Чередующаяся заливка для строк (зебра-полосы)
+                        if (rowNumber % 2 === 0) {
+                            cell.fill = {
+                                type: 'pattern',
+                                pattern: 'solid',
+                                fgColor: { argb: 'FFEFEFEF' }, // Светло-серый цвет заливки для четных строк
+                            };
+                        } else {
+                            cell.fill = {
+                                type: 'pattern',
+                                pattern: 'solid',
+                                fgColor: { argb: 'FFFFFFFF' }, // Белый цвет заливки для нечетных строк
+                            };
+                        }
+
+                        // Устанавливаем перенос текста, если еще не установлен
+                        if (cell.alignment && !cell.alignment.wrapText) {
+                            cell.alignment = { wrapText: true };
+                        }
+                    });
+
+                    // Специальное форматирование для строки с баркодом
+                    if (rowNumber > 1) { // Пропускаем заголовок
+                        const barcodeCell = row.getCell('created_barcode');
+                        if (exportData[rowNumber - 2].barcode) {
+                            // Если хотите добавить изображение баркода, нужно предварительно сгенерировать изображение
+                            // и вставить его как картинку. Это более сложный процесс и требует дополнительных библиотек.
+                            // Здесь мы просто добавляем текст баркода.
+                            // Альтернативно можно использовать шрифт с поддержкой баркодов.
+                        }
+                    }
+                });
+
+                // Установить выравнивание заголовков по центру
+                worksheet.columns.forEach((column) => {
+                    column.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
                 });
 
                 // Генерируем буфер
@@ -385,13 +551,14 @@ const EvidenceSearchTab = ({ setSnackbar }) => {
         [setSnackbar]
     );
 
+
     return (
         <>
             {/* Основной контейнер с гибким расположением */}
             <Box sx={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
                 {/* Поля поиска и фильтров */}
                 <Box>
-                {/*<Box sx={{ width: '100%', p: 2 }}>*/}
+                    {/*<Box sx={{ width: '100%', p: 2 }}>*/}
                     <Box
                         sx={{
                             display: 'flex',
