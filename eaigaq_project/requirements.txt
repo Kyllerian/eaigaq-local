@@ -12,3 +12,4 @@ gevent
 eventlet
 django-filter
 channels
+aiortc

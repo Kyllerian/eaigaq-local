@@ -395,10 +395,27 @@ class SessionSerializer(serializers.ModelSerializer):
 #         fields = ['id', 'user', 'login', 'logout', 'active']
 
 
+# class CameraSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = Camera
+#         fields = ['id', 'device_id', 'name', 'type', 'created', 'updated', 'active']
+
+
 class CameraSerializer(serializers.ModelSerializer):
+    department_name = serializers.CharField(source='department.name', read_only=True)
+    region_display = serializers.CharField(source='get_region_display', read_only=True)
+
     class Meta:
         model = Camera
-        fields = ['id', 'device_id', 'name', 'type', 'created', 'updated', 'active']
+        fields = [
+            'id', 'device_id', 'name', 'ip_address', 'login', 'password',
+            'department', 'department_name', 'region', 'region_display',
+            'created', 'updated', 'active'
+        ]
+        extra_kwargs = {
+            'password': {'write_only': False}
+        }
+
 
 
 class AuditEntrySerializer(serializers.ModelSerializer):

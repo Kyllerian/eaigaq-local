@@ -114,59 +114,6 @@ class User(AbstractUser):
 
         super(User, self).save(*args, **kwargs)
 
-# class User(AbstractUser):
-#     phone_number = models.CharField(_('Номер телефона'), max_length=20, blank=True)
-#     rank = models.CharField(_('Звание'), max_length=50, blank=True)
-#     department = models.ForeignKey(
-#         Department,
-#         on_delete=models.SET_NULL,
-#         null=True,
-#         blank=True,
-#         related_name='users',
-#         verbose_name=_('Отделение')
-#     )
-#     region = models.CharField(
-#         _('Регион'),
-#         max_length=50,
-#         choices=Region.choices,
-#         null=True,
-#         blank=True,
-#     )
-#     ROLE_CHOICES = [
-#         ('REGION_HEAD', _('Главный пользователь региона')),
-#         ('DEPARTMENT_HEAD', _('Главный по отделению')),
-#         ('USER', _('Обычный пользователь')),
-#     ]
-#     role = models.CharField(
-#         _('Роль'),
-#         max_length=20,
-#         choices=ROLE_CHOICES,
-#         default='USER',
-#     )
-#     biometric_registered = models.BooleanField(_('Биометрия зарегистрирована'), default=False)
-#
-#     def __str__(self):
-#         return f"{self.get_full_name()} - ({self.rank})"
-#
-#     # Автоматическое установление региона при сохранении
-#     def save(self, *args, **kwargs):
-#         # Сохраняем текущее значение biometric_registered
-#         biometric_registered = self.biometric_registered
-#
-#         if self.role == 'REGION_HEAD':
-#             # Для главы региона позволяем установить регион вручную
-#             pass  # Не меняем self.region
-#         else:
-#             # Для остальных устанавливаем регион на основе отделения
-#             if self.department and self.department.region:
-#                 self.region = self.department.region
-#             else:
-#                 self.region = None  # Если отделение не указано, регион тоже не установлен
-#
-#         # Восстанавливаем значение biometric_registered
-#         self.biometric_registered = biometric_registered
-#
-#         super(User, self).save(*args, **kwargs)
 
 
 class FaceEncoding(models.Model):
@@ -393,30 +340,25 @@ class Session(models.Model):
         return f"Сессия пользователя {self.user} от {self.login.strftime('%Y-%m-%d %H:%M:%S')}"
 
 
-# class Session(models.Model):
-#     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sessions', verbose_name=_('Пользователь'))
-#     login = models.DateTimeField(_('Вход'), default=timezone.now)
-#     logout = models.DateTimeField(_('Выход'), null=True, blank=True)
-#     active = models.BooleanField(_('Активна'), default=True)
-#
-#     def __str__(self):
-#         return f"Сессия пользователя {self.user} от {self.login.strftime('%Y-%m-%d %H:%M:%S')}"
-
-
-class CameraType(models.TextChoices):
-    FACE_ID = 'FACE_ID', _('Аутентификация по лицу')
-    REC = 'REC', _('Запись видео')
-    DEFAULT = 'DEFAULT', _('Обычная камера')
-
 
 class Camera(models.Model):
     device_id = models.IntegerField(_('ID устройства'), unique=True)
-    name = models.CharField(_('Название камеры'), max_length=255)
-    type = models.CharField(
-        _('Тип камеры'),
-        max_length=20,
-        choices=CameraType.choices,
-        default=CameraType.DEFAULT,
+    name = models.CharField(_('Название камеры'), max_length=255, default='camera')
+    ip_address = models.GenericIPAddressField(_('IP адрес'), protocol='ipv4', default='127.0.0.1')
+    login = models.CharField(_('Логин'), max_length=100, default='admin')
+    password = models.CharField(_('Пароль'), max_length=100, default='admin')
+    department = models.ForeignKey(
+        Department,
+        on_delete=models.CASCADE,
+        related_name='cameras',
+        verbose_name=_('Отделение'),
+        default=1,
+    )
+    region = models.CharField(
+        _('Регион'),
+        max_length=50,
+        choices=Region.choices,
+        default=Region.ASTANA
     )
     created = models.DateTimeField(_('Создано'), default=timezone.now)
     updated = models.DateTimeField(_('Обновлено'), auto_now=True)
@@ -424,6 +366,7 @@ class Camera(models.Model):
 
     def __str__(self):
         return self.name
+
 
 
 class AuditEntry(models.Model):

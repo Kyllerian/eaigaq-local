@@ -401,12 +401,12 @@ export default function EmployeesToolbar({
                             <DateRangePicker
                                 value={dateRange}
                                 onChange={handleDateRangeChange}
-                                label="Дата создания от - до"
+                                label="Дата последнего входа"
                                 slots={{ field: SingleInputDateRangeField }}
                                 slotProps={{
                                     field: {
                                         size: 'small',
-                                        label: 'Дата создания от - до',
+                                        label: 'Дата последнего входа',
                                         InputProps: {
                                             endAdornment: (
                                                 <InputAdornment position="end">

@@ -40,6 +40,7 @@ CSRF_TRUSTED_ORIGINS = os.environ.get('CSRF_TRUSTED_ORIGINS', '').split(',')
 
 CORS_ALLOW_ALL_ORIGINS = False
 
+os.environ['CUDA_VISIBLE_DEVICES'] = "0"
 # Определение приложений
 INSTALLED_APPS = [
     # Приложения Django
@@ -58,6 +59,8 @@ INSTALLED_APPS = [
     'rest_framework',
     # Django Channels
     'channels',
+    'aiortc',
+    'cv2',
 ]
 
 # Настройки REST Framework

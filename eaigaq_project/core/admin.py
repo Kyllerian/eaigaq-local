@@ -122,9 +122,15 @@ class SessionAdmin(admin.ModelAdmin):
 
 @admin.register(Camera)
 class CameraAdmin(admin.ModelAdmin):
-    list_display = ('name', 'device_id', 'type', 'active', 'created', 'updated')
+    list_display = ('name', 'device_id', 'active', 'created', 'updated')
     search_fields = ('name', 'device_id')
-    list_filter = ('type', 'active', 'created', 'updated')
+    list_filter = ('active', 'created', 'updated')
+
+# @admin.register(Camera)
+# class CameraAdmin(admin.ModelAdmin):
+#     list_display = ('name', 'device_id', 'type', 'active', 'created', 'updated')
+#     search_fields = ('name', 'device_id')
+#     list_filter = ('type', 'active', 'created', 'updated')
 
 
 @admin.register(AuditEntry)

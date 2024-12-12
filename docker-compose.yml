@@ -103,7 +103,7 @@ services:
       - "443:443"
     volumes:
       - static_volume:/staticfiles
-      - media_volume:/media  # 🆕 Добавляем том для медиа-файлов
+      - media_volume:/app/media #media_volume:/media  # 🆕 Добавляем том для медиа-файлов
     networks:
       - webnet
 

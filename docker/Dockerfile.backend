@@ -3,9 +3,22 @@
 # Используем базовый образ с установленными CUDA, dlib и OpenCV
 FROM kyllerian/aigaq-base:v1.4
 
+
 # Устанавливаем рабочую директорию внутри контейнера
 WORKDIR /app
 ENV PYTHONUNBUFFERED 1
+
+ENV NVIDIA_VISIBLE_DEVICES all
+ENV NVIDIA_DRIVER_CAPABILITIES video,compute,utility
+
+# Исправление символических ссылок в /lib/x86_64-linux-gnu
+#RUN rm /lib/x86_64-linux-gnu/libcudadebugger.so.1 \
+#    #&& ln -s libcudadebugger.so.535.129.03 /lib/x86_64-linux-gnu/libcudadebugger.so.1 \
+#    && rm /lib/x86_64-linux-gnu/libcuda.so.1 \
+#    && ln -s libcuda.so.535.129.03 /lib/x86_64-linux-gnu/libcuda.so.1
+
+# Обновите кэш динамических библиотек
+RUN ldconfig
 
 # Копируем requirements.txt и устанавливаем зависимости Python
 COPY eaigaq_project/requirements.txt /app/

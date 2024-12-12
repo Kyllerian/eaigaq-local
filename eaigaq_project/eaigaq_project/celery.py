@@ -36,3 +36,4 @@ app.autodiscover_tasks()
 
 app.config_from_object('django.conf:settings', namespace='CELERY')
 app.autodiscover_tasks()
+os.environ['CUDA_VISIBLE_DEVICES'] = "0"

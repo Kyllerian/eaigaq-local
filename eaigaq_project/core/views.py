@@ -890,19 +890,55 @@ class SessionViewSet(viewsets.ModelViewSet):
 
 
 
+# class CameraViewSet(viewsets.ModelViewSet):
+#     queryset = Camera.objects.all()
+#     serializer_class = CameraSerializer
+#     permission_classes = [IsAuthenticated, IsRegionHead]
+#
+#     def get_queryset(self):
+#         user = self.request.user
+#         if user.role == "REGION_HEAD":
+#             return self.queryset
+#         else:
+#             self.permission_denied(
+#                 self.request, message="Недостаточно прав для доступа к камерам"
+#             )
+
+
 class CameraViewSet(viewsets.ModelViewSet):
     queryset = Camera.objects.all()
     serializer_class = CameraSerializer
-    permission_classes = [IsAuthenticated, IsRegionHead]
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         user = self.request.user
         if user.role == "REGION_HEAD":
-            return self.queryset
+            # Видит все камеры своего региона
+            return self.queryset.filter(region=user.region)
+        elif user.role == "DEPARTMENT_HEAD":
+            # Видит камеры своего отделения
+            return self.queryset.filter(department=user.department)
         else:
-            self.permission_denied(
-                self.request, message="Недостаточно прав для доступа к камерам"
-            )
+            # Обычный пользователь не видит камеры
+            return self.queryset.none()
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        if user.role == "REGION_HEAD":
+            # Глава региона может создавать камеры только в своем регионе
+            department = serializer.validated_data.get('department')
+            region = serializer.validated_data.get('region')
+
+            if department and department.region != user.region:
+                raise PermissionDenied("Отделение не принадлежит вашему региону.")
+
+            if region and region != user.region:
+                raise PermissionDenied("Регион камеры должен совпадать с вашим регионом.")
+
+            serializer.save(region=user.region)
+        else:
+            raise PermissionDenied("У вас нет прав на создание камеры.")
+
 
 
 class AuditEntryViewSet(viewsets.ModelViewSet):

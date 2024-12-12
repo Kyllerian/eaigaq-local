@@ -44,6 +44,7 @@ export default function DialogNewEmployees({
     const [errors, setErrors] = useState({
         password: '',
         confirm_password: '',
+        email: '',
     });
 
     const [employeePassword, setEmployeePassword] = useState('');
@@ -57,6 +58,13 @@ export default function DialogNewEmployees({
             handleClosePrintDialog();
         },
     });
+
+    // Функция для проверки формата электронной почты
+    const validateEmail = (email) => {
+        // Простое регулярное выражение для проверки электронной почты
+        const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return regex.test(email);
+    };
 
     const handleEmployeeInputChange = (event) => {
         const { name, value } = event.target;
@@ -90,35 +98,48 @@ export default function DialogNewEmployees({
             }
         }
 
+        if (name === 'email') {
+            if (value.trim() === '') {
+                newErrors.email = 'Электронная почта обязательна для заполнения.';
+            } else if (!validateEmail(value)) {
+                newErrors.email = 'Введите корректный адрес электронной почты.';
+            } else {
+                newErrors.email = '';
+            }
+        }
+
         setErrors(newErrors);
     };
 
     const handleEmployeeFormSubmit = (event) => {
         event.preventDefault();
 
-        // Проверяем наличие ошибок перед отправкой
-        if (errors.password || errors.confirm_password) {
-            setSnackbar({
-                open: true,
-                message: 'Пожалуйста, исправьте ошибки в форме.',
-                severity: 'error',
-            });
-            return;
-        }
+        // Выполняем финальную валидацию перед отправкой
+        let finalErrors = { ...errors };
 
-        if (newEmployee.password !== newEmployee.confirm_password) {
-            setSnackbar({
-                open: true,
-                message: 'Пароли не совпадают. Пожалуйста, попробуйте еще раз.',
-                severity: 'error',
-            });
-            return;
+        // Проверка обязательных полей
+        if (newEmployee.email.trim() === '') {
+            finalErrors.email = 'Электронная почта обязательна для заполнения.';
+        } else if (!validateEmail(newEmployee.email)) {
+            finalErrors.email = 'Введите корректный адрес электронной почты.';
         }
 
         if (newEmployee.password.length < 8) {
+            finalErrors.password = 'Пароль должен содержать минимум 8 символов.';
+        }
+
+        if (newEmployee.password !== newEmployee.confirm_password) {
+            finalErrors.confirm_password = 'Пароли не совпадают.';
+        }
+
+        setErrors(finalErrors);
+
+        // Проверяем наличие ошибок перед отправкой
+        const hasErrors = Object.values(finalErrors).some((error) => error !== '');
+        if (hasErrors) {
             setSnackbar({
                 open: true,
-                message: 'Пароль должен содержать минимум 8 символов.',
+                message: 'Пожалуйста, исправьте ошибки в форме.',
                 severity: 'error',
             });
             return;
@@ -212,6 +233,7 @@ export default function DialogNewEmployees({
         setErrors({
             password: '',
             confirm_password: '',
+            email: '',
         });
     };
 
@@ -238,6 +260,8 @@ export default function DialogNewEmployees({
                                 value={newEmployee.username}
                                 onChange={handleEmployeeInputChange}
                                 required
+                                error={Boolean(errors.username)}
+                                helperText={errors.username}
                             />
                             <StyledTextField
                                 label="Пароль"
@@ -264,30 +288,41 @@ export default function DialogNewEmployees({
                                 name="first_name"
                                 value={newEmployee.first_name}
                                 onChange={handleEmployeeInputChange}
+                                error={Boolean(errors.first_name)}
+                                helperText={errors.first_name}
                             />
                             <StyledTextField
                                 label="Фамилия"
                                 name="last_name"
                                 value={newEmployee.last_name}
                                 onChange={handleEmployeeInputChange}
+                                error={Boolean(errors.last_name)}
+                                helperText={errors.last_name}
                             />
                             <StyledTextField
                                 label="Электронная почта"
                                 name="email"
                                 value={newEmployee.email}
                                 onChange={handleEmployeeInputChange}
+                                error={Boolean(errors.email)}
+                                helperText={errors.email}
+                                required
                             />
                             <StyledTextField
                                 label="Номер телефона"
                                 name="phone_number"
                                 value={newEmployee.phone_number}
                                 onChange={handleEmployeeInputChange}
+                                error={Boolean(errors.phone_number)}
+                                helperText={errors.phone_number}
                             />
                             <StyledTextField
                                 label="Звание"
                                 name="rank"
                                 value={newEmployee.rank}
                                 onChange={handleEmployeeInputChange}
+                                error={Boolean(errors.rank)}
+                                helperText={errors.rank}
                             />
                             {user.role === 'REGION_HEAD' && (
                                 <>
@@ -314,6 +349,7 @@ export default function DialogNewEmployees({
                                             value={newEmployee.department}
                                             onChange={handleEmployeeInputChange}
                                             label="Отделение"
+                                            error={Boolean(errors.department)}
                                         >
                                             {departments.map((dept) => (
                                                 <MenuItem key={dept.id} value={dept.id}>
@@ -321,6 +357,11 @@ export default function DialogNewEmployees({
                                                 </MenuItem>
                                             ))}
                                         </Select>
+                                        {errors.department && (
+                                            <p style={{ color: 'red', fontSize: '0.8em' }}>
+                                                {errors.department}
+                                            </p>
+                                        )}
                                     </FormControl>
                                 </>
                             )}
@@ -350,6 +391,7 @@ export default function DialogNewEmployees({
 }
 
 // // frontend/src/components/Dashboard/Employees/DialogNewEmployees.js
+//
 // import {
 //     Button,
 //     FormControl,
@@ -367,15 +409,14 @@ export default function DialogNewEmployees({
 // import { useReactToPrint } from 'react-to-print';
 // import { StyledTextField } from '../../ui/StyledTextfield';
 //
-// export default function DialogNewEmpolyees({
-//     user,
-//     departments,
-//     setSnackbar,
-//     setEmployees,
-//     employees,
-//     openEmployeeDialog,
-//     setOpenEmployeeDialog,
-// }) {
+// export default function DialogNewEmployees({
+//                                                user,
+//                                                departments,
+//                                                setSnackbar,
+//                                                openEmployeeDialog,
+//                                                setOpenEmployeeDialog,
+//                                                refetchEmployees, // Добавляем функцию для обновления списка сотрудников
+//                                            }) {
 //     // Ссылки и состояния
 //     const loginDetailsRef = useRef();
 //
@@ -521,8 +562,8 @@ export default function DialogNewEmployees({
 //         axios
 //             .post('/api/users/', employeeData)
 //             .then((response) => {
-//                 // Обновляем список сотрудников
-//                 setEmployees([...employees, response.data]);
+//                 // Обновляем список сотрудников через refetch
+//                 refetchEmployees();
 //
 //                 setNewEmployeeCreated(response.data);
 //                 setOpenPrintDialog(true);
