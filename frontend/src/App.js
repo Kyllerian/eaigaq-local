@@ -4,6 +4,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import PrivateRoute from './components/PrivateRoute';
 import BiometricRoute from './components/BiometricRoute';
 import LoginPage from './pages/LoginPage';
+import { ManualPage } from './pages/ManualPage';
 import Dashboard from './pages/Dashboard';
 import CaseDetailPage from './pages/CaseDetailPage';
 import AllEmployeesPage from './pages/AllEmployeesPage';
@@ -33,6 +34,7 @@ function App() {
             <Routes>
               {/* Маршрут для страницы входа */}
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/manual" element={<ManualPage />} />
 
               {/* Маршрут для регистрации биометрии */}
               <Route

@@ -13,3 +13,7 @@ eventlet
 django-filter
 channels
 aiortc
+redis
+numpy
+aioredis
+cython
