@@ -1,6 +1,6 @@
 // frontend/src/components/ui/Tables.js
 
-import React, { forwardRef, useRef, useState, useEffect, useCallback } from 'react';
+import React, { forwardRef } from 'react';
 import { DataGridPro } from '@mui/x-data-grid-pro';
 import { LicenseInfo } from '@mui/x-license';
 import { useTheme } from '@emotion/react';

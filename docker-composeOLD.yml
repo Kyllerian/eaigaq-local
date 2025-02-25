@@ -1,0 +1,136 @@
+# docker-compose.yml
+services:
+  db:
+    image: postgres:13
+    container_name: db
+    env_file:
+      - ./env/.env.db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    ports:
+      - "5432:5432"
+    networks:
+      - webnet
+
+  redis:
+    image: redis:latest
+    container_name: redis
+    expose:
+      - "6379"
+    networks:
+      - webnet
+
+
+  backend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.backend
+    container_name: backend
+    env_file:
+      - ./env/.env.backend
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media  # 🆕 Добавляем том для медиа-файлов
+    networks:
+      - webnet
+    expose:
+      - "8000"
+    deploy:
+      resources:
+        limits:
+          cpus: '8'
+          memory: 8g
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [ gpu ]
+    runtime: nvidia
+    init: true
+    command: ["daphne", "-b", "0.0.0.0", "-p", "8000", "eaigaq_project.asgi:application"]
+
+  celery_biometric:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.backend
+    container_name: celery_biometric
+    env_file:
+      - ./env/.env.backend
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media  # 🆕 Добавляем том для медиа-файлов
+    networks:
+      - webnet
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4g
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [ gpu ]
+    runtime: nvidia
+    init: true
+    command: ["celery", "-A", "eaigaq_project", "worker", "--loglevel=info", "--pool=solo", "--queues=biometric"]
+
+  celery_streaming:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.backend
+    container_name: celery_streaming
+    env_file:
+      - ./env/.env.backend
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media  # 🆕 Добавляем том для медиа-файлов
+    networks:
+      - webnet
+    deploy:
+      resources:
+        limits:
+          cpus: '8'
+          memory: 10g
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [ gpu ]
+    runtime: nvidia
+    init: true
+    command: [ "celery", "-A", "eaigaq_project", "worker", "--loglevel=info", "--concurrency=4", "--queues=streaming" ]
+
+
+  nginx:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.frontend
+    container_name: nginx
+    depends_on:
+      backend:
+        condition: service_started
+    ports:
+      - "443:443"
+    volumes:
+      - static_volume:/staticfiles
+      - media_volume:/app/media
+    networks:
+      - webnet
+
+volumes:
+  postgres_data:
+  static_volume:
+  media_volume:
+
+networks:
+  webnet:

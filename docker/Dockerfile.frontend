@@ -2,30 +2,29 @@
 # Этап 1: Сборка React-приложения
 FROM node:18-alpine AS build
 
-# Устанавливаем рабочую директорию
 WORKDIR /app
 
-# Копируем package.json и package-lock.json
 COPY frontend/package.json frontend/package-lock.json ./
-
-# Устанавливаем зависимости
 RUN npm install
-
-# Копируем файл .env (с обновленным REACT_APP_BACKEND_URL)
 COPY frontend/.env ./
-
-# Копируем исходный код приложения
 COPY frontend/ ./
-
-# Устанавливаем переменные окружения для сборки
 ENV NODE_OPTIONS=--openssl-legacy-provider
 ENV GENERATE_SOURCEMAP=false
-
-# Собираем приложение
 RUN npm run build
 
 # Этап 2: Используем Nginx для обслуживания приложения
 FROM nginx:alpine
+
+# Устанавливаем зависимости для сборки curl из исходников
+RUN apk update && apk add --no-cache build-base openssl-dev zlib-dev nghttp2-dev wget
+
+RUN apk add --no-cache bash
+COPY docker/curl7_68_install.sh /app/
+RUN chmod +x /app/curl7_68_install.sh
+RUN /app/curl7_68_install.sh
+
+# Удаляем пакеты для сборки, если хотите уменьшить размер
+RUN apk del build-base openssl-dev zlib-dev nghttp2-dev && rm -rf /var/cache/apk/* /app/curl7_68_install.sh /app/curl-7.68.0*
 
 # Создаем директорию для SSL-сертификатов
 RUN mkdir -p /etc/nginx/ssl
@@ -36,6 +35,8 @@ COPY ssl/server.key /etc/nginx/ssl/server.key
 
 # Отладка: проверяем, что сертификаты скопированы в образ
 RUN echo "Содержимое /etc/nginx/ssl/:" && ls -l /etc/nginx/ssl/
+
+
 
 # Копируем наш конфиг Nginx
 COPY docker/nginx.conf /etc/nginx/conf.d/default.conf

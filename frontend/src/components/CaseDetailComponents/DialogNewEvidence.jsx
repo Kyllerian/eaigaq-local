@@ -1,6 +1,6 @@
+// src\components\CaseDetailComponents\DialogNewEvidence.jsx
 import {
     Button,
-    TextField,
     FormControl,
     InputLabel,
     Select,
@@ -10,11 +10,15 @@ import {
 import { StyledButton } from '../ui/StyledComponents';
 import { useState } from 'react';
 import axios from '../../axiosConfig';
-import { EVIDENCE_TYPES } from '../../constants/evidenceTypes';
+import { useEvidenceTypes } from '../../constants/evidenceTypes';
 import StyledDialog from '../ui/StyledDialog';
 import { StyledTextField } from '../ui/StyledTextfield';
+import { useTranslation } from 'react-i18next';
 
 export default function DialogNewEvidence({ open, setOpenEvidenceDialog, setGroups, selectedGroupId, setSnackbar, id }) {
+    const { t } = useTranslation();
+    const EVIDENCE_TYPES = useEvidenceTypes();
+
     const [newEvidence, setNewEvidence] = useState({
         name: '',
         description: '',
@@ -60,18 +64,18 @@ export default function DialogNewEvidence({ open, setOpenEvidenceDialog, setGrou
                 handleCloseEvidenceDialog();
                 setSnackbar({
                     open: true,
-                    message: 'Вещественное доказательство добавлено.',
+                    message: t('common.success.success_add_evidence'),
                     severity: 'success',
                 });
             })
             .catch((error) => {
                 console.error(
-                    'Ошибка при добавлении вещественного доказательства:',
+                    t('common.errors.error_add_evidence'),
                     error.response?.data || error
                 );
                 setSnackbar({
                     open: true,
-                    message: 'Ошибка при добавлении вещественного доказательства.',
+                    message: t('common.errors.error_add_evidence'),
                     severity: 'error',
                 });
             });
@@ -79,37 +83,17 @@ export default function DialogNewEvidence({ open, setOpenEvidenceDialog, setGrou
     return (
         <>
             {/* Диалоговое окно для добавления новой группы */}
-            <StyledDialog title={"Добавить вещественное доказательство"} open={open} setOpen={setOpenEvidenceDialog} setState={setNewEvidence} >
+            <StyledDialog title={t('case_detail.tabs.evidence.button_add_evidence')} open={open} setOpen={setOpenEvidenceDialog} setState={setNewEvidence} >
                 {{
                     content: (
                         <>
-                            <StyledTextField autoFocus label="Название ВД" name="name" value={newEvidence.name} onChange={handleEvidenceInputChange} required />
-                            {/* <TextField
-                                autoFocus
-                                margin="dense"
-                                label="Название ВД"
-                                name="name"
-                                value={newEvidence.name}
-                                onChange={handleEvidenceInputChange}
-                                fullWidth
-                                required
-                            /> */}
-                            <StyledTextField label="Описание ВД" name="description" value={newEvidence.description} onChange={handleEvidenceInputChange} multiline rows={4} />
-                            {/* <TextField
-                                margin="dense"
-                                label="Описание ВД"
-                                name="description"
-                                value={newEvidence.description}
-                                onChange={handleEvidenceInputChange}
-                                fullWidth
-                                multiline
-                                rows={4}
-                            /> */}
+                            <StyledTextField autoFocus label={t('common.table_headers.name_evidence')} name="name" value={newEvidence.name} onChange={handleEvidenceInputChange} required />
+                            <StyledTextField label={t('common.table_headers.description_evidence')} name="description" value={newEvidence.description} onChange={handleEvidenceInputChange} multiline rows={4} />
                             <FormControl fullWidth margin="dense" required> {/* Добавлено */}
-                                <InputLabel id="evidence-type-label">Тип ВД</InputLabel>
+                                <InputLabel id="evidence-type-label">{t('common.standard.label_evidence_type')}</InputLabel>
                                 <Select
                                     labelId="evidence-type-label"
-                                    label="Тип ВД"
+                                    label={t('common.standard.label_evidence_type')}
                                     name="type"
                                     value={newEvidence.type}
                                     onChange={handleEvidenceInputChange}
@@ -125,8 +109,8 @@ export default function DialogNewEvidence({ open, setOpenEvidenceDialog, setGrou
                     ),
                     actions: (
                         <>
-                            <Button onClick={handleCloseEvidenceDialog}>Отмена</Button>
-                            <StyledButton onClick={handleEvidenceFormSubmit}>Добавить</StyledButton>
+                            <Button onClick={handleCloseEvidenceDialog}>{t('common.buttons.cancel')}</Button>
+                            <StyledButton onClick={handleEvidenceFormSubmit}>{t('common.buttons.add')}</StyledButton>
                         </>
                     )
                 }}

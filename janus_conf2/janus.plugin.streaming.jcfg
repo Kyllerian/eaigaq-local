@@ -1,0 +1,6 @@
+general: {
+	admin_key = "apshubersh"   # Ключ, который вы используете в вашем коде для dynamic create/delete mountpoint
+	#rtp_port_range = "20000-40000"
+	#events = false
+	#string_ids = true
+}

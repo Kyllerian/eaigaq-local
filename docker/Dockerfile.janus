@@ -1,0 +1,50 @@
+# docker/Dockerfile.janus
+FROM kyllerian/aigaq-base:v1.4
+
+WORKDIR /app
+
+ENV PYTHONUNBUFFERED 1
+ENV NVIDIA_VISIBLE_DEVICES all
+ENV NVIDIA_DRIVER_CAPABILITIES video,compute,utility
+RUN apt-get update && apt-get install -y netcat
+## Копируем скрипт для установки нужной версии curl
+#COPY docker/curl7_68_install.sh /app/
+#RUN chmod +x /app/curl7_68_install.sh
+#RUN /app/curl7_68_install.sh
+
+# Обновляем кэш динамических библиотек (если нужно, иначе можно убрать)
+RUN ldconfig
+
+# Копируем requirements
+COPY eaigaq_project/requirements.txt /app/
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Копируем проект
+COPY eaigaq_project/ /app/
+
+# Копируем скрипт точки входа
+COPY docker/entrypoint_janus.sh /app/
+RUN chmod +x /app/entrypoint_janus.sh
+RUN sed -i 's/\r$//' /app/entrypoint_janus.sh
+
+# Копируем скрипт установки Janus из исходников
+COPY docker/install_janus.sh /app/
+RUN chmod +x /app/install_janus.sh
+RUN sed -i 's/\r$//' /app/install_janus.sh
+RUN /app/install_janus.sh
+
+# Создаем директорию под медиа (если требуется)
+RUN mkdir -p /app/media && chmod -R 755 /app/media
+ENV MEDIA_ROOT=/app/media
+
+# Если есть пользовательские конфиги Janus, можно их скопировать:
+COPY janus_conf/* /usr/local/etc/janus/
+
+# Janus по умолчанию слушает порты 8088 (HTTP) и 8089 (HTTPS), а также 7088/7089 для admin/monitor
+EXPOSE 8088
+EXPOSE 8089
+EXPOSE 7088
+EXPOSE 7089
+EXPOSE 8188
+## Запуск Janus по умолчанию
+ENTRYPOINT ["/app/entrypoint_janus.sh"]

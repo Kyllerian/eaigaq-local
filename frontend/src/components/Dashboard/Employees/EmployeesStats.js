@@ -1,273 +1,3 @@
-// // frontend/src/components/Dashboard/Employees/EmployeesStats.js
-
-// import React, { useState, useEffect, useCallback, useRef } from 'react';
-// import {
-//     Box,
-//     useMediaQuery,
-//     Pagination,
-// } from '@mui/material';
-// import { useTheme } from '@mui/material/styles';
-// import axios from '../../../axiosConfig.js';
-// import EmployeesTable from './Table.js';
-// import { useQuery } from 'react-query';
-// import EmployeesToolbar from './Toolbar.js';
-// import EmployeesTableStats from './TableStats.js';
-
-// // Хук для дебаунса
-// function useDebounce(value, delay) {
-//     const [debouncedValue, setDebouncedValue] = useState(value);
-
-//     useEffect(() => {
-//         const handler = setTimeout(() => {
-//             setDebouncedValue(value);
-//         }, delay);
-
-//         return () => {
-//             clearTimeout(handler);
-//         };
-//     }, [value, delay]);
-
-//     return debouncedValue;
-// }
-
-// const EmployeesStats = ({ user, departments, setSnackbar }) => {
-//     const theme = useTheme();
-//     const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
-
-//     const [employeeSearchQuery, setEmployeeSearchQuery] = useState('');
-//     const [selectedEmployeeDepartment, setSelectedEmployeeDepartment] = useState('');
-//     const [currentPage, setCurrentPage] = useState(1);
-//     const [pageSize, setPageSize] = useState(10); // Изначально ставим 10, но оно будет пересчитано
-
-//     const [selectedEmployee, setSelectedEmployee] = useState(null);
-
-//     // Дебаунс для поля поиска
-//     const debouncedEmployeeSearchQuery = useDebounce(employeeSearchQuery, 800);
-
-//     // Фиксированные высоты строк и заголовков
-//     const rowHeight = 52; // Стандартная высота строки в DataGridPro
-//     const headerHeight = 56; // Высота заголовка таблицы
-
-//     // Высота заголовков и фильтров
-//     const headerAndFiltersHeight = isSmallScreen ? 200 : 150;
-
-//     // Высота пагинации и отступов под таблицей
-//     const footerHeight = 100;
-
-//     // Рассчитываем pageSize в зависимости от высоты окна
-//     const calculatePageSize = useCallback(() => {
-//         const height = window.innerHeight;
-//         const availableHeight = height - headerAndFiltersHeight - footerHeight;
-//         let calculatedPageSize = Math.floor(availableHeight / rowHeight) - 7;
-//         return calculatedPageSize > 0 ? calculatedPageSize : 1; // Минимум 1 элемент на странице
-//     }, [headerAndFiltersHeight, footerHeight, rowHeight]);
-
-//     // Инициализируем pageSize при монтировании и на изменении размеров окна
-//     useEffect(() => {
-//         const handleResize = () => {
-//             const newPageSize = calculatePageSize();
-//             setPageSize(newPageSize);
-//         };
-
-//         window.addEventListener('resize', handleResize);
-//         // Инициализируем pageSize при монтировании
-//         const initialPageSize = calculatePageSize();
-//         setPageSize(initialPageSize);
-
-//         return () => {
-//             window.removeEventListener('resize', handleResize);
-//         };
-//     }, [calculatePageSize]);
-
-//     // Параметры запроса
-//     const params = {
-//         page: currentPage,
-//         page_size: pageSize,
-//         search: debouncedEmployeeSearchQuery || undefined,
-//         department: selectedEmployeeDepartment || undefined,
-//     };
-
-//     // Функция для получения данных сотрудников
-//     // const fetchEmployees = async ({ queryKey }) => {
-//     //     const [_key, params] = queryKey;
-//     //     const response = await axios.get('/api/users/', { params });
-//     //     return response.data;
-//     // };
-//     const fetchUsersWithCases = async ({ queryKey }) => {
-//         const [_key, params] = queryKey;
-
-//         // Запрашиваем пользователей и дела
-//         const [responseUsers, responseCases] = await Promise.all([
-//             axios.get('/api/users/', { params }),
-//             axios.get('/api/cases/'),
-//         ]);
-
-//         // console.log(responseUsers.data.results, "Users");
-//         // console.log(responseCases.data, "Cases");
-
-//         const users = responseUsers.data.results;
-//         const cases = responseCases.data;
-
-//         // Создаем маппинг дел по id пользователей (investigator)
-//         const casesMap = cases.reduce((map, caseItem) => {
-//             if (!map[caseItem.investigator]) {
-//                 map[caseItem.investigator] = [];
-//             }
-//             map[caseItem.investigator].push(caseItem);
-//             return map;
-//         }, {});
-
-//         // Добавляем список дел к каждому пользователю
-//         const usersWithCases = users.map((user) => {
-//             const userCases = casesMap[user.id] || [];
-//             const openedCasesCount = userCases.reduce(
-//                 (count, caseItem) => count + (caseItem.active ? 1 : 0),
-//                 0
-//             );
-//             const closedCasesCount = userCases.reduce(
-//                 (count, caseItem) => count + (caseItem.active ? 0 : 1),
-//                 0
-//             );
-
-//             return {
-//                 ...user,
-//                 cases: casesMap[user.id] || [],
-//                 openedCasesCount,
-//                 closedCasesCount,
-//             }
-//         });
-//         // console.log(usersWithCases, "usersWithCases");
-//         responseUsers.data = {
-//             ...(responseUsers.data),
-//             results: usersWithCases
-//         }
-//         return responseUsers.data;
-//     };
-
-
-//     // Используем useQuery для получения данных
-//     const {
-//         data,
-//         isLoading,
-//         isError,
-//         error,
-//         refetch,
-//     } = useQuery(['employeesStats', params], fetchUsersWithCases, {
-//         keepPreviousData: true,
-//     });
-
-//     const employees = data?.results || [];
-//     const totalCount = data?.count || 0;
-//     const totalPages = Math.ceil(totalCount / pageSize);
-
-//     // Устанавливаем tableHeight на основе количества строк
-//     const tableHeight = (employees.length > 0 ? Math.min(employees.length, pageSize) : 1) * rowHeight + headerHeight;
-
-//     useEffect(() => {
-//         if (isError) {
-//             console.error('Ошибка при получении сотрудников:', error);
-//             setSnackbar({
-//                 open: true,
-//                 message: 'Ошибка при получении сотрудников.',
-//                 severity: 'error',
-//             });
-//         }
-//     }, [isError, error, setSnackbar]);
-
-//     // Обработчики для фильтров и поиска
-//     const handleEmployeeSearchChange = useCallback((event) => {
-//         setEmployeeSearchQuery(event.target.value);
-//         setCurrentPage(1); // Сбрасываем на первую страницу
-//     }, []);
-
-//     const handleEmployeeDepartmentChange = useCallback((event) => {
-//         setSelectedEmployeeDepartment(event.target.value);
-//         setCurrentPage(1);
-//     }, []);
-
-//     const handlePageChange = useCallback((event, value) => {
-//         setCurrentPage(value);
-//         setSelectedEmployee(null); // Сбрасываем выделение при смене страницы
-//     }, []);
-
-//     const handleEmployeeSelect = (employee) => {
-//         if (selectedEmployee && selectedEmployee.id === employee.id) {
-//             setSelectedEmployee(null);
-//         } else {
-//             setSelectedEmployee(employee);
-//         }
-//     };
-
-//     const handleToggleActive = () => {
-//         if (selectedEmployee.id === user.id) {
-//             setSnackbar({
-//                 open: true,
-//                 message: 'Вы не можете деактивировать свой собственный аккаунт.',
-//                 severity: 'error',
-//             });
-//             return;
-//         }
-
-//         axios
-//             .patch(`/api/users/${selectedEmployee.id}/`, {
-//                 is_active: !selectedEmployee.is_active,
-//             })
-//             .then(() => {
-//                 setSnackbar({
-//                     open: true,
-//                     message: 'Статус сотрудника изменен.',
-//                     severity: 'success',
-//                 });
-//                 setSelectedEmployee(null);
-//                 refetch(); // Обновляем список сотрудников
-//             })
-//             .catch((error) => {
-//                 setSnackbar({
-//                     open: true,
-//                     message: 'Ошибка при изменении статуса сотрудника.',
-//                     severity: 'error',
-//                 });
-//             });
-//     };
-//     return (
-//         <Box sx={{ display: 'flex', width: '100%', flexDirection: 'column', }}>
-//             {/* Поля поиска и фильтров */}
-//             <EmployeesToolbar user={user} employeeSearchQuery={employeeSearchQuery} departments={departments}
-//                 handleEmployeeSearchChange={handleEmployeeSearchChange} selectedEmployeeDepartment={selectedEmployeeDepartment}
-//                 handleEmployeeDepartmentChange={handleEmployeeDepartmentChange} setSnackbar={setSnackbar} params={params} totalCount={totalCount} refetch={refetch}
-//             />
-
-//             {/* Контейнер для таблицы и пагинации */}
-//             <Box>
-//                 {/* Таблица сотрудников */}
-//                 <EmployeesTableStats
-//                     user={user}
-//                     employees={employees}
-//                     isLoading={isLoading}
-//                     selectedEmployee={selectedEmployee}
-//                     handleEmployeeSelect={handleEmployeeSelect}
-//                     tableHeight={tableHeight}
-//                     pageSize={pageSize}
-//                     rowHeight={rowHeight}
-//                 />
-
-//                 {/* Элементы пагинации */}
-//                 {totalPages > 1 && (
-//                     <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
-//                         <Pagination
-//                             count={totalPages}
-//                             page={currentPage}
-//                             onChange={handlePageChange}
-//                         />
-//                     </Box>
-//                 )}
-//             </Box>
-//         </Box>
-//     );
-// };
-
-// export default EmployeesStats;
-
 // frontend/src/components/Dashboard/Employees/EmployeesStats.js
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -281,6 +11,7 @@ import axios from '../../../axiosConfig.js';
 import { useQuery } from 'react-query';
 import EmployeesToolbar from './Toolbar.js';
 import EmployeesTableStats from './TableStats.js';
+import { useTranslation } from 'react-i18next';
 
 // Хук для дебаунса
 function useDebounce(value, delay) {
@@ -300,6 +31,7 @@ function useDebounce(value, delay) {
 }
 
 const EmployeesStats = ({ user, departments, setSnackbar }) => {
+    const { t } = useTranslation();
     const theme = useTheme();
     const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
 
@@ -435,14 +167,14 @@ const EmployeesStats = ({ user, departments, setSnackbar }) => {
 
     useEffect(() => {
         if (isError) {
-            console.error('Ошибка при получении сотрудников:', error);
+            console.error(t('common.errors.error_load_employees'), error);
             setSnackbar({
                 open: true,
-                message: 'Ошибка при получении сотрудников.',
+                message: t('common.errors.error_load_employees'),
                 severity: 'error',
             });
         }
-    }, [isError, error, setSnackbar]);
+    }, [isError, error, setSnackbar, t]);
 
     // Обработчики
     const handleEmployeeSearchChange = useCallback((event) => {
@@ -474,7 +206,7 @@ const EmployeesStats = ({ user, departments, setSnackbar }) => {
         if (selectedEmployee.id === user.id) {
             setSnackbar({
                 open: true,
-                message: 'Вы не можете деактивировать свой собственный аккаунт.',
+                message: t('common.errors.error_deactivate_your_account'),
                 severity: 'error',
             });
             return;
@@ -487,7 +219,7 @@ const EmployeesStats = ({ user, departments, setSnackbar }) => {
             .then(() => {
                 setSnackbar({
                     open: true,
-                    message: 'Статус сотрудника изменен.',
+                    message: t('common.messages.status_emp_changed'),
                     severity: 'success',
                 });
                 setSelectedEmployee(null);
@@ -496,7 +228,7 @@ const EmployeesStats = ({ user, departments, setSnackbar }) => {
             .catch((error) => {
                 setSnackbar({
                     open: true,
-                    message: 'Ошибка при изменении статуса сотрудника.',
+                    message: t('common.errors.error_status_emp_changed'),
                     severity: 'error',
                 });
             });

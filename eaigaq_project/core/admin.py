@@ -119,18 +119,39 @@ class SessionAdmin(admin.ModelAdmin):
     search_fields = ('user__username',)
     list_filter = ('active', 'login', 'logout')
 
-
 @admin.register(Camera)
 class CameraAdmin(admin.ModelAdmin):
-    list_display = ('name', 'device_id', 'active', 'created', 'updated')
-    search_fields = ('name', 'device_id')
-    list_filter = ('active', 'created', 'updated')
+    # Отображаем основные поля, включая новые
+    list_display = (
+        'name', 'device_id', 'ip_address', 'department', 'region',
+        'active', 'viewers_count', 'mountpoint_id', 'video_port',
+        'ffmpeg_pid', 'created', 'updated'
+    )
+    # Поля для поиска: имя, ID устройства, IP адрес
+    search_fields = ('name', 'device_id', 'ip_address')
+    # Фильтры: активность, регион, отделение, время создания/обновления
+    list_filter = ('active', 'region', 'department', 'created', 'updated')
 
-# @admin.register(Camera)
-# class CameraAdmin(admin.ModelAdmin):
-#     list_display = ('name', 'device_id', 'type', 'active', 'created', 'updated')
-#     search_fields = ('name', 'device_id')
-#     list_filter = ('type', 'active', 'created', 'updated')
+    # Можно сделать некоторые поля только для чтения,
+    # например mountpoint_id, ffmpeg_pid, video_port, viewers_count
+    readonly_fields = ('viewers_count', 'created', 'updated')
+
+    # При редактировании камеры можно отделить поля по полям
+    fieldsets = (
+        (None, {
+            'fields': ('name', 'device_id', 'ip_address', 'login', 'password', 'department', 'region', 'mountpoint_id', 'active')
+        }),
+        ('Stream Info', {
+            'fields': ('viewers_count', 'video_port', 'ffmpeg_pid'),
+        }),
+        ('Timestamps', {
+            'fields': ('created', 'updated')
+        }),
+    )
+
+
+
+
 
 
 @admin.register(AuditEntry)

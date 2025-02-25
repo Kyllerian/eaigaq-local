@@ -5,7 +5,6 @@ import { useNavigate } from 'react-router-dom';
 export default function BackButton() {
     const navigate = useNavigate();
     return (
-        <>
             <IconButton
                 edge="start"
                 color="inherit"
@@ -14,6 +13,5 @@ export default function BackButton() {
             >
                 <ArrowBackIcon />
             </IconButton>
-        </>
     );
 }

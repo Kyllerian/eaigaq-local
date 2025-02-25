@@ -1,3 +1,4 @@
+// src\components\Dashboard\Employees\DialogPrintNewEmp.js
 import {
     Button,
     Typography,
@@ -10,11 +11,12 @@ import PrintLoginDetails from './PrintLoginDetails';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { formatDate } from '../../../constants/formatDate'; // Убедитесь, что путь корректен
+import { useTranslation } from 'react-i18next';
 
 export default function DialogPrintNewEmp({
     openPrintDialog, setOpenPrintDialog, handleClosePrintDialog, newEmployeeCreated, handlePrintLoginDetails, employeePassword, loginDetailsRef
 }) {
-
+    const { t } = useTranslation();
     // Функция для экспорта в Excel
     const handleExportExcel = async () => {
         if (!newEmployeeCreated) {
@@ -23,14 +25,14 @@ export default function DialogPrintNewEmp({
 
         try {
             const workbook = new ExcelJS.Workbook();
-            const worksheet = workbook.addWorksheet('Данные для входа сотрудника');
+            const worksheet = workbook.addWorksheet(t('common.report.titles.report_login_data_employee'));
 
             let currentRow = 1;
 
             // Заголовок отчёта
             worksheet.mergeCells(`A${currentRow}:B${currentRow}`);
             const headerCell = worksheet.getCell(`A${currentRow}`);
-            headerCell.value = 'Данные для входа сотрудника';
+            headerCell.value = t('common.report.titles.report_login_data_employee');
             headerCell.font = { bold: true, size: 16 };
             headerCell.alignment = { horizontal: 'center' };
             currentRow += 1;
@@ -38,13 +40,13 @@ export default function DialogPrintNewEmp({
             // Дата создания отчёта
             worksheet.mergeCells(`A${currentRow}:B${currentRow}`);
             const dateCell = worksheet.getCell(`A${currentRow}`);
-            dateCell.value = `Дата создания: ${formatDate(new Date().toISOString())}`;
+            dateCell.value = `${t('common.report.date_created')}: ${formatDate(new Date().toISOString())}`;
             dateCell.font = { bold: true, size: 12 };
             dateCell.alignment = { horizontal: 'center' };
             currentRow += 2; // Добавить пустую строку после даты
 
             // Добавление заголовков таблицы
-            const headers = ['Поле', 'Значение'];
+            const headers = [t('common.report.field'), t('common.report.value'),];
             headers.forEach((header, index) => {
                 const cell = worksheet.getCell(
                     `${String.fromCharCode(65 + index)}${currentRow}`
@@ -56,29 +58,26 @@ export default function DialogPrintNewEmp({
             currentRow += 1;
 
             // Добавление данных
+            const unknownField = t('common.messages.unknown');
             const data = [
-                { field: 'Имя пользователя', value: newEmployeeCreated.username || 'Неизвестно' },
-                { field: 'Пароль', value: employeePassword || 'Неизвестно' },
-                { field: 'Имя', value: `${newEmployeeCreated.first_name || ''} ${newEmployeeCreated.last_name || ''}`.trim() || 'Неизвестно' },
-                { field: 'Роль', value: newEmployeeCreated.role_display || 'Неизвестно' },
+                { field: t('common.logins.input_name'), value: newEmployeeCreated.username || unknownField },
+                { field: t('common.logins.password'), value: employeePassword || unknownField },
+                { field: t('common.standard.label_first_name'), value: `${newEmployeeCreated.first_name || ''} ${newEmployeeCreated.last_name || ''}`.trim() || unknownField },
+                { field: t('common.standard.label_role'), value: newEmployeeCreated.role_display || unknownField },
             ];
 
             if (newEmployeeCreated.department && newEmployeeCreated.department.name) {
-                data.push({ field: 'Отделение', value: newEmployeeCreated.department.name });
+                data.push({ field: t('common.standard.label_department'), value: newEmployeeCreated.department.name });
             }
 
             // Добавление данных сессий
             data.forEach((item) => {
                 worksheet.addRow([
                     item.field || '',
-                    item.value || 'Неизвестно',
+                    item.value || unknownField,
                 ]);
                 currentRow += 1;
             });
-            // data.forEach(item => {
-            //     const row = worksheet.addRow({ field: item.field, value: item.value });
-            //     row.alignment = { vertical: 'middle', wrapText: true };
-            // });
 
             // Добавление пустой строки перед футером
             worksheet.addRow([]);
@@ -86,7 +85,9 @@ export default function DialogPrintNewEmp({
             // Футер
             worksheet.mergeCells(`A${worksheet.rowCount}:B${worksheet.rowCount}`);
             const footerCell = worksheet.getCell(`A${worksheet.rowCount}`);
-            footerCell.value = `© ${new Date().getFullYear()} Министерство внутренних дел Республики Казахстан.`;
+            footerCell.value = t('common.report.footer_message', {
+                currentYear: new Date().getFullYear(),
+            });
             footerCell.font = { italic: true, size: 10 };
             footerCell.alignment = { horizontal: 'center' };
 
@@ -110,39 +111,39 @@ export default function DialogPrintNewEmp({
             // Генерация Excel-файла и его сохранение
             const buffer = await workbook.xlsx.writeBuffer();
             const blob = new Blob([buffer], { type: 'application/octet-stream' });
-            saveAs(blob, `Данные_для_входа_${newEmployeeCreated.first_name || 'Сотрудник'}.xlsx`);
+            saveAs(blob, `${t('common.report.titles.file_name_data_employee')}${newEmployeeCreated.first_name || t('common.standard.label_employee')}.xlsx`);
 
         } catch (error) {
-            console.error('Ошибка при экспорте в Excel:', error);
+            console.error(t('common.errors.error_export_excel'), error);
         }
         handleClosePrintDialog();
     };
     return (
         <>
-            <DashboardDialog open={openPrintDialog} setOpen={setOpenPrintDialog} title={"Сотрудник успешно добавлен"}  >
+            <DashboardDialog open={openPrintDialog} setOpen={setOpenPrintDialog} title={t('dashboard.tabs.employees.dialog_new_employee.success_employee_added')}  >
                 {{
                     content: (
                         <>
                             <Typography variant="body1">
-                                Сотрудник{' '}
-                                {newEmployeeCreated
-                                    ? `${newEmployeeCreated.first_name} ${newEmployeeCreated.last_name}`
-                                    : ''}
-                                {' '}успешно добавлен.
+                                {t('dashboard.tabs.employees.dialog_print_new_emp.message_employee_added', {
+                                    employeeName: newEmployeeCreated
+                                        ? `${newEmployeeCreated.first_name} ${newEmployeeCreated.last_name}`
+                                        : '',
+                                })}
                             </Typography>
                             <Typography variant="body1" sx={{ mt: 2 }}>
-                                Вы хотите распечатать данные для входа сотрудника?
+                                {t('dashboard.tabs.employees.dialog_print_new_emp.message_print_login_data')}
                             </Typography>
                         </>
                     ),
                     actions: (
                         <>
-                            <Button onClick={handleClosePrintDialog}>Нет</Button>
+                            <Button onClick={handleClosePrintDialog}>{t('common.buttons.no')}</Button>
                             <StyledButton onClick={handlePrintLoginDetails}>
-                                Да, распечатать
+                                {t('common.buttons.yes_print')}
                             </StyledButton>
                             <StyledButton onClick={handleExportExcel}>
-                                Экспорт Excel
+                                {t('common.buttons.export_excel')}
                             </StyledButton>
                         </>
                     )

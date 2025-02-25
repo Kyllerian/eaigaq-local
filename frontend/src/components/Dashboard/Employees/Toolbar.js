@@ -38,6 +38,9 @@ import { LocalizationProvider, DateRangePicker, SingleInputDateRangeField } from
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import 'dayjs/locale/ru';
 import { ruRU } from '@mui/x-date-pickers/locales';
+import OneEmployeeReportStatsPDF from './OneEmployeeReportStatsPDF';
+import ExportExcelStatsOneEmployee from './ExportExcelStatsOneEmployee';
+import { useTranslation } from 'react-i18next';
 
 export default function EmployeesToolbar({
     user,
@@ -52,13 +55,13 @@ export default function EmployeesToolbar({
     params,
     totalCount,
     refetch,
-
     casesData,
     tabSelected,
-
     dateRange,
     handleDateRangeChange
 }) {
+
+    const { t } = useTranslation();
     const theme = useTheme();
 
     // Состояние для диалога добавления сотрудника
@@ -80,105 +83,6 @@ export default function EmployeesToolbar({
         setExportMenuAnchorEl(null);
     };
 
-    const handleEmployeesExport = useCallback(
-        (type) => {
-            setExportLoading(true);
-            handleExportMenuClose();
-            const exportParams = {
-                ...params,
-                page: 1,
-                page_size: totalCount || 1000, // Получаем все записи
-            };
-            if (tabSelected === 'stats') {
-
-                axios
-                    .get('/api/users/', { params: exportParams })
-                    .then(async (response) => {
-
-                        const exportData = response.data.results || [];
-                        console.log(exportData, 'exportData Stats1');
-                        let usersWithCases;
-                        const casesMap = casesData.reduce((map, caseItem) => {
-                            if (!map[caseItem.investigator]) {
-                                map[caseItem.investigator] = [];
-                            }
-                            map[caseItem.investigator].push(caseItem);
-                            return map;
-                        }, {});
-                        console.log(exportData, 'exportData Stats2');
-
-                        usersWithCases = exportData.map((u) => {
-                            const userCases = casesMap[u.id] || [];
-                            const openedCasesCount = userCases.filter(c => c.active).length;
-                            const closedCasesCount = userCases.filter(c => !c.active).length;
-                            return {
-                                ...u,
-                                cases: userCases,
-                                openedCasesCount,
-                                closedCasesCount,
-                            };
-                        });
-                        console.log(exportData, 'exportData Stats3');
-
-                        if (type === 'excel') {
-                            await handleExportExcel(usersWithCases, 'stats');
-                        } else if (type === 'pdf') {
-                            if (exportData.length === 0) {
-                                setSnackbar({
-                                    open: true,
-                                    message: 'Нет данных для экспорта.',
-                                    severity: 'warning',
-                                });
-                                setExportLoading(false);
-                                return;
-                            }
-                            setEmployeesExportData(usersWithCases);
-                        }
-                    })
-                    .catch((error) => {
-                        console.error('Ошибка при экспорте сотрудников:', error);
-                        setSnackbar({
-                            open: true,
-                            message: 'Ошибка при экспорте сотрудников.',
-                            severity: 'error',
-                        });
-                        setExportLoading(false);
-                    });
-            } else {
-                axios
-                    .get('/api/sessions/', { params: exportParams })
-                    .then(async (response) => {
-
-                        const exportData = response.data.results || [];
-                        if (type === 'excel') {
-                            await handleExportExcel(exportData, 'sessions');
-                        } else if (type === 'pdf') {
-                            if (exportData.length === 0) {
-                                setSnackbar({
-                                    open: true,
-                                    message: 'Нет данных для экспорта.',
-                                    severity: 'warning',
-                                });
-                                setExportLoading(false);
-                                return;
-                            }
-                            setEmployeesExportData(exportData);
-                            // handlePrintEmployeesReport будет вызван в useEffect
-                        }
-                    })
-                    .catch((error) => {
-                        console.error('Ошибка при экспорте сотрудников:', error);
-                        setSnackbar({
-                            open: true,
-                            message: 'Ошибка при экспорте сотрудников.',
-                            severity: 'error',
-                        });
-                        setExportLoading(false);
-                    });
-            }
-        },
-        [params, totalCount, setSnackbar]
-    );
 
     // Обработчик экспорта в Excel
     const handleExportExcel = useCallback(
@@ -186,36 +90,35 @@ export default function EmployeesToolbar({
             if (exportData.length === 0) {
                 setSnackbar({
                     open: true,
-                    message: 'Нет данных для экспорта.',
+                    message: t('common.errors.no_data_for_export'),
                     severity: 'warning',
                 });
                 return;
             }
             try {
                 const workbook = new ExcelJS.Workbook();
-                const worksheet = workbook.addWorksheet(exportType === 'stats' ? 'Статистика сотрудников' : 'Отчет по сотрудникам', {
+                const worksheet = workbook.addWorksheet(exportType === 'stats' ? t('common.report.titles.stats_employees')
+                    : t('common.report.titles.report_employees'), {
                     pageSetup: { orientation: 'landscape' }
                 });
 
                 // Определение столбцов в зависимости от типа экспорта
                 let columns = [];
                 if (exportType === 'stats') {
-                    // Добавляем заголовки
                     columns = [
-                        { header: 'ФИО, почта и телефон', key: 'full_name', width: 30 },
-                        { header: 'Звание и Роль', key: 'role_and_rank', width: 30 },
-                        { header: 'Отделение и регион', key: 'department_name', width: 25 },
-                        { header: 'Статус', key: 'is_active_display', width: 12 },
-                        { header: 'Дела', key: 'cases', width: 17 },
+                        { header: t('common.table_headers.full_name_email_phone'), key: 'full_name', width: 30, },
+                        { header: t('common.table_headers.role_rank'), key: 'role_and_rank', width: 30, },
+                        { header: t('common.table_headers.department_and_region'), key: 'department_name', width: 25, },
+                        { header: t('common.table_headers.status'), key: 'is_active_display', width: 12, },
+                        { header: t('common.table_headers.cases'), key: 'cases', width: 17, },
                     ];
                 } else {
-                    // Добавляем заголовки
                     columns = [
-                        { header: 'ФИО, почта и телефон', key: 'full_name', width: 30 },
-                        { header: 'Звание и роль', key: 'role_and_rank', width: 30 },
-                        { header: 'Отделение и регион', key: 'department_name', width: 25 },
-                        { header: 'Статус', key: 'is_active_display', width: 12 },
-                        { header: 'Сессии', key: 'sessions', width: 17 },
+                        { header: t('common.table_headers.full_name_email_phone'), key: 'full_name', width: 30 },
+                        { header: t('common.table_headers.role_rank'), key: 'role_and_rank', width: 30, },
+                        { header: t('common.table_headers.department_and_region'), key: 'department_name', width: 25, },
+                        { header: t('common.table_headers.status'), key: 'is_active_display', width: 12, },
+                        { header: t('common.table_headers.sessions'), key: 'sessions', width: 17, },
                     ];
                 }
 
@@ -225,45 +128,48 @@ export default function EmployeesToolbar({
                 exportData.forEach((employee) => {
                     if (exportType === 'stats') {
                         worksheet.addRow({
-                            full_name: `${employee.last_name} ${employee.first_name}\n${employee.email}\n${employee.phone_number || ''}`,
+                            full_name: `${employee.last_name} ${employee.first_name}\n${employee.email}\n${employee.phone_number || ''
+                                }`,
                             role_and_rank: `${employee.rank}\n${employee.role_display}`,
-                            department_name: `${employee.department_name || 'Не указано'}\n${employee.region_display || 'Не указано'}`,
-                            is_active_display: employee.is_active ? 'Активен' : 'Неактивен',
-                            cases: `Всего: ${employee.cases?.length}\nОткрыто: ${employee.openedCasesCount}\nЗакрыто: ${employee.closedCasesCount}`,
+                            department_name: `${employee.department_name || t('common.messages.not_specified')}\n${employee
+                                .region_display || t('common.messages.not_specified')
+                                }`,
+                            is_active_display: employee.is_active
+                                ? t('common.status.now_active')
+                                : t('common.status.inactive'),
+                            cases: `${t('common.report.cases_total')}: ${employee.cases?.length}\n${t(
+                                'common.report.cases_opened'
+                            )}: ${employee.openedCasesCount}\n${t(
+                                'common.status.closed'
+                            )}: ${employee.closedCasesCount}`,
                         });
-
-                        // Применяем перенос текста для ячеек с несколькими строками
-                        const lastRow = worksheet.lastRow;
-                        lastRow.getCell('cases').alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
-                        lastRow.getCell('full_name').alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
-                        lastRow.getCell('role_and_rank').alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
-                        lastRow.getCell('department_name').alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
-                        lastRow.getCell('is_active_display').alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
-                        // Опционально: Установить высоту строки, чтобы отобразить все строки текста
-                        lastRow.height = 90; // Задайте высоту по необходимости
                     } else {
                         worksheet.addRow({
-                            full_name: `${employee.user.last_name} ${employee.user.first_name}\n${employee.user.email}\n${employee.user.phone_number || ''}`,
+                            full_name: `${employee.user.last_name} ${employee.user.first_name}\n${employee.user.email}\n${employee.user.phone_number || ''
+                                }`,
                             role_and_rank: `${employee.user.rank}\n${employee.role_display}`,
-                            department_name: `${employee.department_name || 'Не указано'}\n${employee.region_name || 'Не указано'}`,
-                            is_active_display: employee.active ? 'В сети' : 'Не в сети',
-                            sessions: `Вход: ${employee.login
-                                ? formatDate(employee.login)
-                                : 'Никогда'}\nВыход: ${employee.logout ? formatDate(employee.logout)
-                                    : 'Никогда'}`,
+                            department_name: `${employee.department_name || t('common.messages.not_specified')}\n${employee.region_name || t('common.messages.not_specified')
+                                }`,
+                            is_active_display: employee.active
+                                ? t('common.status.online')
+                                : t('common.status.offline'),
+                            sessions: `${t('dashboard.tabs.employees.employees_report_session_pdf.session_in')}: ${employee.login ? formatDate(employee.login) : t('common.status.never')
+                                }\n${t('dashboard.tabs.employees.employees_report_session_pdf.session_out')}: ${employee.logout ? formatDate(employee.logout) : t('common.status.never')
+                                }`,
                         });
-
-                        // Применяем перенос текста для ячеек с несколькими строками
-                        const lastRow = worksheet.lastRow;
-                        lastRow.getCell('sessions').alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
-                        lastRow.getCell('full_name').alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
-                        lastRow.getCell('role_and_rank').alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
-                        lastRow.getCell('department_name').alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
-                        lastRow.getCell('is_active_display').alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
-
-                        // Опционально: Установить высоту строки, чтобы отобразить все строки текста
-                        lastRow.height = 90; // Задайте высоту по необходимости
                     }
+                    const lastRow = worksheet.lastRow;
+                    if (!lastRow) return;
+
+                    // Применяем перенос текста
+                    columns.forEach((col) => {
+                        lastRow.getCell(col.key).alignment = {
+                            vertical: 'middle',
+                            horizontal: 'center',
+                            wrapText: true,
+                        };
+                    });
+                    lastRow.height = 90; // Примерная высота
                 });
 
                 // Применяем стили к заголовкам
@@ -330,25 +236,251 @@ export default function EmployeesToolbar({
 
                 // Сохраняем файл
                 const blob = new Blob([buffer], { type: 'application/octet-stream' });
-                saveAs(blob, exportType === 'stats' ? 'Статистика_сотрудников.xlsx' : 'Отчет_по_сотрудникам.xlsx');
-            } catch (error) {
-                console.error('Ошибка при экспорте в Excel:', error);
+                saveAs(blob, exportType === 'stats' ? `${t('common.report.titles.file_name_stats')}.xlsx`
+                    : `${t('common.report.titles.file_name_employees')}.xlsx`);
+
                 setSnackbar({
                     open: true,
-                    message: 'Ошибка при экспорте в Excel.',
+                    message: t('common.success.export_excel_success'),
+                    severity: 'success',
+                });
+            } catch (error) {
+                console.error(t('common.errors.error_export_excel'), error);
+                setSnackbar({
+                    open: true,
+                    message: t('common.errors.error_export_excel'),
                     severity: 'error',
                 });
             } finally {
                 setExportLoading(false);
             }
         },
-        [setSnackbar]
+        [setSnackbar, t]
     );
 
+
+    const handleEmployeesExport = useCallback(
+        (type) => {
+            setExportLoading(true);
+            handleExportMenuClose();
+            const exportParams = {
+                ...params,
+                page: 1,
+                page_size: totalCount || 1000, // Получаем все записи
+            };
+            if (tabSelected === 'stats') {
+                if (selectedEmployee) {
+                    axios
+                        .get(`/api/users/${selectedEmployee.id}`)
+                        .then(async (response) => {
+
+                            let exportData = response.data || [];
+                            console.log(exportData, 'exportData Stats1');
+                            const casesMap = casesData.reduce((map, caseItem) => {
+                                if (!map[caseItem.investigator]) {
+                                    map[caseItem.investigator] = [];
+                                }
+                                map[caseItem.investigator].push(caseItem);
+                                return map;
+                            }, {});
+                            console.log(exportData, 'exportData Stats2');
+                            const userCases = casesMap[exportData.id] || [];
+                            const openedCasesCount = userCases.filter(c => c.active).length;
+                            const closedCasesCount = userCases.filter(c => !c.active).length;
+                            let evidenceForCases;
+                            if (userCases.length) {
+                                const case_ids_for_emp = userCases.map(item => item.id)?.join(',');
+                                const searchParams = {
+                                    case_id__in: case_ids_for_emp
+                                }
+                                axios
+                                    .get('/api/material-evidences/', { params: searchParams })
+                                    .then(async (response) => {
+                                        console.log(response, 'mat-evidences report stats for one emp')
+                                        evidenceForCases = response.data;
+                                        console.log('evidenceForCases', evidenceForCases)
+                                        exportData = {
+                                            ...exportData,
+                                            cases: userCases,
+                                            openedCasesCount,
+                                            closedCasesCount,
+                                            evidence: evidenceForCases,
+                                        }
+                                        console.log(exportData, 'exportData Stats3');
+
+                                        if (type === 'excel') {
+                                            await ExportExcelStatsOneEmployee(exportData, setSnackbar, setExportLoading);
+                                        } else if (type === 'pdf') {
+                                            if (exportData.length === 0) {
+                                                setSnackbar({
+                                                    open: true,
+                                                    message: t('common.errors.no_data_for_export'),
+                                                    severity: 'warning',
+                                                });
+                                                setExportLoading(false);
+                                                return;
+                                            }
+                                            console.log('exportData', exportData)
+                                            console.log('exportData', [exportData])
+                                            setEmployeesExportData([exportData]);
+                                        }
+                                    })
+                                    .catch((error) => {
+                                        console.error(t('common.errors.error_export_users'), error);
+                                        setSnackbar({
+                                            open: true,
+                                            message: t('common.errors.error_export_users'),
+                                            severity: 'error',
+                                        });
+                                        setExportLoading(false);
+                                    });
+                            } else {
+                                exportData = {
+                                    ...exportData,
+                                    cases: userCases,
+                                    openedCasesCount,
+                                    closedCasesCount,
+                                    evidence: [],
+                                }
+                                console.log(exportData, 'exportData Stats3');
+
+                                if (type === 'excel') {
+                                    await ExportExcelStatsOneEmployee(exportData, setSnackbar, setExportLoading);
+                                } else if (type === 'pdf') {
+                                    if (exportData.length === 0) {
+                                        setSnackbar({
+                                            open: true,
+                                            message: t('common.errors.no_data_for_export'),
+                                            severity: 'warning',
+                                        });
+                                        setExportLoading(false);
+                                        return;
+                                    }
+                                    console.log('exportData', exportData)
+                                    console.log('exportData', [exportData])
+                                    setEmployeesExportData([exportData]);
+                                }
+                            }
+                        })
+                        .catch((error) => {
+                            console.error(t('common.errors.error_export_users'), error);
+                            setSnackbar({
+                                open: true,
+                                message: t('common.errors.error_export_users'),
+                                severity: 'error',
+                            });
+                            setExportLoading(false);
+                        });
+                    console.log(selectedEmployee)
+                    // {
+                    //     "id": 58,
+                    //     "name": "1231111 test111",
+                    //     "email": "asfd@aksf.coooom",
+                    //     "rank": "TEST",
+                    //     "role_display": "Обычный пользователь",
+                    //     "department_name": "Центральный ОП",
+                    //     "is_active": true,
+                    //     "is_active_display": "Активен",
+                    //     "count_cases": 0,
+                    //     "count_cases_opened": 0,
+                    //     "count_cases_closed": 0
+                    // }
+                } else {
+
+                    axios
+                        .get('/api/users/', { params: exportParams })
+                        .then(async (response) => {
+
+                            const exportData = response.data.results || [];
+                            console.log(exportData, 'exportData Stats1');
+                            let usersWithCases;
+                            const casesMap = casesData.reduce((map, caseItem) => {
+                                if (!map[caseItem.investigator]) {
+                                    map[caseItem.investigator] = [];
+                                }
+                                map[caseItem.investigator].push(caseItem);
+                                return map;
+                            }, {});
+                            console.log(exportData, 'exportData Stats2');
+
+                            usersWithCases = exportData.map((u) => {
+                                const userCases = casesMap[u.id] || [];
+                                const openedCasesCount = userCases.filter(c => c.active).length;
+                                const closedCasesCount = userCases.filter(c => !c.active).length;
+                                return {
+                                    ...u,
+                                    cases: userCases,
+                                    openedCasesCount,
+                                    closedCasesCount,
+                                };
+                            });
+                            console.log(exportData, 'exportData Stats3');
+
+                            if (type === 'excel') {
+                                await handleExportExcel(usersWithCases, 'stats');
+                            } else if (type === 'pdf') {
+                                if (exportData.length === 0) {
+                                    setSnackbar({
+                                        open: true,
+                                        message: t('common.errors.no_data_for_export'),
+                                        severity: 'warning',
+                                    });
+                                    setExportLoading(false);
+                                    return;
+                                }
+                                setEmployeesExportData(usersWithCases);
+                            }
+                        })
+                        .catch((error) => {
+                            console.error(t('common.errors.error_export_users'), error);
+                            setSnackbar({
+                                open: true,
+                                message: t('common.errors.error_export_users'),
+                                severity: 'error',
+                            });
+                            setExportLoading(false);
+                        });
+                }
+            } else {
+                axios
+                    .get('/api/sessions/', { params: exportParams })
+                    .then(async (response) => {
+
+                        const exportData = response.data.results || [];
+                        if (type === 'excel') {
+                            await handleExportExcel(exportData, 'sessions');
+                        } else if (type === 'pdf') {
+                            if (exportData.length === 0) {
+                                setSnackbar({
+                                    open: true,
+                                    message: t('common.errors.no_data_for_export'),
+                                    severity: 'warning',
+                                });
+                                setExportLoading(false);
+                                return;
+                            }
+                            setEmployeesExportData(exportData);
+                            // handlePrintEmployeesReport будет вызван в useEffect
+                        }
+                    })
+                    .catch((error) => {
+                        console.error(t('common.errors.error_export_users'), error);
+                        setSnackbar({
+                            open: true,
+                            message: t('common.errors.error_export_users'),
+                            severity: 'error',
+                        });
+                        setExportLoading(false);
+                    });
+            }
+        },
+        [params, totalCount, tabSelected, selectedEmployee, casesData, setSnackbar, handleExportExcel]
+    );
     // Функция для печати отчета в PDF
     const handlePrintEmployeesReport = useReactToPrint({
         contentRef: employeesReportRef,
-        documentTitle: 'Отчет по сотрудникам',
+        documentTitle: selectedEmployee != null ? `${t('common.report.titles.report_employee')} ${selectedEmployee.name}`
+            : t('common.report.titles.report_employees'),
         onAfterPrint: () => {
             setEmployeesExportData([]); // Очищаем данные после печати
             setExportLoading(false);
@@ -375,7 +507,7 @@ export default function EmployeesToolbar({
                     }}
                 >
                     <TextField
-                        label="Поиск по имени, фамилии, званию, роли или email"
+                        label={t('dashboard.tabs.employees.toolbar.search_placeholder')}
                         variant="outlined"
                         value={employeeSearchQuery}
                         onChange={handleEmployeeSearchChange}
@@ -395,18 +527,18 @@ export default function EmployeesToolbar({
                             adapterLocale="ru"
                             localeText={{
                                 ...ruRU.components.MuiLocalizationProvider.defaultProps.localeText,
-                                clearButtonLabel: 'Очистить',
+                                clearButtonLabel: t('common.buttons.clear_button'),
                             }}
                         >
                             <DateRangePicker
                                 value={dateRange}
                                 onChange={handleDateRangeChange}
-                                label="Дата последнего входа"
+                                label={t('dashboard.tabs.employees.toolbar.date_last_login_label')}
                                 slots={{ field: SingleInputDateRangeField }}
                                 slotProps={{
                                     field: {
                                         size: 'small',
-                                        label: 'Дата последнего входа',
+                                        label: t('dashboard.tabs.employees.toolbar.date_last_login_label'),
                                         InputProps: {
                                             endAdornment: (
                                                 <InputAdornment position="end">
@@ -425,15 +557,15 @@ export default function EmployeesToolbar({
                     }
                     {user.role === 'REGION_HEAD' && (
                         <FormControl variant="outlined" size="small" sx={{ minWidth: 200, maxWidth: 200 }}>
-                            <InputLabel id="department-filter-label">Отделение</InputLabel>
+                            <InputLabel id="department-filter-label">{t('common.standard.label_department')}</InputLabel>
                             <Select
                                 labelId="department-filter-label"
                                 value={selectedEmployeeDepartment}
                                 onChange={handleEmployeeDepartmentChange}
-                                label="Отделение"
+                                label={t('common.standard.label_department')}
                             >
                                 <MenuItem value="">
-                                    <em>Все отделения</em>
+                                    <em>{t('common.standard.option_all_departments')}</em>
                                 </MenuItem>
                                 {departments.map((department) => (
                                     <MenuItem key={department.id} value={department.id}>
@@ -453,7 +585,7 @@ export default function EmployeesToolbar({
                             startIcon={<GetAppIcon />}
                             sx={{ height: '40px' }}
                         >
-                            Экспорт
+                            {t('common.buttons.export')}
                         </Button>
                         <Menu
                             anchorEl={exportMenuAnchorEl}
@@ -464,13 +596,13 @@ export default function EmployeesToolbar({
                                 <ListItemIcon>
                                     <PictureAsPdfIcon fontSize="small" />
                                 </ListItemIcon>
-                                <ListItemText>Экспорт PDF</ListItemText>
+                                <ListItemText>{t('common.buttons.export_pdf')}</ListItemText>
                             </MenuItem>
                             <MenuItem onClick={() => handleEmployeesExport('excel')}>
                                 <ListItemIcon>
                                     <DescriptionIcon fontSize="small" />
                                 </ListItemIcon>
-                                <ListItemText>Экспорт Excel</ListItemText>
+                                <ListItemText>{t('common.buttons.export_excel')}</ListItemText>
                             </MenuItem>
                         </Menu>
                     </Box>
@@ -483,7 +615,8 @@ export default function EmployeesToolbar({
                             color={selectedEmployee.is_active ? 'error' : 'success'}
                             sx={{ height: '40px' }}
                         >
-                            {selectedEmployee.is_active ? 'Деактивировать' : 'Активировать'}
+                            {selectedEmployee.is_active ? t('common.buttons.deactivate')
+                                : t('common.buttons.activate')}
                         </Button>
                     )}
                 </Box>
@@ -494,22 +627,33 @@ export default function EmployeesToolbar({
                         color="primary"
                         onClick={() => setOpenEmployeeDialog(true)}
                     >
-                        Добавить сотрудника
+                        {t('dashboard.tabs.employees.toolbar.button_add_employee')}
                     </Button>
                 )}
             </Box>
 
             {/* Компонент для печати отчета в PDF */}
             {tabSelected === 'stats' ?
-                <EmployeesReportStatsPDF
-                    employeesReportRef={employeesReportRef}
-                    currentUser={user}
-                    employeeSearchQuery={employeeSearchQuery}
-                    selectedEmployeeDepartment={
-                        departments.find((dept) => dept.id === selectedEmployeeDepartment)?.name || ''
-                    }
-                    employeesExportData={employeesExportData}
-                />
+                selectedEmployee != null ?
+                    (<OneEmployeeReportStatsPDF
+                        employeesReportRef={employeesReportRef}
+                        currentUser={user}
+                        employeeSearchQuery={employeeSearchQuery}
+                        selectedEmployeeDepartment={
+                            departments.find((dept) => dept.id === selectedEmployeeDepartment)?.name || ''
+                        }
+                        employeesExportData={employeesExportData}
+                    />)
+                    :
+                    (<EmployeesReportStatsPDF
+                        employeesReportRef={employeesReportRef}
+                        currentUser={user}
+                        employeeSearchQuery={employeeSearchQuery}
+                        selectedEmployeeDepartment={
+                            departments.find((dept) => dept.id === selectedEmployeeDepartment)?.name || ''
+                        }
+                        employeesExportData={employeesExportData}
+                    />)
                 :
                 <EmployeesReportSessionsPDF
                     employeesReportRef={employeesReportRef}
@@ -519,7 +663,8 @@ export default function EmployeesToolbar({
                         departments.find((dept) => dept.id === selectedEmployeeDepartment)?.name || ''
                     }
                     employeesExportData={employeesExportData}
-                />}
+                />
+            }
 
             {exportLoading && (
                 <div

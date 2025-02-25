@@ -1,313 +1,707 @@
-// src/components/Dashboard/CamerasTab.js
-import React, { useState, useEffect, useRef } from 'react';
+// frontend/src/components/Dashboard/CamerasTab.js
+
+import React, { useEffect, useState, useRef, useCallback } from 'react';
+import Janus from 'janus-gateway';
+import adapter from 'webrtc-adapter';
+import axios from '../../axiosConfig';
+
 import {
     Box,
     Typography,
-    Alert,
-    FormControl,
-    InputLabel,
-    Select,
-    MenuItem,
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableRow,
-    Paper,
     CircularProgress,
+    Alert,
+    Button,
+    List,
+    ListItem,
+    ListItemText,
+    Paper,
 } from '@mui/material';
-import axios from '../../axiosConfig';
 
-const CamerasTab = ({ user, departments, setSnackbar }) => {
+import JanusPlayer from './JanusPlayer';
+
+const JANUS_WS_URL = 'wss://80.254.125.77/janus_ws/';
+const getJanusDeps = Janus.useDefaultDependencies;
+const janusDeps = getJanusDeps({ adapter });
+
+const CamerasTab = ({ user, setSnackbar }) => {
+    const [loading, setLoading] = useState(false);
     const [cameras, setCameras] = useState([]);
     const [error, setError] = useState(null);
-    const [selectedDepartment, setSelectedDepartment] = useState('');
-    const [selectedCameraId, setSelectedCameraId] = useState(null);
-    const [loading, setLoading] = useState(false);
 
-    const wsRef = useRef(null);
-    const videoRef = useRef(null);
-    const pcRef = useRef(null);
+    // Флаг инициализации Janus
+    const [janusInitialized, setJanusInitialized] = useState(false);
+    const [janusVersion, setJanusVersion] = useState('');
 
+    // Выбранная камера (по клику в списке)
+    const [selectedCamera, setSelectedCamera] = useState(null);
+
+    // ID mountpoint’а, если идёт просмотр
+    const [mountpointId, setMountpointId] = useState(null);
+
+    // ID CameraViewingSession (для пинга/удаления)
+    const [cameraViewingSessionId, setCameraViewingSessionId] = useState(null);
+    const pingIntervalRef = useRef(null);
+
+    // Активная модельная Session (/api/sessions/?active=true)
+    const [activeSessionId, setActiveSessionId] = useState(null);
+
+    const isUnmountedRef = useRef(false);
+
+    /* ------------------------------------------------------------------
+       1) Инициализация Janus
+    ------------------------------------------------------------------ */
     useEffect(() => {
-        let isMounted = true;
-        axios.get('/api/cameras/')
-            .then(response => {
-                if (isMounted) {
-                    setCameras(response.data);
-                }
-            })
-            .catch(err => {
-                if (isMounted) {
-                    setError('Ошибка при загрузке камер.');
-                    console.error("Ошибка при загрузке камер:", err);
-                }
+        if (!janusInitialized) {
+            Janus.init({
+                debug: 'all',
+                dependencies: janusDeps,
+                callback: () => {
+                    setJanusVersion('1.3.x (manual init)');
+                    setJanusInitialized(true);
+                },
             });
+        }
+    }, [janusInitialized]);
 
-        return () => { isMounted = false; };
+    /* ------------------------------------------------------------------
+       2) Загрузка списка камер
+    ------------------------------------------------------------------ */
+    const loadCameras = useCallback(() => {
+        setLoading(true);
+        axios
+            .get('/api/cameras/')
+            .then((res) => {
+                setCameras(res.data);
+                setError(null);
+            })
+            .catch((err) => {
+                console.error('Error fetching cameras:', err);
+                setError('Не удалось загрузить список камер');
+            })
+            .finally(() => setLoading(false));
     }, []);
 
-    const handleDepartmentChange = (event) => {
-        setSelectedDepartment(event.target.value);
-        setSelectedCameraId(null);
-        setError(null);
-        closeConnections();
-    };
+    useEffect(() => {
+        if (user) {
+            loadCameras();
+        }
+    }, [user, loadCameras]);
 
-    const closeConnections = () => {
-        if (pcRef.current) {
-            pcRef.current.close();
-            pcRef.current = null;
+    /* ------------------------------------------------------------------
+       3) Загрузка активной Session (model)
+    ------------------------------------------------------------------ */
+    const loadActiveSession = useCallback(async () => {
+        try {
+            const resp = await axios.get('/api/sessions/?active=true');
+            if (Array.isArray(resp.data) && resp.data.length > 0) {
+                setActiveSessionId(resp.data[0].id);
+            } else {
+                setActiveSessionId(null);
+            }
+        } catch (err) {
+            console.error('Error loadActiveSession:', err);
+            setActiveSessionId(null);
         }
-        if (wsRef.current) {
-            wsRef.current.close();
-            wsRef.current = null;
-        }
-        if (videoRef.current) {
-            videoRef.current.srcObject = null;
-        }
-    };
-
-    const filteredCameras = cameras.filter(cam => {
-        if (user.role === 'REGION_HEAD' && selectedDepartment) {
-            return cam.department === parseInt(selectedDepartment, 10);
-        }
-        return true;
-    });
+    }, []);
 
     useEffect(() => {
-        closeConnections();
-        setError(null);
-        setLoading(false);
+        if (user) {
+            loadActiveSession();
+        }
+    }, [user, loadActiveSession]);
 
-        if (!selectedCameraId) return;
+    /* ------------------------------------------------------------------
+       4) Начать просмотр камеры
+    ------------------------------------------------------------------ */
+    const handleStartWatching = async (camera) => {
+        if (!camera || !activeSessionId) {
+            console.warn('No camera or no activeSessionId => skip');
+            return;
+        }
+        try {
+            // Запоминаем выбранную камеру
+            setSelectedCamera(camera);
 
-        setLoading(true);
+            // Сбрасываем текущее состояние стрима
+            setMountpointId(null);
+            setCameraViewingSessionId(null);
 
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const host = window.location.host;
-        const wsUrl = `${protocol}//${host}/ws/camera/${selectedCameraId}/`;
+            // start_watching => increment viewer
+            const resp1 = await axios.post(`/api/cameras/${camera.id}/start_watching/`);
+            const mp_id = resp1.data.mountpoint_id;
+            setMountpointId(mp_id);
 
-        const ws = new WebSocket(wsUrl);
-        wsRef.current = ws;
+            // Создаём camera_viewing_session
+            const cvsResp = await axios.post('/api/camera_viewing_sessions/', {
+                session_id: activeSessionId,
+                camera_id: camera.id,
+            });
+            const newCvsId = cvsResp.data.id;
+            setCameraViewingSessionId(newCvsId);
 
-        ws.onopen = () => {
-            console.log("WebSocket connection established for camera:", selectedCameraId);
-            createPeerConnection(ws);
-        };
+            // Периодический пинг
+            pingIntervalRef.current = window.setInterval(() => {
+                axios
+                    .post(`/api/camera_viewing_sessions/${newCvsId}/ping/`)
+                    .catch((err) => {
+                        console.warn('ping_viewing error:', err);
+                    });
+            }, 5000);
 
-        ws.onmessage = async (event) => {
-            try {
-                const data = JSON.parse(event.data);
-                console.log("Received message from server:", data);
+            // Обновим список (viewers_count)
+            loadCameras();
 
-                if (data.type === 'answer' && data.sdp && pcRef.current) {
-                    await pcRef.current.setRemoteDescription({ type: 'answer', sdp: data.sdp });
-                    console.log("Remote description set with SDP answer.");
-                } else if (data.type === 'ice-candidate' && data.candidate && pcRef.current) {
-                    try {
-                        await pcRef.current.addIceCandidate(data.candidate);
-                        console.log("ICE candidate added from server.");
-                    } catch (e) {
-                        console.error('Error adding received ICE candidate', e);
-                    }
-                } else if (data.type === 'error') {
-                    setError(data.message || 'Ошибка при получении потока');
-                }
-            } catch (e) {
-                console.error("Ошибка при разборе сообщения WebSocket:", e);
-                setError('Неправильный формат сообщения от сервера.');
+            // Уведомление
+            if (setSnackbar) {
+                setSnackbar({
+                    open: true,
+                    message: `Начали просмотр: ${camera.name} (mp=${mp_id})`,
+                    severity: 'success',
+                });
             }
-        };
+        } catch (err) {
+            console.error('Error start_watching or create CameraViewingSession:', err);
+            setMountpointId(null);
+            setCameraViewingSessionId(null);
 
-        ws.onerror = (err) => {
-            console.error("WebSocket error:", err);
-            setError('Ошибка при установлении соединения с сервером.');
-            setLoading(false);
-        };
-
-        ws.onclose = (event) => {
-            if (!event.wasClean) {
-                console.warn(`WebSocket закрыт некорректно, код: ${event.code}, причина: ${event.reason}`);
-                setError('Соединение с сервером прервано.');
-            } else {
-                console.log("WebSocket closed gracefully.");
+            if (pingIntervalRef.current) {
+                clearInterval(pingIntervalRef.current);
+                pingIntervalRef.current = null;
             }
-            setLoading(false);
-        };
-
-        const createPeerConnection = async (wsInstance) => {
-            const pc = new RTCPeerConnection();
-            pcRef.current = pc;
-
-            pc.onicecandidate = (event) => {
-                if (event.candidate && wsInstance.readyState === WebSocket.OPEN) {
-                    const candidate = event.candidate;
-                    wsInstance.send(JSON.stringify({
-                        type: 'ice-candidate',
-                        candidate: {
-                            component: '1',
-                            foundation: candidate.foundation || 'unknown',
-                            ip: candidate.address || candidate.ip || null,
-                            port: candidate.port || 554,
-                            priority: candidate.priority || 0,
-                            protocol: candidate.protocol || 'tcp',
-                            type: candidate.type || 'host',
-                            relatedAddress: candidate.relatedAddress || null,
-                            relatedPort: candidate.relatedPort || null,
-                            sdpMid: candidate.sdpMid || null,
-                            sdpMLineIndex: candidate.sdpMLineIndex || null,
-                            tcpType: candidate.tcpType || null,
-                        },
-                    }));
-                    console.log("Sent ICE candidate to server.");
-                }
-            };
-
-            pc.ontrack = (event) => {
-                console.log("Received remote track");
-                if (videoRef.current) {
-                    if (videoRef.current.srcObject !== event.streams[0]) {
-                        videoRef.current.srcObject = event.streams[0];
-                        console.log("Set remote stream.");
-                        setLoading(false);
-                    }
-                }
-            };
-
-            pc.oniceconnectionstatechange = () => {
-                console.log(`ICE connection state: ${pc.iceConnectionState}`);
-                if (['disconnected', 'failed', 'closed'].includes(pc.iceConnectionState)) {
-                    setError('Соединение разорвано.');
-                    setLoading(false);
-                }
-            };
-
-            try {
-                pc.addTransceiver('video', { direction: 'recvonly' });
-                console.log("Added recvonly transceiver for video.");
-            } catch (error) {
-                console.error("Error adding recvonly transceiver:", error);
-                setError('Ошибка при добавлении трансивера.');
-                setLoading(false);
-                return;
+            if (setSnackbar) {
+                setSnackbar({
+                    open: true,
+                    message: 'Ошибка при запуске просмотра',
+                    severity: 'error',
+                });
             }
-
-            try {
-                const offer = await pc.createOffer();
-                await pc.setLocalDescription(offer);
-                wsInstance.send(JSON.stringify({ type: 'offer', sdp: pc.localDescription.sdp }));
-                console.log("SDP Offer created and sent.");
-            } catch (error) {
-                console.error("Error creating or sending offer:", error);
-                setError('Ошибка при создании предложения WebRTC.');
-                setLoading(false);
-            }
-        };
-
-        return closeConnections;
-    }, [selectedCameraId]);
-
-    const handleCameraClick = (cameraId) => {
-        setSelectedCameraId(cameraId);
+        }
     };
 
+    /* ------------------------------------------------------------------
+       5) Остановить просмотр
+    ------------------------------------------------------------------ */
+    const handleStopWatching = useCallback(async () => {
+        if (!selectedCamera) return;
+        const cam = selectedCamera;
+
+        // Удаляем CameraViewingSession
+        if (cameraViewingSessionId) {
+            try {
+                await axios.delete(`/api/camera_viewing_sessions/${cameraViewingSessionId}/`);
+            } catch (delErr) {
+                console.warn('DELETE camera_viewing_sessions failed:', delErr);
+            }
+        }
+        setCameraViewingSessionId(null);
+
+        // Очищаем интервал
+        if (pingIntervalRef.current) {
+            clearInterval(pingIntervalRef.current);
+            pingIntervalRef.current = null;
+        }
+
+        // stop_watching => decrement_viewer
+        try {
+            await axios.post(`/api/cameras/${cam.id}/stop_watching/`);
+            setMountpointId(null);
+            loadCameras();
+
+            if (setSnackbar) {
+                setSnackbar({
+                    open: true,
+                    message: `Остановили просмотр: ${cam.name}`,
+                    severity: 'info',
+                });
+            }
+        } catch (err) {
+            console.error('Error stop_watching:', err);
+            setMountpointId(null);
+
+            if (setSnackbar) {
+                setSnackbar({
+                    open: true,
+                    message: 'Ошибка при остановке просмотра',
+                    severity: 'error',
+                });
+            }
+        } finally {
+            // Если нужно сбрасывать выбранную камеру:
+            // setSelectedCamera(null);
+        }
+    }, [selectedCamera, cameraViewingSessionId, loadCameras, setSnackbar]);
+
+    /* ------------------------------------------------------------------
+       6) При размонтировании => handleStopWatching
+    ------------------------------------------------------------------ */
+    useEffect(() => {
+        return () => {
+            isUnmountedRef.current = true;
+            console.log('[CamerasTab] unmount => handleStopWatching()');
+            handleStopWatching();
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    /* ------------------------------------------------------------------
+       Рендер
+    ------------------------------------------------------------------ */
+    if (loading) {
+        return <CircularProgress />;
+    }
+
+    if (error) {
+        return <Alert severity="error">{error}</Alert>;
+    }
+
     return (
-        <Box>
-            <Typography variant="h5" sx={{ mb: 2 }}>
-                Камеры
-            </Typography>
-
-            {error && (
-                <Alert severity="error" sx={{ mb: 2 }}>
-                    {error}
-                </Alert>
-            )}
-
-            {user.role === 'REGION_HEAD' && departments && departments.length > 0 && (
-                <Box sx={{ mb: 2 }}>
-                    <FormControl size="small" sx={{ minWidth: 200 }}>
-                        <InputLabel id="department-select-label">Отделение</InputLabel>
-                        <Select
-                            labelId="department-select-label"
-                            value={selectedDepartment}
-                            label="Отделение"
-                            onChange={handleDepartmentChange}
-                        >
-                            <MenuItem value="">
-                                <em>Все отделения</em>
-                            </MenuItem>
-                            {departments.map((dep) => (
-                                <MenuItem key={dep.id} value={dep.id}>{dep.name}</MenuItem>
-                            ))}
-                        </Select>
-                    </FormControl>
-                </Box>
-            )}
-
-            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                <Paper sx={{ flex: '1 1 300px', overflow: 'auto', maxHeight: '600px' }}>
-                    <Table>
-                        <TableHead>
-                            <TableRow>
-                                <TableCell>Название</TableCell>
-                                <TableCell>IP адрес</TableCell>
-                                <TableCell>Активна</TableCell>
-                                <TableCell>Отделение</TableCell>
-                                <TableCell>Регион</TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {filteredCameras.map((cam) => (
-                                <TableRow
-                                    key={cam.id}
-                                    hover
-                                    style={{ cursor: 'pointer' }}
-                                    onClick={() => handleCameraClick(cam.id)}
-                                    selected={cam.id === selectedCameraId}
-                                >
-                                    <TableCell>{cam.name}</TableCell>
-                                    <TableCell>{cam.ip_address}</TableCell>
-                                    <TableCell>{cam.active ? 'Да' : 'Нет'}</TableCell>
-                                    <TableCell>{cam.department_name}</TableCell>
-                                    <TableCell>{cam.region_display}</TableCell>
-                                </TableRow>
-                            ))}
-                            {filteredCameras.length === 0 && (
-                                <TableRow>
-                                    <TableCell colSpan={5} align="center">
-                                        Нет доступных камер.
-                                    </TableCell>
-                                </TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
-                </Paper>
-
-                <Box sx={{ flex: '2 1 600px', display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '300px', position: 'relative' }}>
-                    {selectedCameraId ? (
+        <Box
+            sx={{
+                display: 'flex',
+                gap: 2,
+                // Убираем жёсткую высоту, оставляем одинаковые отступы сверху и снизу
+                my: 2,
+                px: 2,
+            }}
+        >
+            {/* Левая (центральная) область – плеер */}
+            <Paper
+                sx={{
+                    flex: 1,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    p: 2,
+                }}
+            >
+                {selectedCamera ? (
+                    mountpointId ? (
+                        /* Если идёт просмотр (mountpointId не null) */
                         <>
-                            <video
-                                ref={videoRef}
-                                controls
-                                autoPlay
-                                playsInline
-                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            <Typography variant="h6" gutterBottom>
+                                Камера: {selectedCamera.name} (mp={mountpointId})
+                            </Typography>
+                            <JanusPlayer
+                                mountpointId={mountpointId}
+                                serverUrl={JANUS_WS_URL}
                             />
-                            {loading && (
-                                <Box sx={{ position: 'absolute' }}>
-                                    <CircularProgress />
-                                    <Typography variant="body2">Загрузка видеопотока...</Typography>
-                                </Box>
-                            )}
+                            <Box sx={{ mt: 2 }}>
+                                <Button
+                                    variant="outlined"
+                                    color="error"
+                                    onClick={handleStopWatching}
+                                >
+                                    Остановить
+                                </Button>
+                            </Box>
                         </>
                     ) : (
-                        <Typography variant="body1">Выберите камеру для просмотра видеопотока</Typography>
-                    )}
-                </Box>
-            </Box>
+                        /* Камера выбрана, но просмотр не начат */
+                        <>
+                            <Typography variant="h6" gutterBottom>
+                                Камера: {selectedCamera.name}
+                            </Typography>
+                            <Typography variant="body2" align="center" sx={{ mb: 2 }}>
+                                Нажмите «Смотреть», чтобы начать просмотр
+                            </Typography>
+                            <Button
+                                variant="contained"
+                                onClick={() => handleStartWatching(selectedCamera)}
+                            >
+                                Смотреть
+                            </Button>
+                        </>
+                    )
+                ) : (
+                    /* Если камера не выбрана */
+                    <Typography variant="body1" align="center">
+                        Выберите камеру из списка справа
+                    </Typography>
+                )}
+            </Paper>
+
+            {/* Правая колонка – список доступных камер */}
+            <Paper sx={{ width: 300, p: 2, overflowY: 'auto' }}>
+                <Typography variant="h6" gutterBottom>
+                    Доступные камеры
+                </Typography>
+                {cameras.length === 0 ? (
+                    <Typography>Нет доступных камер</Typography>
+                ) : (
+                    <List>
+                        {cameras.map((cam) => (
+                            <ListItem
+                                key={cam.id}
+                                button
+                                selected={selectedCamera?.id === cam.id}
+                                onClick={() => setSelectedCamera(cam)}
+                                sx={{
+                                    mb: 1,
+                                    borderRadius: 1,
+                                    border: '1px solid #ddd',
+                                }}
+                            >
+                                <ListItemText
+                                    primary={cam.name}
+                                    secondary={`IP: ${cam.ip_address} • Зрители: ${cam.viewers_count}`}
+                                />
+                            </ListItem>
+                        ))}
+                    </List>
+                )}
+            </Paper>
         </Box>
     );
 };
 
 export default CamerasTab;
+
+
+//
+// import React, { useEffect, useState, useRef, useCallback } from 'react';
+// import Janus from 'janus-gateway';
+// import adapter from 'webrtc-adapter';
+// import axios from '../../axiosConfig';
+// import {
+//     Box,
+//     Typography,
+//     Paper,
+//     Button,
+//     CircularProgress,
+//     Alert,
+// } from '@mui/material';
+// import JanusPlayer from './JanusPlayer';
+//
+// const JANUS_WS_URL = 'wss://80.254.125.77/janus_ws/';
+// const getJanusDeps = Janus.useDefaultDependencies;
+// const janusDeps = getJanusDeps({ adapter });
+//
+// const CamerasTab = ({ user, setSnackbar }) => {
+//     const [loading, setLoading] = useState(false);
+//     const [cameras, setCameras] = useState([]);
+//     const [error, setError] = useState(null);
+//
+//     // Инициализация Janus (флаги и версия)
+//     const [janusInitialized, setJanusInitialized] = useState(false);
+//     const [janusVersion, setJanusVersion] = useState('');
+//
+//     // Текущая выбранная камера + mountpoint
+//     const [selectedCamera, setSelectedCamera] = useState(null);
+//     const [mountpointId, setMountpointId] = useState(null);
+//
+//     // Храним id записи CameraViewingSession, чтобы пинговать / удалять
+//     const [cameraViewingSessionId, setCameraViewingSessionId] = useState(null);
+//     const pingIntervalRef = useRef(null);
+//
+//     // Активная Session (наша модель). В реальном коде может быть массив,
+//     // либо мы берем только одну (к примеру, последнюю).
+//     const [activeSessionId, setActiveSessionId] = useState(null);
+//
+//     // refs
+//     const selectedCameraRef = useRef(null);
+//     const isUnmountedRef = useRef(false);
+//
+//     /* ------------------------------------------------------------------
+//        1) Инициализация Janus (один раз)
+//     ------------------------------------------------------------------ */
+//     useEffect(() => {
+//         if (!janusInitialized) {
+//             console.log('[CamerasTab] Janus.init()');
+//             Janus.init({
+//                 debug: 'all',
+//                 dependencies: janusDeps,
+//                 callback: () => {
+//                     console.log('[CamerasTab] Janus init done');
+//                     setJanusVersion('1.3.x (manual init)');
+//                     setJanusInitialized(true);
+//                 },
+//             });
+//         }
+//     }, [janusInitialized]);
+//
+//     /* ------------------------------------------------------------------
+//        2) Загрузка списка камер
+//     ------------------------------------------------------------------ */
+//     const loadCameras = useCallback(() => {
+//         setLoading(true);
+//         axios.get('/api/cameras/')
+//             .then((res) => {
+//                 setCameras(res.data);
+//                 setError(null);
+//             })
+//             .catch((err) => {
+//                 console.error('Error fetching cameras:', err);
+//                 setError('Не удалось загрузить список камер');
+//             })
+//             .finally(() => setLoading(false));
+//     }, []);
+//
+//     useEffect(() => {
+//         if (user) {
+//             loadCameras();
+//         }
+//     }, [user, loadCameras]);
+//
+//     /* ------------------------------------------------------------------
+//        3) Получаем активную Session (model) для данного пользователя
+//           (предполагаем, что у пользователя может быть 1 активная запись).
+//     ------------------------------------------------------------------ */
+//     const loadActiveSession = useCallback(async () => {
+//         try {
+//             const resp = await axios.get('/api/sessions/?active=true');
+//             if (Array.isArray(resp.data) && resp.data.length > 0) {
+//                 // берем, например, первую запись
+//                 setActiveSessionId(resp.data[0].id);
+//                 console.log('[CamerasTab] loadActiveSession => session_id=', resp.data[0].id);
+//             } else {
+//                 console.warn('[CamerasTab] No active sessions found for user.');
+//                 setActiveSessionId(null);
+//             }
+//         } catch (err) {
+//             console.error('Error loadActiveSession:', err);
+//             setActiveSessionId(null);
+//         }
+//     }, []);
+//
+//     useEffect(() => {
+//         if (user) {
+//             loadActiveSession();
+//         }
+//     }, [user, loadActiveSession]);
+//
+//     /* ------------------------------------------------------------------
+//        4) Начать просмотр камеры
+//           - 4.1) start_watching (increments viewers_count)
+//           - 4.2) создаём CameraViewingSession
+//           - 4.3) запускаем пинг-таймер
+//     ------------------------------------------------------------------ */
+//     const handleStartWatching = async (camera) => {
+//         if (!camera || !activeSessionId) {
+//             // либо показывать сообщение, что "нет session_id", либо ...
+//             console.warn('No camera or no activeSessionId => skip');
+//             return;
+//         }
+//         try {
+//             setSelectedCamera(camera);
+//             setMountpointId(null);
+//             setCameraViewingSessionId(null);
+//
+//             // 4.1) start_watching => increment viewer
+//             const resp1 = await axios.post(`/api/cameras/${camera.id}/start_watching/`);
+//             const mp_id = resp1.data.mountpoint_id;
+//             setMountpointId(mp_id);
+//
+//             // 4.2) POST camera_viewing_sessions => { session_id, camera_id }
+//             const cvsResp = await axios.post('/api/camera_viewing_sessions/', {
+//                 session_id: activeSessionId,
+//                 camera_id: camera.id,
+//             });
+//             const newCvsId = cvsResp.data.id;
+//             setCameraViewingSessionId(newCvsId);
+//
+//             // 4.3) Запускаем пинг каждые 5 секунд
+//             pingIntervalRef.current = window.setInterval(() => {
+//                 axios.post(`/api/camera_viewing_sessions/${newCvsId}/ping/`)
+//                     .then(() => {
+//                         // всё ок
+//                     })
+//                     .catch(err => {
+//                         console.warn('ping_viewing error:', err);
+//                     });
+//             }, 5_000);
+//
+//             // обновим список камер (чтобы увидеть viewers_count)
+//             loadCameras();
+//
+//             if (setSnackbar) {
+//                 setSnackbar({
+//                     open: true,
+//                     message: `Начали просмотр: ${camera.name} (mp=${mp_id})`,
+//                     severity: 'success',
+//                 });
+//             }
+//         } catch (err) {
+//             console.error('Error start_watching or create CameraViewingSession:', err);
+//             setMountpointId(null);
+//             setSelectedCamera(null);
+//             setCameraViewingSessionId(null);
+//
+//             if (pingIntervalRef.current) {
+//                 clearInterval(pingIntervalRef.current);
+//                 pingIntervalRef.current = null;
+//             }
+//
+//             if (setSnackbar) {
+//                 setSnackbar({
+//                     open: true,
+//                     message: 'Ошибка при запуске просмотра',
+//                     severity: 'error',
+//                 });
+//             }
+//         }
+//     };
+//
+//     /* ------------------------------------------------------------------
+//        5) Остановить просмотр (по нажатию кнопки «Остановить»)
+//           - 5.1) DELETE camera_viewing_sessions/ID
+//           - 5.2) clearInterval
+//           - 5.3) stop_watching => decrement_viewer
+//     ------------------------------------------------------------------ */
+//     const handleStopWatching = useCallback(async () => {
+//         if (!selectedCamera) return;
+//         const cam = selectedCamera;
+//
+//         // 5.1) Удаляем CameraViewingSession
+//         if (cameraViewingSessionId) {
+//             try {
+//                 await axios.delete(`/api/camera_viewing_sessions/${cameraViewingSessionId}/`);
+//             } catch (delErr) {
+//                 console.warn('[CamerasTab] DELETE camera_viewing_sessions failed:', delErr);
+//             }
+//         }
+//         setCameraViewingSessionId(null);
+//
+//         // 5.2) Очищаем пинг
+//         if (pingIntervalRef.current) {
+//             clearInterval(pingIntervalRef.current);
+//             pingIntervalRef.current = null;
+//         }
+//
+//         // 5.3) stop_watching => decrement_viewer
+//         try {
+//             await axios.post(`/api/cameras/${cam.id}/stop_watching/`);
+//             setMountpointId(null);
+//             setSelectedCamera(null);
+//             loadCameras();
+//
+//             if (setSnackbar) {
+//                 setSnackbar({
+//                     open: true,
+//                     message: `Остановили просмотр: ${cam.name}`,
+//                     severity: 'info',
+//                 });
+//             }
+//         } catch (err) {
+//             console.error('Error stop_watching:', err);
+//             setMountpointId(null);
+//             setSelectedCamera(null);
+//
+//             if (setSnackbar) {
+//                 setSnackbar({
+//                     open: true,
+//                     message: 'Ошибка при остановке просмотра',
+//                     severity: 'error',
+//                 });
+//             }
+//         }
+//     }, [selectedCamera, cameraViewingSessionId, loadCameras, setSnackbar]);
+//
+//     /* ------------------------------------------------------------------
+//        6) При размонтировании (SPA-навигация) => тоже handleStopWatching
+//     ------------------------------------------------------------------ */
+//     useEffect(() => {
+//         return () => {
+//             isUnmountedRef.current = true;
+//             console.log('[CamerasTab] unmount => handleStopWatching()');
+//             handleStopWatching();
+//         };
+//         // eslint-disable-next-line react-hooks/exhaustive-deps
+//     }, []);
+//
+//     // Обновляем ref
+//     useEffect(() => {
+//         selectedCameraRef.current = selectedCamera;
+//     }, [selectedCamera]);
+//
+//     /* ------------------------------------------------------------------
+//        UI
+//     ------------------------------------------------------------------ */
+//     if (loading) {
+//         return <CircularProgress />;
+//     }
+//     if (error) {
+//         return <Alert severity="error">{error}</Alert>;
+//     }
+//
+//     return (
+//         <Box>
+//             <Typography variant="h5" gutterBottom>
+//                 Список камер
+//             </Typography>
+//
+//             {/*<Typography variant="body2" sx={{ mb: 2 }}>*/}
+//             {/*    {janusInitialized*/}
+//             {/*        ? `Janus инициализирован, версия: ${janusVersion}`*/}
+//             {/*        : 'Инициализация Janus...'}*/}
+//             {/*</Typography>*/}
+//
+//             {/*{activeSessionId ? (*/}
+//             {/*    <Typography variant="body2" sx={{ mb: 2 }}>*/}
+//             {/*        Наша модельная сессия: ID={activeSessionId}*/}
+//             {/*    </Typography>*/}
+//             {/*) : (*/}
+//             {/*    <Alert severity="warning" sx={{ mb: 2 }}>*/}
+//             {/*        Нет активной session (Model).*/}
+//             {/*        (Либо пользователь не залогинен, либо нет записи Session.)*/}
+//             {/*    </Alert>*/}
+//             {/*)}*/}
+//
+//             {cameras.length === 0 ? (
+//                 <Typography>Нет доступных камер</Typography>
+//             ) : (
+//                 cameras.map((cam) => (
+//                     <Paper
+//                         key={cam.id}
+//                         sx={{
+//                             p: 2,
+//                             mb: 2,
+//                             display: 'flex',
+//                             justifyContent: 'space-between',
+//                             alignItems: 'center',
+//                         }}
+//                     >
+//                         <Box>
+//                             <Typography variant="subtitle1">{cam.name}</Typography>
+//                             <Typography variant="body2">IP: {cam.ip_address}</Typography>
+//                             <Typography variant="body2">Зрители: {cam.viewers_count}</Typography>
+//                         </Box>
+//
+//                         <Button
+//                             variant="contained"
+//                             onClick={() => handleStartWatching(cam)}
+//                             disabled={!!mountpointId && selectedCamera && selectedCamera.id === cam.id}
+//                         >
+//                             Смотреть
+//                         </Button>
+//                     </Paper>
+//                 ))
+//             )}
+//
+//             {selectedCamera && mountpointId && (
+//                 <Box sx={{ mt: 4 }}>
+//                     <Typography variant="h6">
+//                         Просмотр камеры «{selectedCamera.name}» (mp={mountpointId})
+//                     </Typography>
+//
+//                     <JanusPlayer
+//                         mountpointId={mountpointId}
+//                         serverUrl={JANUS_WS_URL}
+//                     />
+//
+//                     <Box sx={{ mt: 2 }}>
+//                         <Button
+//                             variant="outlined"
+//                             color="error"
+//                             onClick={handleStopWatching}
+//                         >
+//                             Остановить
+//                         </Button>
+//                     </Box>
+//                 </Box>
+//             )}
+//         </Box>
+//     );
+// };
+//
+// export default CamerasTab;

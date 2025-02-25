@@ -1,27 +1,28 @@
 // frontend/src/components/Dashboard/Evidence/EvidenceTable.js
 
 import React, { useState, useMemo } from 'react';
-import { DataGridPro } from '@mui/x-data-grid-pro';
-import { Button, Paper, Typography, Box, useTheme, Tooltip, IconButton } from '@mui/material';
+import { Button, Paper, Typography, Box, Tooltip, IconButton } from '@mui/material';
 import Loading from '../../Loading';
 import { OpenInNew as OpenInNewIcon, GetApp as GetAppIcon, Print as PrintIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 
 import DialogSeenBarcode from '../../CaseDetailComponents/DialogSeenBarcode';
 import axios from '../../../axiosConfig';
-import { evidenceStatuses } from '../../../constants/evidenceStatuses';
+import { useEvidenceStatuses } from '../../../constants/evidenceStatuses';
 import { LicenseInfo } from '@mui/x-license';
 import { StyledDataGridPro } from '../../ui/Tables';
+import { useTranslation } from 'react-i18next';
+import { useEvidenceTypes } from '../../../constants/evidenceTypes';
 
 // Устанавливаем лицензионный ключ (замените на ваш собственный ключ)
 LicenseInfo.setLicenseKey('d7a42a252b29f214a57d3d3f80b1e8caTz0xMjM0NSxFPTE3MzI1NzE1ODEwNTczLFM9cHJvLExNPXN1YnNjcmlwdGlvbixQVj1wZXJwZXR1YWwsS1Y9Mg==');
 
 export default function EvidenceTable({ evidences, isLoading, setSnackbar, tableHeight, rowHeight }) {
     const navigate = useNavigate();
-    const theme = useTheme();
-
+    const { t } = useTranslation();
+    const evidenceStatuses = useEvidenceStatuses();
+    const EVIDENCE_TYPES = useEvidenceTypes();
     // Состояние для выбранного вещественного доказательства
-    const [selectedEvidence, setSelectedEvidence] = useState(null);
 
     // Диалог для штрихкода
     const [openBarcodeDisplayDialog, setOpenBarcodeDisplayDialog] = useState(false);
@@ -35,7 +36,7 @@ export default function EvidenceTable({ evidences, isLoading, setSnackbar, table
         } else {
             setSnackbar({
                 open: true,
-                message: 'Штрихкод вещественного доказательства недоступен.',
+                message: t('common.barcode.no_barcode_error'),
                 severity: 'error',
             });
         }
@@ -59,46 +60,39 @@ export default function EvidenceTable({ evidences, isLoading, setSnackbar, table
                 } else {
                     setSnackbar({
                         open: true,
-                        message: 'Файл не найден.',
+                        message: t('common.messages.file_not_found'),
                         severity: 'error',
                     });
                 }
             })
             .catch((error) => {
-                console.error('Ошибка при получении документов:', error);
+                console.error(t('common.errors.error_load_documents'), error);
                 setSnackbar({
                     open: true,
-                    message: 'Ошибка при загрузке документов.',
+                    message: t('common.errors.error_load_documents'),
                     severity: 'error',
                 });
             });
     };
-
-    // Обработчик выбора строки
-    const handleEvidenceSelect = (evidence) => {
-        if (selectedEvidence && selectedEvidence.id === evidence.id) {
-            setSelectedEvidence(null);
-        } else {
-            setSelectedEvidence(evidence);
-        }
-    };
-
+    console.log('evidences',evidences)
     // Преобразование данных для DataGridPro
     const rows = useMemo(
         () =>
             evidences.map((evidence) => ({
                 id: evidence.id,
-                name: evidence.name || 'Без названия',
-                description: evidence.description || 'Описание не указано',
-                type_display: evidence.type_display || 'Не указано',
-                status_display: evidence.status || 'Не указано',
+                name: evidence.name || t('common.table_data.no_name'),
+                description: evidence.description || t('common.table_data.description_not_specified'),
+                type_display: EVIDENCE_TYPES.find(
+                    (type) => type.value === evidence.type
+                )?.label || evidence.type_display || t('common.messages.not_specified'),
+                status_display: evidence.status || t('common.messages.not_specified'),
                 status_label: evidenceStatuses.find((status) => status.value === evidence.status)?.label || evidence.status,
                 case_id: evidence.case_id,
-                case_name: evidence.case_name || 'Дело',
-                department_name: evidence.department_name || 'Не указано',
+                case_name: evidence.case_name || t('cases.case_default'),
+                department_name: evidence.department_name || t('common.messages.not_specified'),
                 barcode: evidence.barcode,
             })),
-        [evidences]
+        [evidences, t]
     );
 
     // Определение колонок для DataGridPro
@@ -106,7 +100,7 @@ export default function EvidenceTable({ evidences, isLoading, setSnackbar, table
         () => [
             {
                 field: 'name',
-                headerName: 'Вещественное доказательство',
+                headerName: t('dashboard.tabs.search_evidence.evidence_table.column_evidence'),
                 flex: 1,
                 minWidth: 200,
                 sortable: false,
@@ -133,7 +127,7 @@ export default function EvidenceTable({ evidences, isLoading, setSnackbar, table
             },
             {
                 field: 'type_status',
-                headerName: 'Тип и Статус',
+                headerName: t('common.table_headers.type_status'),
                 flex: 1,
                 minWidth: 150,
                 sortable: false,
@@ -159,7 +153,7 @@ export default function EvidenceTable({ evidences, isLoading, setSnackbar, table
             },
             {
                 field: 'case',
-                headerName: 'Дело',
+                headerName: t('cases.case_default'),
                 flex: 1,
                 minWidth: 150,
                 sortable: false,
@@ -203,49 +197,15 @@ export default function EvidenceTable({ evidences, isLoading, setSnackbar, table
                                     textOverflow: 'ellipsis',
                                 }}
                             >
-                                Не назначено
+                                {t('common.table_data.not_assigned')}
                             </Typography>
                         );
                     }
                 },
             },
-            // {
-            //     field: 'case',
-            //     headerName: 'Дело',
-            //     flex: 1,
-            //     minWidth: 150,
-            //     sortable: false,
-            //     renderCell: (params) => {
-            //         const { case_id, case_name } = params.row;
-            //         if (case_id) {
-            //             return (
-            //                 <Button
-            //                     variant="text"
-            //                     color="primary"
-            //                     onClick={() => navigate(`/cases/${case_id}/`)}
-            //                     startIcon={<OpenInNewIcon />}
-            //                     sx={{ textTransform: 'none', padding: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}
-            //
-            //                 >
-            //                     <span style={{ textTransform: 'none', padding: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{case_name}</span>
-            //                 </Button>
-            //             );
-            //         } else {
-            //             return (
-            //                 <Typography
-            //                     variant="body2"
-            //                     noWrap
-            //                     sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}
-            //                 >
-            //                     Не назначено
-            //                 </Typography>
-            //             );
-            //         }
-            //     },
-            // },
             {
                 field: 'department_name',
-                headerName: 'Отделение',
+                headerName: t('common.standard.label_department'),
                 flex: 1,
                 minWidth: 150,
                 sortable: false,
@@ -261,13 +221,13 @@ export default function EvidenceTable({ evidences, isLoading, setSnackbar, table
             },
             {
                 field: 'actions',
-                headerName: 'Действие',
+                headerName: t('common.table_headers.actions'),
                 flex: 0.5,
                 minWidth: 100,
                 sortable: false,
                 renderCell: (params) => (
                     (params.row.status_display === 'DESTROYED' || params.row.status_display === 'TAKEN') ? (
-                        <Tooltip title="Скачать документ">
+                        <Tooltip title={t('common.buttons.download_doc')}>
                             <IconButton
                                 color="primary"
                                 onClick={() => CheckAssociatedDocument(params.row.id)}
@@ -278,7 +238,7 @@ export default function EvidenceTable({ evidences, isLoading, setSnackbar, table
                             </IconButton>
                         </Tooltip>
                     ) : (
-                        <Tooltip title="Печать штрихкода">
+                        <Tooltip title={t('common.buttons.button_print_barcode')}>
                             <IconButton
                                 color="primary"
                                 onClick={() => handlePrintEvidenceBarcode(params.row)}
@@ -290,7 +250,7 @@ export default function EvidenceTable({ evidences, isLoading, setSnackbar, table
                 ),
             },
         ],
-        [navigate]
+        [CheckAssociatedDocument, handlePrintEvidenceBarcode, navigate, t]
     );
 
     return (
@@ -308,64 +268,6 @@ export default function EvidenceTable({ evidences, isLoading, setSnackbar, table
                             minWidth: col.minWidth || 150,
                         }))}
                     />
-                    // <DataGridPro
-                    //     rows={rows}
-                    //     columns={columns}
-                    //     disableColumnMenu
-                    //     disableSelectionOnClick
-                    //     hideFooter
-                    //     getRowHeight={() => "auto"}
-                    //     sx={{
-                    //         '& .MuiDataGrid-cell': {
-                    //             whiteSpace: 'nowrap',
-                    //             overflow: 'hidden',
-                    //             textOverflow: 'ellipsis',
-                    //             display: 'flex',
-                    //             alignItems: 'center',
-                    //             padding: theme.spacing(1),
-                    //             borderBottom: `1px solid ${theme.palette.divider}`,
-                    //         },
-                    //         '& .MuiDataGrid-columnHeaders': {
-                    //             backgroundColor: theme.palette.grey[100],
-                    //             borderBottom: `1px solid ${theme.palette.divider}`,
-                    //             fontWeight: 'bold',
-                    //             outline: 'none',
-                    //         },
-                    //         '& .MuiDataGrid-columnHeader:focus': {
-                    //             outline: 'none',
-                    //         },
-                    //         '& .MuiDataGrid-columnHeader:focus-within': {
-                    //             outline: 'none',
-                    //         },
-                    //         '& .MuiDataGrid-columnHeaderTitle': {
-                    //             fontWeight: 'bold',
-                    //         },
-                    //         '& .MuiDataGrid-row': {
-                    //             '&:nth-of-type(odd)': {
-                    //                 backgroundColor: theme.palette.action.hover,
-                    //             },
-                    //             // cursor: 'pointer',
-                    //         },
-                    //         '& .MuiDataGrid-row:hover': {
-                    //             '&:nth-of-type(odd)': {
-                    //                 backgroundColor: theme.palette.action.hover,
-                    //             },
-                    //             backgroundColor: "initial",
-                    //         },
-                    //         '& .MuiDataGrid-cell:focus': {
-                    //             outline: 'none',
-                    //         },
-                    //         '& .MuiDataGrid-row:focus': {
-                    //             outline: 'none',
-                    //         },
-                    //         '& .MuiDataGrid-cell:focus-within': {
-                    //             outline: 'none',
-                    //         },
-                    //         '& .MuiDataGrid-row.Mui-selected': {
-                    //             backgroundColor: 'inherit'
-                    //         },
-                    //     }}
-                    // />
                 )}
             </Paper>
 
@@ -379,284 +281,3 @@ export default function EvidenceTable({ evidences, isLoading, setSnackbar, table
         </>
     );
 }
-
-
-// // frontend/src/components/Dashboard/Evidence/EvidenceTable.js
-//
-// import React, { useState } from 'react';
-// import { DataGrid } from '@mui/x-data-grid';
-// import { Button, Paper, Tooltip, IconButton, Typography } from '@mui/material';
-// import Loading from '../../Loading';
-// import { OpenInNew as OpenInNewIcon, GetApp as GetAppIcon, } from '@mui/icons-material';
-// import { useNavigate } from 'react-router-dom';
-//
-// import DialogSeenBarcode from '../../CaseDetailComponents/DialogSeenBarcode';
-// import axios from '../../../axiosConfig';
-// import { evidenceStatuses } from '../../../constants/evidenceStatuses';
-//
-// export default function EvidenceTable({ evidences, isLoading, setSnackbar }) {
-//     const navigate = useNavigate();
-//
-//     // Диалог для штрихкода
-//     const [openBarcodeDisplayDialog, setOpenBarcodeDisplayDialog] = useState(false);
-//     const [scannedBarcode, setScannedBarcode] = useState('');
-//
-//
-//     const handlePrintEvidenceBarcode = (evidence) => {
-//         console.log(evidence);
-//         if (evidence.barcode) {
-//             setScannedBarcode(evidence.barcode);
-//             setOpenBarcodeDisplayDialog(true);
-//         } else {
-//             setSnackbar({
-//                 open: true,
-//                 message: 'Штрихкод вещественного доказательства недоступен.',
-//                 severity: 'error',
-//             });
-//         }
-//     };
-//
-//     const CheckAssociatedDocument = (evidenceId) => {
-//         console.log(evidenceId, 'evidenceId');
-//         axios
-//             .get('/api/documents/', {
-//                 params: {
-//                     material_evidence_id: evidenceId,
-//                 },
-//             })
-//             .then((response) => {
-//                 console.log(response.data[0], 'documents');
-//                 if(response.data[0]){
-//                     console.log(response.data[0].file, 'associatedDocument');
-//
-//                     const link = document.createElement('a');
-//                     link.href = response.data[0].file;
-//                     link.download = response.data[0].description || 'name';
-//                     document.body.appendChild(link);
-//                     link.click();
-//                     document.body.removeChild(link);
-//                 }else{
-//                     setSnackbar({
-//                         open: true,
-//                         message: 'Файл не найден.',
-//                         severity: 'error',
-//                     });
-//                 }
-//             })
-//             .catch((error) => {
-//                 console.error('Ошибка при получении документов:', error);
-//                 setSnackbar({
-//                     open: true,
-//                     message: 'Ошибка при загрузке документов.',
-//                     severity: 'error',
-//                 });
-//             });
-//     }
-//     // Преобразование данных в формат, подходящий для DataGrid
-//     const rows = evidences.map((evidence) => ({
-//         id: evidence.id,
-//         name: evidence.name || 'Без названия',
-//         description: evidence.description || 'Описание не указано',
-//         type_display: evidence.type_display || 'Не указано',
-//         status_display: evidence.status || 'Не указано',
-//         case_id: evidence.case_id,
-//         case_name: evidence.case_name || 'Дело',
-//         department_name: evidence.department_name || 'Не указано',
-//         barcode: evidence.barcode,
-//     }));
-//
-//     // Определение колонок для DataGrid
-//     const columns = [
-//         {
-//             field: 'name',
-//             headerName: 'Вещественное доказательство',
-//             flex: 1,
-//             sortable: false,
-//             renderCell: (params) => (
-//                 <div
-//                     style={{
-//                         width: '100%',
-//                         display: 'flex',
-//                         flexDirection: 'column',
-//                         gap: '10px',
-//                         margin: '10px 0',
-//                     }}
-//                 >
-//                     <div style={{ fontWeight: 'bold' }}>{params.row.name}</div>
-//                     <div
-//                         style={{
-//                             borderTop: '1px solid #e0e0e0',
-//                             margin: '4px 0',
-//                         }}
-//                     ></div>
-//                     <div>{params.row.description}</div>
-//                 </div>
-//             ),
-//         },
-//         {
-//             field: 'type_display',
-//             headerName: 'Тип и Статус',
-//             flex: 1,
-//             sortable: false,
-//             renderCell: (params) => (
-//                 <div
-//                     style={{
-//                         width: '100%',
-//                         display: 'flex',
-//                         flexDirection: 'column',
-//                         gap: '10px',
-//                         margin: '10px 0',
-//                     }}
-//                 >
-//                     <div>{params.row.type_display}</div>
-//                     <div
-//                         style={{
-//                             borderTop: '1px solid #e0e0e0',
-//                             margin: '4px 0',
-//                         }}
-//                     ></div>
-//                     <div>{evidenceStatuses.find((status) => status.value === params.row.status_display)?.label || params.row.status_display}</div>
-//                 </div>
-//             ),
-//         },
-//         {
-//             field: 'case',
-//             headerName: 'Дело',
-//             flex: 1,
-//             sortable: false,
-//             renderCell: (params) => {
-//                 const { case_id, case_name } = params.row;
-//                 if (case_id) {
-//                     return (
-//                         <Button
-//                             sx={{
-//                                 margin: '10px 0px'
-//                             }}
-//                             variant="text"
-//                             color="primary"
-//                             onClick={() => navigate(`/cases/${case_id}/`)}
-//                             startIcon={<OpenInNewIcon />}
-//                         >
-//                             {case_name}
-//                         </Button>
-//                     );
-//                 } else {
-//                     return 'Не назначено';
-//                 }
-//             },
-//         },
-//         {
-//             field: 'department_name',
-//             headerName: 'Отделение',
-//             flex: 1,
-//             sortable: false,
-//             renderCell: (params) => <div style={{ margin: '10px 0px' }}>{params.row.department_name}</div>,
-//         },
-//         {
-//             field: 'actions',
-//             headerName: 'Действие',
-//             flex: 1,
-//             sortable: false,
-//             renderCell: (params) => (
-//                 (params.row.status_display === 'DESTROYED' || params.row.status_display === 'TAKEN') ? (
-//                     <Tooltip title="Скачать документ">
-//                         <IconButton
-//                             color="primary"
-//                             onClick={() => CheckAssociatedDocument(params.row.id)}
-//                             // href={CheckAssociatedDocument(params.row.id).file}
-//                             target="_blank"
-//                             rel="noopener noreferrer"
-//                         >
-//                             <GetAppIcon />
-//                         </IconButton>
-//                     </Tooltip>
-//                 ) : (
-//                     <Button
-//                         variant="outlined"
-//                         size="small"
-//                         sx={{
-//                             margin: '10px 0px'
-//                         }}
-//                         onClick={() => handlePrintEvidenceBarcode(params.row)}
-//                     >
-//                         Печать Штрихкода
-//                     </Button >
-//                 )
-//             ),
-//         },
-//     ];
-//
-//     // Функция для динамической настройки высоты строк
-//     const getRowHeight = (params) => {
-//         const lineHeight = 20; // Высота одной строки текста
-//         const padding = 16; // Отступы внутри ячейки
-//
-//         const nameLength = params.model?.name?.length || 0;
-//         const descriptionLength = params.model?.description?.length || 0;
-//         const typeLength = params.model?.type_display?.length || 0;
-//         const statusLength = params.model?.status_display?.length || 0;
-//
-//         const nameLines = Math.ceil(nameLength / 30);
-//         const descriptionLines = Math.ceil(descriptionLength / 30);
-//         const typeLines = Math.ceil(typeLength / 30);
-//         const statusLines = Math.ceil(statusLength / 30);
-//
-//         const evidenceLines = nameLines + descriptionLines + 2; // +2 для разделителя и отступов
-//         const typeStatusLines = typeLines + statusLines + 2;
-//
-//         const totalLines = Math.max(evidenceLines, typeStatusLines) + 2; // +2 для дополнительного пространства
-//
-//         return totalLines * lineHeight + padding;
-//     };
-//
-//     return (
-//         <>
-//             <Paper sx={{ width: '100%', mt: 2 }}>
-//                 {isLoading ? (
-//                     <Loading />
-//                 ) : (
-//                     <DataGrid
-//                         rows={rows}
-//                         columns={columns}
-//                         autoHeight
-//                         disableColumnMenu
-//                         disableSelectionOnClick
-//                         hideFooter
-//                         getRowHeight={getRowHeight}
-//                         sx={{
-//                             '& .MuiDataGrid-cell': {
-//                                 whiteSpace: 'normal',
-//                                 wordWrap: 'break-word',
-//                                 overflow: 'visible',
-//                                 lineHeight: '1.5',
-//                                 display: 'block',
-//                             },
-//                             '& .MuiDataGrid-cell:focus': {
-//                                 outline: 'none',
-//                             },
-//                             '& .MuiDataGrid-row': {
-//                                 alignItems: 'flex-start',
-//                             },
-//                             '& .MuiDataGrid-columnHeaders': {
-//                                 backgroundColor: 'grey.200',
-//                                 borderBottom: '1px solid',
-//                                 borderColor: 'divider',
-//                             },
-//                         }}
-//                     />
-//                 )}
-//             </Paper>
-//
-//             {/* Диалог для отображения штрихкода */}
-//             {/* {scannedBarcode && ( */}
-//             <DialogSeenBarcode
-//                 open={openBarcodeDisplayDialog}
-//                 setOpenBarcodeDialog={() => setOpenBarcodeDisplayDialog(false)}
-//                 barcodeValueToDisplay={scannedBarcode}
-//                 setSnackbar={setSnackbar}
-//             // barcodeRef={barcodeRef}
-//             // handlePrintBarcode={handlePrintBarcode}
-//             />
-//         </>
-//     );
-// }

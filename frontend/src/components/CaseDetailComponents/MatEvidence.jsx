@@ -1,3 +1,582 @@
+// frontend/src/components/CaseDetailComponents/MatEvidence.jsx
+
+import React, {
+    useState,
+    lazy,
+    Suspense,
+    useCallback,
+    useContext,
+    useEffect,
+} from 'react';
+import {
+    Typography,
+    Box,
+    IconButton,
+    Accordion,
+    AccordionSummary,
+    AccordionDetails,
+    Tooltip,
+    Select,
+    MenuItem,
+    FormControl,
+    Paper,
+    useTheme,
+    Button,
+} from '@mui/material';
+import {
+    Add as AddIcon,
+    ExpandMore as ExpandMoreIcon,
+    Print as PrintIcon,
+    GetApp as GetAppIcon,
+} from '@mui/icons-material';
+import { useEvidenceStatuses } from '../../constants/evidenceStatuses';
+import axios from '../../axiosConfig';
+import { useEvidenceTypes } from '../../constants/evidenceTypes';
+import BiometricDialog from '../BiometricDialog';
+import { StyledButton } from '../ui/StyledComponents';
+import DialogSeenBarcode from './DialogSeenBarcode';
+import Loading from '../Loading';
+import { AuthContext } from '../../contexts/AuthContext';
+import { LicenseInfo } from '@mui/x-license';
+import { StyledDataGridPro } from '../ui/Tables';
+import { useTranslation } from 'react-i18next';
+
+// Устанавливаем лицензионный ключ для DataGridPro
+LicenseInfo.setLicenseKey('d7a42a252b29f214a57d3d3f80b1e8caTz0xMjM0NSxFPTE3MzI1NzE1ODEwNTczLFM9cHJvLExNPXN1YnNjcmlwdGlvbixQVj1wZXJwZXR1YWwsS1Y9Mg==');
+
+const DialogNewGroup = lazy(() => import('./DialogNewGroup'));
+const DialogNewEvidence = lazy(() => import('./DialogNewEvidence'));
+const DialogAlertNewStatus = lazy(() => import('./DialogAlertNewStatus'));
+
+export default function CaseDetailMatEvidence({
+    id,
+    setGroups,
+    setIsStatusUpdating,
+    isStatusUpdating,
+    setSnackbar,
+    canEdit,
+    canAddGroup,
+    groups,
+    caseItem,
+}) {
+    const { t } = useTranslation();
+    const EVIDENCE_TYPES = useEvidenceTypes();
+    const evidenceStatuses = useEvidenceStatuses();
+    const theme = useTheme();
+
+    const [selectedGroupId, setSelectedGroupId] = useState(null);
+    const [dialogStates, setDialogStates] = useState({
+        openGroupDialog: false,
+        openEvidenceDialog: false,
+        openAlertNewStatus: false,
+        openBarcodeDialog: false,
+        barcodeValueToDisplay: '',
+        currentEvidenceId: '',
+        currentNewStatus: '',
+        currentGroupName: '',
+    });
+
+    // Состояния для биометрической аутентификации
+    const [biometricDialogOpen, setBiometricDialogOpen] = useState(false);
+    const [pendingAction, setPendingAction] = useState(null);
+    const [isAuthenticating, setIsAuthenticating] = useState(false);
+
+    // Получаем текущего пользователя из контекста
+    const { user } = useContext(AuthContext);
+    const isArchiveUser = user?.username?.toLowerCase().includes('archive');
+
+    // Состояния для документов
+    const [documents, setDocuments] = useState([]);
+    const [isRevalidate, setIsRevalidate] = useState(false);
+
+    // Загрузка документов при монтировании компонента
+    useEffect(() => {
+        axios
+            .get('/api/documents/', {
+                params: {
+                    case_id: id,
+                },
+            })
+            .then((response) => {
+                setDocuments(response.data);
+                setIsRevalidate(false);
+            })
+            .catch((error) => {
+                console.error(t('common.errors.error_load_documents'), error);
+                setSnackbar({
+                    open: true,
+                    message: t('common.errors.error_load_documents'),
+                    severity: 'error',
+                });
+            });
+    }, [id, setSnackbar, isRevalidate, t]);
+
+    // Функции для биометрической аутентификации
+    const handleOpenBiometricDialog = (action) => {
+        if (isArchiveUser) {
+            if (action === 'openGroupDialog' || action === 'openEvidenceDialog') {
+                handleDialogOpen(action);
+            } else if (action.action === 'changeStatus') {
+                performEvidenceStatusChange(
+                    action.evidenceId,
+                    action.newStatus,
+                    action.documentId
+                );
+            }
+        } else {
+            setPendingAction(action);
+            setBiometricDialogOpen(true);
+            setIsAuthenticating(true);
+        }
+    };
+
+    const handleBiometricSuccess = () => {
+        setBiometricDialogOpen(false);
+        setIsAuthenticating(false);
+        if (
+            pendingAction === 'openGroupDialog' ||
+            pendingAction === 'openEvidenceDialog'
+        ) {
+            handleDialogOpen(pendingAction);
+        } else if (pendingAction.action === 'changeStatus') {
+            performEvidenceStatusChange(
+                pendingAction.evidenceId,
+                pendingAction.newStatus,
+                pendingAction.documentId
+            );
+        }
+        setPendingAction(null);
+    };
+
+    const handleBiometricError = (errorMessage) => {
+        setBiometricDialogOpen(false);
+        setIsAuthenticating(false);
+        setSnackbar({
+            open: true,
+            message: errorMessage,
+            severity: 'error',
+        });
+        setPendingAction(null);
+    };
+
+    const handlePrintEvidenceBarcode = (evidence, groupName) => {
+        if (evidence.barcode) {
+            handleDialogOpen('openBarcodeDialog', evidence.barcode, '', groupName);
+        } else {
+            setSnackbar({
+                open: true,
+                message: t('common.barcode.barcode_unavailable'),
+                severity: 'error',
+            });
+        }
+    };
+
+    const handlePrintGroupBarcode = (groupId) => {
+        const group = groups.find((g) => g.id === groupId);
+        if (group && group.barcode) {
+            handleDialogOpen('openBarcodeDialog', group.barcode, '', group.name);
+        } else {
+            setSnackbar({
+                open: true,
+                message: t('common.barcode.barcode_group_unavailable'),
+                severity: 'error',
+            });
+        }
+    };
+
+    const toggleGroupSelect = (groupId) => {
+        setSelectedGroupId(selectedGroupId === groupId ? null : groupId);
+    };
+
+    const handleDialogOpen = (
+        dialogType,
+        barcodeValue = '',
+        newStatus = '',
+        groupName = ''
+    ) => {
+        setDialogStates((prev) => ({
+            ...prev,
+            [dialogType]: true,
+            barcodeValueToDisplay: barcodeValue,
+            currentEvidenceId: barcodeValue,
+            currentNewStatus: newStatus,
+            currentGroupName: groupName,
+        }));
+    };
+
+    const handleEvidenceStatusChange = (evidenceId, newStatus) => {
+        if (['DESTROYED', 'TAKEN', 'ON_EXAMINATION'].includes(newStatus)) {
+        // if ('DESTROYED' === newStatus || 'TAKEN' === newStatus) {
+            handleDialogOpen('openAlertNewStatus', evidenceId, newStatus);
+        } else {
+            handleOpenBiometricDialog({ action: 'changeStatus', evidenceId, newStatus });
+        }
+    };
+
+    const SubmitChangeEvidenceStatus = (evidenceId, newStatus, documentId) => {
+        handleOpenBiometricDialog({
+            action: 'changeStatus',
+            evidenceId,
+            newStatus,
+            documentId,
+        });
+    };
+
+    const performEvidenceStatusChange = useCallback(
+        (evidenceId, newStatus, documentId) => {
+            if (isStatusUpdating) return;
+            setIsStatusUpdating(true);
+
+            const updateEvidenceStatus = () => {
+                axios
+                    .patch(`/api/material-evidences/${evidenceId}/`, { status: newStatus })
+                    .then((response) => {
+                        setGroups((prevGroups) =>
+                            prevGroups.map((group) => ({
+                                ...group,
+                                material_evidences: group.material_evidences.map((evidence) =>
+                                    evidence.id === evidenceId ? response.data : evidence
+                                ),
+                            }))
+                        );
+                        setSnackbar({
+                            open: true,
+                            message: t('common.messages.success_status_update'),
+                            severity: 'success',
+                        });
+                    })
+                    .catch((error) => {
+                        console.error(
+                            t('common.errors.error_status_update'),
+                            error.response?.data || error
+                        );
+                        setSnackbar({
+                            open: true,
+                            message: t('common.errors.error_status_update'),
+                            severity: 'error',
+                        });
+                    })
+                    .finally(() => {
+                        setIsStatusUpdating(false);
+                    });
+            };
+
+            if (documentId) {
+                axios
+                    .patch(`/api/documents/${documentId}/`, { material_evidence_id: evidenceId })
+                    .then((response) => {
+                        console.log(t('common.success.success_file_update'), response.data);
+                        updateEvidenceStatus();
+                        setIsRevalidate(true);
+                    })
+                    .catch((error) => {
+                        console.error(t('common.errors.error_file_update'), error);
+                        setSnackbar({
+                            open: true,
+                            message: t('common.errors.error_file_update'),
+                            severity: 'error',
+                        });
+                        setIsStatusUpdating(false);
+                    });
+            } else {
+                updateEvidenceStatus();
+            }
+        },
+        [isStatusUpdating, setIsStatusUpdating, setGroups, setSnackbar, t]
+    );
+
+    // DataGrid columns
+    const getColumns = useCallback(
+        (group) => [
+            {
+                field: 'name',
+                headerName: t('common.table_headers.name'),
+                flex: 1,
+                minWidth: 150,
+                sortable: false,
+                renderCell: (params) => (
+                    <Typography
+                        variant="body2"
+                        sx={{ whiteSpace: 'normal', overflowWrap: 'anywhere' }} // Позволяем перенос текста
+                    >
+                        {params.row.name}
+                    </Typography>
+                ),
+            },
+            {
+                field: 'description',
+                headerName: t('common.table_headers.description'),
+                flex: 2,
+                minWidth: 200,
+                sortable: false,
+                renderCell: (params) => (
+                    <Typography
+                        variant="body2"
+                        color="textSecondary"
+                        sx={{ whiteSpace: 'normal', overflowWrap: 'anywhere' }} // Позволяем перенос текста
+                    >
+                        {params.row.description}
+                    </Typography>
+                ),
+            },
+            {
+                field: 'type',
+                headerName: t('common.standard.label_evidence_type'),
+                flex: 1,
+                minWidth: 100,
+                sortable: false,
+                renderCell: (params) => (
+                    <Typography variant="body2">
+                        {EVIDENCE_TYPES.find((type) => type.value === params.row.type)?.label ||
+                            params.row.type}
+                    </Typography>
+                ),
+            },
+            {
+                field: 'status',
+                headerName: t('common.table_headers.status'),
+                flex: 1,
+                minWidth: 150,
+                sortable: false,
+                renderCell: (params) => {
+                    const evidence = params.row;
+                    return canEdit ? (
+                        <FormControl fullWidth variant="standard">
+                            <Select
+                                value={evidence.status}
+                                disabled={
+                                    evidence.status === 'DESTROYED' || evidence.status === 'TAKEN'
+                                }
+                                onChange={(event) =>
+                                    handleEvidenceStatusChange(evidence.id, event.target.value)
+                                }
+                            >
+                                {evidenceStatuses.map((status) => (
+                                    <MenuItem key={status.value} value={status.value}>
+                                        {status.label}
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+                    ) : (
+                        <Typography variant="body2">
+                            {
+                                evidenceStatuses.find((status) => status.value === evidence.status)
+                                    ?.label || evidence.status
+                            }
+                        </Typography>
+                    );
+                },
+            },
+            {
+                field: 'actions',
+                headerName: t('common.table_headers.actions'),
+                flex: 0.5,
+                minWidth: 100,
+                sortable: false,
+                renderCell: (params) => {
+                    const evidence = params.row;
+                    const associatedDocument = documents.find(
+                        (doc) => doc.material_evidence === evidence.id
+                    );
+                    return (
+                        <Box sx={{ display: 'flex', gap: 1 }}>
+                            {evidence.status === 'DESTROYED' || evidence.status === 'TAKEN' ? (
+                                associatedDocument ? (
+                                    <Tooltip title={t('common.buttons.download_doc')}>
+                                        <IconButton
+                                            color="primary"
+                                            href={associatedDocument.file}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                        >
+                                            <GetAppIcon />
+                                        </IconButton>
+                                    </Tooltip>
+                                ) : (
+                                    <Tooltip title={t('common.messages.not_specified')}>
+                                        <IconButton color="default" disabled>
+                                            <GetAppIcon />
+                                        </IconButton>
+                                    </Tooltip>
+                                )
+                            ) : (
+                                <Tooltip title={t('common.buttons.button_print_barcode')}>
+                                    <IconButton
+                                        color="primary"
+                                        onClick={() =>
+                                            handlePrintEvidenceBarcode(evidence, group.name)
+                                        }
+                                    >
+                                        <PrintIcon />
+                                    </IconButton>
+                                </Tooltip>
+                            )}
+                        </Box>
+                    );
+                },
+            },
+        ],
+        [canEdit, documents, handleEvidenceStatusChange, handlePrintEvidenceBarcode, t]
+    );
+
+    // Generate rows for DataGrid
+    const getRows = (group) =>
+        group.material_evidences.map((evidence) => ({
+            id: evidence.id,
+            name: evidence.name,
+            description: evidence.description,
+            type: evidence.type,
+            status: evidence.status,
+            barcode: evidence.barcode,
+            evidence,
+        }));
+
+    return (
+        <Box>
+            <Box
+                sx={{ display: 'flex', justifyContent: 'space-between', mb: canAddGroup ? theme.spacing(2) : 0 }}
+            >
+                {canAddGroup && (
+                    <StyledButton
+                        onClick={() => handleOpenBiometricDialog('openGroupDialog')}
+                        startIcon={<AddIcon />}
+                        disabled={isAuthenticating}
+                    >
+                        {t('case_detail.tabs.evidence.button_add_group')}
+                    </StyledButton>
+                )}
+                {selectedGroupId && (
+                    <Box sx={{ display: 'flex', gap: theme.spacing(2) }}>
+                        {canAddGroup && (
+                            <StyledButton
+                                onClick={() => handleOpenBiometricDialog('openEvidenceDialog')}
+                                startIcon={<AddIcon />}
+                                disabled={isAuthenticating}
+                            >
+                                {t('case_detail.tabs.evidence.button_add_evidence')}
+                            </StyledButton>
+                        )}
+                    </Box>
+                )}
+            </Box>
+
+            {groups.map((group) => (
+                <Accordion
+                    key={group.id}
+                    expanded={selectedGroupId === group.id}
+                    onChange={() => toggleGroupSelect(group.id)}
+                    sx={{ mb: theme.spacing(2) }}
+                >
+                    <AccordionSummary expandIcon={<ExpandMoreIcon />}
+                        sx={{
+                            '& .MuiAccordionSummary-content': {
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                            }
+                        }}
+                    >
+                        <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                            <Typography variant="h6">{group.name}</Typography>
+                            <Typography variant="body2" color="textSecondary">
+                                {t('case_detail.tabs.evidence.label_storage_place')}: {group.storage_place}
+                            </Typography>
+                        </Box>
+                        {selectedGroupId === group.id && (
+
+                            <Button
+                                variant="contained"
+                                color="primary"
+                                startIcon={<PrintIcon />}
+                                onClick={() => handlePrintGroupBarcode(selectedGroupId)}
+                                disabled={isAuthenticating}
+                                sx={{ mr: 2 }}
+                            >
+                                {t('common.buttons.button_print_barcode')}
+                            </Button>
+                        )}
+                    </AccordionSummary>
+                    <AccordionDetails>
+                        <Paper sx={{ p: 2 }}>
+                            {group.material_evidences.length > 0 ? (
+                                <StyledDataGridPro rows={getRows(group)}
+                                    columns={getColumns(group)}
+                                    autoHeight
+                                />
+                            ) : (
+                                <Typography variant="body2" align="center">
+                                    {t('common.messages.no_evidences')}
+                                </Typography>
+                            )}
+                        </Paper>
+                    </AccordionDetails>
+                </Accordion>
+            ))}
+
+            <Suspense fallback={<Loading />}>
+                <DialogNewGroup
+                    open={dialogStates.openGroupDialog}
+                    setOpenGroupDialog={(open) =>
+                        setDialogStates((prev) => ({ ...prev, openGroupDialog: open }))
+                    }
+                    setGroups={setGroups}
+                    setSnackbar={setSnackbar}
+                    groups={groups}
+                    id={id}
+                    caseItem={caseItem}
+                />
+                <DialogNewEvidence
+                    open={dialogStates.openEvidenceDialog}
+                    setOpenEvidenceDialog={(open) =>
+                        setDialogStates((prev) => ({ ...prev, openEvidenceDialog: open }))
+                    }
+                    setGroups={setGroups}
+                    selectedGroupId={selectedGroupId}
+                    setSnackbar={setSnackbar}
+                    id={id}
+                />
+                <DialogAlertNewStatus
+                    open={dialogStates.openAlertNewStatus}
+                    setOpenAlertNewStatusDialog={(open) =>
+                        setDialogStates((prev) => ({ ...prev, openAlertNewStatus: open }))
+                    }
+                    setSnackbar={setSnackbar}
+                    evidenceId={dialogStates.currentEvidenceId}
+                    newStatus={dialogStates.currentNewStatus}
+                    SubmitChangeEvidenceStatus={SubmitChangeEvidenceStatus}
+                    id={id}
+                />
+            </Suspense>
+
+            {/* Диалог для отображения штрихкода */}
+            <DialogSeenBarcode
+                open={dialogStates.openBarcodeDialog}
+                setOpenBarcodeDialog={(open) =>
+                    setDialogStates((prev) => ({ ...prev, openBarcodeDialog: open }))
+                }
+                barcodeValueToDisplay={dialogStates.barcodeValueToDisplay}
+                groupName={dialogStates.currentGroupName}
+            />
+
+            {/* Диалог биометрической аутентификации */}
+            {biometricDialogOpen && !isArchiveUser && (
+                <BiometricDialog
+                    open={biometricDialogOpen}
+                    onClose={() => {
+                        setBiometricDialogOpen(false);
+                        handleBiometricError(t('common.messages.biometric_canceled'));
+                    }}
+                    onSuccess={handleBiometricSuccess}
+                />
+            )}
+        </Box>
+    );
+}
+
+
+
+
+
 // // frontend/src/components/CaseDetailComponents/MatEvidence.jsx
 // // frontend/src/components/CaseDetailComponents/MatEvidence.jsx
 //
@@ -1187,636 +1766,3 @@
 // -----------------------------------------------------------------
 
 // новая из чатгпт
-// frontend/src/components/CaseDetailComponents/MatEvidence.jsx
-
-import React, {
-    useState,
-    lazy,
-    Suspense,
-    useCallback,
-    useContext,
-    useEffect,
-    useMemo,
-} from 'react';
-import {
-    Typography,
-    Box,
-    IconButton,
-    Accordion,
-    AccordionSummary,
-    AccordionDetails,
-    Tooltip,
-    Select,
-    MenuItem,
-    FormControl,
-    Paper,
-    useTheme,
-    Button,
-} from '@mui/material';
-import {
-    Add as AddIcon,
-    ExpandMore as ExpandMoreIcon,
-    Print as PrintIcon,
-    GetApp as GetAppIcon,
-} from '@mui/icons-material';
-import { DataGridPro } from '@mui/x-data-grid-pro';
-import { useNavigate } from 'react-router-dom';
-import { evidenceStatuses } from '../../constants/evidenceStatuses';
-import axios from '../../axiosConfig';
-import { EVIDENCE_TYPES } from '../../constants/evidenceTypes';
-import BiometricDialog from '../BiometricDialog';
-import { StyledButton } from '../ui/StyledComponents';
-import DialogSeenBarcode from './DialogSeenBarcode';
-import Loading from '../Loading';
-import { AuthContext } from '../../contexts/AuthContext';
-import { LicenseInfo } from '@mui/x-license';
-import { StyledDataGridPro } from '../ui/Tables';
-
-// Устанавливаем лицензионный ключ для DataGridPro
-LicenseInfo.setLicenseKey('d7a42a252b29f214a57d3d3f80b1e8caTz0xMjM0NSxFPTE3MzI1NzE1ODEwNTczLFM9cHJvLExNPXN1YnNjcmlwdGlvbixQVj1wZXJwZXR1YWwsS1Y9Mg==');
-
-const DialogNewGroup = lazy(() => import('./DialogNewGroup'));
-const DialogNewEvidence = lazy(() => import('./DialogNewEvidence'));
-const DialogAlertNewStatus = lazy(() => import('./DialogAlertNewStatus'));
-
-export default function CaseDetailMatEvidence({
-    id,
-    setGroups,
-    setIsStatusUpdating,
-    isStatusUpdating,
-    setSnackbar,
-    canEdit,
-    canAddGroup,
-    groups,
-    caseItem,
-}) {
-    const theme = useTheme();
-    const navigate = useNavigate();
-
-    const [selectedGroupId, setSelectedGroupId] = useState(null);
-    const [dialogStates, setDialogStates] = useState({
-        openGroupDialog: false,
-        openEvidenceDialog: false,
-        openAlertNewStatus: false,
-        openBarcodeDialog: false,
-        barcodeValueToDisplay: '',
-        currentEvidenceId: '',
-        currentNewStatus: '',
-        currentGroupName: '',
-    });
-
-    // Состояния для биометрической аутентификации
-    const [biometricDialogOpen, setBiometricDialogOpen] = useState(false);
-    const [pendingAction, setPendingAction] = useState(null);
-    const [isAuthenticating, setIsAuthenticating] = useState(false);
-
-    // Получаем текущего пользователя из контекста
-    const { user } = useContext(AuthContext);
-    const isArchiveUser = user?.username?.toLowerCase().includes('archive');
-
-    // Состояния для документов
-    const [documents, setDocuments] = useState([]);
-    const [isRevalidate, setIsRevalidate] = useState(false);
-
-    // Загрузка документов при монтировании компонента
-    useEffect(() => {
-        axios
-            .get('/api/documents/', {
-                params: {
-                    case_id: id,
-                },
-            })
-            .then((response) => {
-                setDocuments(response.data);
-                setIsRevalidate(false);
-            })
-            .catch((error) => {
-                console.error('Ошибка при получении документов:', error);
-                setSnackbar({
-                    open: true,
-                    message: 'Ошибка при загрузке документов.',
-                    severity: 'error',
-                });
-            });
-    }, [id, setSnackbar, isRevalidate]);
-
-    // Функции для биометрической аутентификации
-    const handleOpenBiometricDialog = (action) => {
-        if (isArchiveUser) {
-            if (action === 'openGroupDialog' || action === 'openEvidenceDialog') {
-                handleDialogOpen(action);
-            } else if (action.action === 'changeStatus') {
-                performEvidenceStatusChange(
-                    action.evidenceId,
-                    action.newStatus,
-                    action.documentId
-                );
-            }
-        } else {
-            setPendingAction(action);
-            setBiometricDialogOpen(true);
-            setIsAuthenticating(true);
-        }
-    };
-
-    const handleBiometricSuccess = () => {
-        setBiometricDialogOpen(false);
-        setIsAuthenticating(false);
-        if (
-            pendingAction === 'openGroupDialog' ||
-            pendingAction === 'openEvidenceDialog'
-        ) {
-            handleDialogOpen(pendingAction);
-        } else if (pendingAction.action === 'changeStatus') {
-            performEvidenceStatusChange(
-                pendingAction.evidenceId,
-                pendingAction.newStatus,
-                pendingAction.documentId
-            );
-        }
-        setPendingAction(null);
-    };
-
-    const handleBiometricError = (errorMessage) => {
-        setBiometricDialogOpen(false);
-        setIsAuthenticating(false);
-        setSnackbar({
-            open: true,
-            message: errorMessage,
-            severity: 'error',
-        });
-        setPendingAction(null);
-    };
-
-    const handlePrintEvidenceBarcode = (evidence, groupName) => {
-        if (evidence.barcode) {
-            handleDialogOpen('openBarcodeDialog', evidence.barcode, '', groupName);
-        } else {
-            setSnackbar({
-                open: true,
-                message: 'Штрихкод недоступен.',
-                severity: 'error',
-            });
-        }
-    };
-
-    const handlePrintGroupBarcode = (groupId) => {
-        const group = groups.find((g) => g.id === groupId);
-        if (group && group.barcode) {
-            handleDialogOpen('openBarcodeDialog', group.barcode, '', group.name);
-        } else {
-            setSnackbar({
-                open: true,
-                message: 'Штрихкод группы недоступен.',
-                severity: 'error',
-            });
-        }
-    };
-
-    const toggleGroupSelect = (groupId) => {
-        setSelectedGroupId(selectedGroupId === groupId ? null : groupId);
-    };
-
-    const handleDialogOpen = (
-        dialogType,
-        barcodeValue = '',
-        newStatus = '',
-        groupName = ''
-    ) => {
-        setDialogStates((prev) => ({
-            ...prev,
-            [dialogType]: true,
-            barcodeValueToDisplay: barcodeValue,
-            currentEvidenceId: barcodeValue,
-            currentNewStatus: newStatus,
-            currentGroupName: groupName,
-        }));
-    };
-
-    const handleEvidenceStatusChange = (evidenceId, newStatus) => {
-        if ('DESTROYED' === newStatus || 'TAKEN' === newStatus) {
-            handleDialogOpen('openAlertNewStatus', evidenceId, newStatus);
-        } else {
-            handleOpenBiometricDialog({ action: 'changeStatus', evidenceId, newStatus });
-        }
-    };
-
-    const SubmitChangeEvidenceStatus = (evidenceId, newStatus, documentId) => {
-        handleOpenBiometricDialog({
-            action: 'changeStatus',
-            evidenceId,
-            newStatus,
-            documentId,
-        });
-    };
-
-    const performEvidenceStatusChange = useCallback(
-        (evidenceId, newStatus, documentId) => {
-            if (isStatusUpdating) return;
-            setIsStatusUpdating(true);
-
-            const updateEvidenceStatus = () => {
-                axios
-                    .patch(`/api/material-evidences/${evidenceId}/`, { status: newStatus })
-                    .then((response) => {
-                        setGroups((prevGroups) =>
-                            prevGroups.map((group) => ({
-                                ...group,
-                                material_evidences: group.material_evidences.map((evidence) =>
-                                    evidence.id === evidenceId ? response.data : evidence
-                                ),
-                            }))
-                        );
-                        setSnackbar({
-                            open: true,
-                            message: 'Статус вещественного доказательства обновлен.',
-                            severity: 'success',
-                        });
-                    })
-                    .catch((error) => {
-                        console.error(
-                            'Ошибка при обновлении статуса:',
-                            error.response?.data || error
-                        );
-                        setSnackbar({
-                            open: true,
-                            message:
-                                'Ошибка при обновлении статуса вещественного доказательства.',
-                            severity: 'error',
-                        });
-                    })
-                    .finally(() => {
-                        setIsStatusUpdating(false);
-                    });
-            };
-
-            if (documentId) {
-                axios
-                    .patch(`/api/documents/${documentId}/`, { material_evidence_id: evidenceId })
-                    .then((response) => {
-                        console.log('Документ успешно обновлен:', response.data);
-                        updateEvidenceStatus();
-                        setIsRevalidate(true);
-                    })
-                    .catch((error) => {
-                        console.error('Ошибка при обновлении документа:', error);
-                        setSnackbar({
-                            open: true,
-                            message: 'Ошибка при обновлении документа.',
-                            severity: 'error',
-                        });
-                        setIsStatusUpdating(false);
-                    });
-            } else {
-                updateEvidenceStatus();
-            }
-        },
-        [isStatusUpdating, setGroups, setSnackbar, setIsStatusUpdating]
-    );
-
-    // DataGrid columns
-    const getColumns = useCallback(
-        (group) => [
-            {
-                field: 'name',
-                headerName: 'Название',
-                flex: 1,
-                minWidth: 150,
-                sortable: false,
-                renderCell: (params) => (
-                    <Typography
-                        variant="body2"
-                        sx={{ whiteSpace: 'normal', overflowWrap: 'anywhere' }} // Позволяем перенос текста
-                    >
-                        {params.row.name}
-                    </Typography>
-                ),
-            },
-            {
-                field: 'description',
-                headerName: 'Описание',
-                flex: 2,
-                minWidth: 200,
-                sortable: false,
-                renderCell: (params) => (
-                    <Typography
-                        variant="body2"
-                        color="textSecondary"
-                        sx={{ whiteSpace: 'normal', overflowWrap: 'anywhere' }} // Позволяем перенос текста
-                    >
-                        {params.row.description}
-                    </Typography>
-                ),
-            },
-            {
-                field: 'type',
-                headerName: 'Тип ВД',
-                flex: 1,
-                minWidth: 100,
-                sortable: false,
-                renderCell: (params) => (
-                    <Typography variant="body2">
-                        {EVIDENCE_TYPES.find((type) => type.value === params.row.type)?.label ||
-                            params.row.type}
-                    </Typography>
-                ),
-            },
-            {
-                field: 'status',
-                headerName: 'Статус',
-                flex: 1,
-                minWidth: 150,
-                sortable: false,
-                renderCell: (params) => {
-                    const evidence = params.row;
-                    return canEdit ? (
-                        <FormControl fullWidth variant="standard">
-                            <Select
-                                value={evidence.status}
-                                disabled={
-                                    evidence.status === 'DESTROYED' || evidence.status === 'TAKEN'
-                                }
-                                onChange={(event) =>
-                                    handleEvidenceStatusChange(evidence.id, event.target.value)
-                                }
-                            >
-                                {evidenceStatuses.map((status) => (
-                                    <MenuItem key={status.value} value={status.value}>
-                                        {status.label}
-                                    </MenuItem>
-                                ))}
-                            </Select>
-                        </FormControl>
-                    ) : (
-                        <Typography variant="body2">
-                            {
-                                evidenceStatuses.find((status) => status.value === evidence.status)
-                                    ?.label || evidence.status
-                            }
-                        </Typography>
-                    );
-                },
-            },
-            {
-                field: 'actions',
-                headerName: 'Действия',
-                flex: 0.5,
-                minWidth: 100,
-                sortable: false,
-                renderCell: (params) => {
-                    const evidence = params.row;
-                    const associatedDocument = documents.find(
-                        (doc) => doc.material_evidence === evidence.id
-                    );
-                    return (
-                        <Box sx={{ display: 'flex', gap: 1 }}>
-                            {evidence.status === 'DESTROYED' || evidence.status === 'TAKEN' ? (
-                                associatedDocument ? (
-                                    <Tooltip title="Скачать документ">
-                                        <IconButton
-                                            color="primary"
-                                            href={associatedDocument.file}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                        >
-                                            <GetAppIcon />
-                                        </IconButton>
-                                    </Tooltip>
-                                ) : (
-                                    <Tooltip title="Нет документа">
-                                        <IconButton color="default" disabled>
-                                            <GetAppIcon />
-                                        </IconButton>
-                                    </Tooltip>
-                                )
-                            ) : (
-                                <Tooltip title="Печать штрихкода">
-                                    <IconButton
-                                        color="primary"
-                                        onClick={() =>
-                                            handlePrintEvidenceBarcode(evidence, group.name)
-                                        }
-                                    >
-                                        <PrintIcon />
-                                    </IconButton>
-                                </Tooltip>
-                            )}
-                        </Box>
-                    );
-                },
-            },
-        ],
-        [canEdit, documents, handleEvidenceStatusChange, handlePrintEvidenceBarcode]
-    );
-
-    // Generate rows for DataGrid
-    const getRows = (group) =>
-        group.material_evidences.map((evidence) => ({
-            id: evidence.id,
-            name: evidence.name,
-            description: evidence.description,
-            type: evidence.type,
-            status: evidence.status,
-            barcode: evidence.barcode,
-            evidence,
-        }));
-
-    return (
-        <Box>
-            <Box
-                sx={{ display: 'flex', justifyContent: 'space-between', mb: canAddGroup ? theme.spacing(2) : 0 }}
-            >
-                {canAddGroup && (
-                    <StyledButton
-                        onClick={() => handleOpenBiometricDialog('openGroupDialog')}
-                        startIcon={<AddIcon />}
-                        disabled={isAuthenticating}
-                    >
-                        Добавить группу
-                    </StyledButton>
-                )}
-                {selectedGroupId && (
-                    <Box sx={{ display: 'flex', gap: theme.spacing(2) }}>
-                        {canAddGroup && (
-                            <StyledButton
-                                onClick={() => handleOpenBiometricDialog('openEvidenceDialog')}
-                                startIcon={<AddIcon />}
-                                disabled={isAuthenticating}
-                            >
-                                Добавить вещественное доказательство
-                            </StyledButton>
-                        )}
-                    </Box>
-                )}
-            </Box>
-
-            {groups.map((group) => (
-                <Accordion
-                    key={group.id}
-                    expanded={selectedGroupId === group.id}
-                    onChange={() => toggleGroupSelect(group.id)}
-                    sx={{ mb: theme.spacing(2) }}
-                >
-                    <AccordionSummary expandIcon={<ExpandMoreIcon />}
-                        sx={{
-                            '& .MuiAccordionSummary-content': {
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                            }
-                        }}
-                    >
-                        <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                            <Typography variant="h6">{group.name}</Typography>
-                            <Typography variant="body2" color="textSecondary">
-                                Место хранения: {group.storage_place}
-                            </Typography>
-                        </Box>
-                        {selectedGroupId === group.id && (
-
-                            <Button
-                                variant="contained"
-                                color="primary"
-                                startIcon={<PrintIcon />}
-                                onClick={() => handlePrintGroupBarcode(selectedGroupId)}
-                                disabled={isAuthenticating}
-                                sx={{ mr: 2 }}
-                            >
-                                Печать штрихкода
-                            </Button>
-                        )}
-                    </AccordionSummary>
-                    <AccordionDetails>
-                        <Paper sx={{ p: 2 }}>
-                            {group.material_evidences.length > 0 ? (
-                                <StyledDataGridPro rows={getRows(group)}
-                                    columns={getColumns(group)}
-                                    autoHeight
-                                />
-                                // <DataGridPro
-                                //     rows={getRows(group)}
-                                //     columns={getColumns(group)}
-                                //     disableColumnMenu
-                                //     disableRowSelectionOnClick
-                                //     disableSelectionOnClick
-                                //     hideFooter
-                                //     autoHeight
-                                //     getRowHeight={() => 'auto'}
-                                //     sx={{
-                                //         '& .MuiDataGrid-cell': {
-                                //             // Убираем nowrap для разрешения переноса текста
-                                //             whiteSpace: 'normal',
-                                //             overflow: 'hidden',
-                                //             padding: theme.spacing(1),
-                                //             borderBottom: `1px solid ${theme.palette.divider}`,
-                                //             outline: 'none',
-                                //         },
-                                //         '& .MuiDataGrid-columnHeaders': {
-                                //             backgroundColor: theme.palette.grey[100],
-                                //             borderBottom: `1px solid ${theme.palette.divider}`,
-                                //             fontWeight: 'bold',
-                                //             outline: 'none',
-                                //         },
-                                //         '& .MuiDataGrid-columnHeader:focus': {
-                                //             outline: 'none',
-                                //         },
-                                //         '& .MuiDataGrid-columnHeader:focus-within': {
-                                //             outline: 'none',
-                                //         },
-                                //         '& .MuiDataGrid-columnHeaderTitle': {
-                                //             fontWeight: 'bold',
-                                //             outline: 'none',
-                                //         },
-                                //         '& .MuiDataGrid-row': {
-                                //             '&:nth-of-type(odd)': {
-                                //                 backgroundColor: theme.palette.action.hover,
-                                //             },
-                                //             // cursor: 'pointer',
-                                //             outline: 'none',
-                                //         },
-                                //         '& .MuiDataGrid-row:hover': {
-                                //             backgroundColor: "transparent",
-                                //             '&:nth-of-type(odd)': {
-                                //                 backgroundColor: theme.palette.action.hover,
-                                //             },
-                                //             outline: 'none',
-                                //         },
-                                //         '& .MuiDataGrid-cell:focus': {
-                                //             outline: 'none',
-                                //         },
-                                //         '& .MuiDataGrid-row:focus': {
-                                //             outline: 'none',
-                                //         },
-                                //         '& .MuiDataGrid-cell:focus-within': {
-                                //             outline: 'none',
-                                //         },
-                                //     }}
-                                // />
-                            ) : (
-                                <Typography variant="body2" align="center">
-                                    Нет вещественных доказательств.
-                                </Typography>
-                            )}
-                        </Paper>
-                    </AccordionDetails>
-                </Accordion>
-            ))}
-
-            <Suspense fallback={<Loading />}>
-                <DialogNewGroup
-                    open={dialogStates.openGroupDialog}
-                    setOpenGroupDialog={(open) =>
-                        setDialogStates((prev) => ({ ...prev, openGroupDialog: open }))
-                    }
-                    setGroups={setGroups}
-                    setSnackbar={setSnackbar}
-                    groups={groups}
-                    id={id}
-                    caseItem={caseItem}
-                />
-                <DialogNewEvidence
-                    open={dialogStates.openEvidenceDialog}
-                    setOpenEvidenceDialog={(open) =>
-                        setDialogStates((prev) => ({ ...prev, openEvidenceDialog: open }))
-                    }
-                    setGroups={setGroups}
-                    selectedGroupId={selectedGroupId}
-                    setSnackbar={setSnackbar}
-                    id={id}
-                />
-                <DialogAlertNewStatus
-                    open={dialogStates.openAlertNewStatus}
-                    setOpenAlertNewStatusDialog={(open) =>
-                        setDialogStates((prev) => ({ ...prev, openAlertNewStatus: open }))
-                    }
-                    setSnackbar={setSnackbar}
-                    evidenceId={dialogStates.currentEvidenceId}
-                    newStatus={dialogStates.currentNewStatus}
-                    SubmitChangeEvidenceStatus={SubmitChangeEvidenceStatus}
-                    id={id}
-                />
-            </Suspense>
-
-            {/* Диалог для отображения штрихкода */}
-            <DialogSeenBarcode
-                open={dialogStates.openBarcodeDialog}
-                setOpenBarcodeDialog={(open) =>
-                    setDialogStates((prev) => ({ ...prev, openBarcodeDialog: open }))
-                }
-                barcodeValueToDisplay={dialogStates.barcodeValueToDisplay}
-                groupName={dialogStates.currentGroupName}
-            />
-
-            {/* Диалог биометрической аутентификации */}
-            {biometricDialogOpen && !isArchiveUser && (
-                <BiometricDialog
-                    open={biometricDialogOpen}
-                    onClose={() => {
-                        setBiometricDialogOpen(false);
-                        handleBiometricError('Аутентификация была отменена.');
-                    }}
-                    onSuccess={handleBiometricSuccess}
-                />
-            )}
-        </Box>
-    );
-}

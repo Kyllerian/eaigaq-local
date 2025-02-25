@@ -41,6 +41,7 @@ CSRF_TRUSTED_ORIGINS = os.environ.get('CSRF_TRUSTED_ORIGINS', '').split(',')
 CORS_ALLOW_ALL_ORIGINS = False
 
 os.environ['CUDA_VISIBLE_DEVICES'] = "0"
+
 # Определение приложений
 INSTALLED_APPS = [
     # Приложения Django
@@ -60,7 +61,8 @@ INSTALLED_APPS = [
     # Django Channels
     'channels',
     'aiortc',
-    'cv2',
+    # Если используете django-celery-beat, раскомментируйте:
+    # 'django_celery_beat',
 ]
 
 # Настройки REST Framework
@@ -130,7 +132,6 @@ CHANNEL_LAYERS = {
 
 # Настройки базы данных
 if DOCKER:
-    # Настройки для Docker
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
@@ -142,7 +143,6 @@ if DOCKER:
         }
     }
 else:
-    # Настройки для локальной разработки (SQLite)
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
@@ -179,36 +179,48 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 # Интернационализация
-LANGUAGE_CODE = 'ru-ru'  # Установите на 'ru-ru', если ваше приложение на русском
-
-TIME_ZONE = 'Asia/Almaty'  # Установите на ваш часовой пояс, если необходимо
-
+LANGUAGE_CODE = 'ru-ru'
+TIME_ZONE = 'Asia/Almaty'
 USE_I18N = True
-
-USE_L10N = True  # Если вы используете Django версии ниже 4.0
-
+USE_L10N = True
 USE_TZ = True
 
-# Статические файлы (CSS, JavaScript, изображения)
 STATIC_URL = '/backend_static/'
-
-# Место для сбора статических файлов
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
-# 🆕 Настройки для медиа-файлов (загруженные пользователями файлы)
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-# Тип первичного ключа по умолчанию
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Логирование (опционально, но полезно для отладки)
+# Настройки логирования
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '[%(asctime)s] %(levelname)s [%(name)s:%(lineno)s] %(message)s',
+            'datefmt': "%Y-%m-%d %H:%M:%S",
+        },
+        'simple': {
+            'format': '%(levelname)s %(message)s'
+        },
+    },
     'handlers': {
         'console': {
             'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+        },
+        'core.services': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': True,
         },
     },
     'root': {
@@ -217,40 +229,43 @@ LOGGING = {
     },
 }
 
-# Настройки Celery
 CELERY_BROKER_URL = 'redis://redis:6379/0'
 CELERY_RESULT_BACKEND = 'redis://redis:6379/0'
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
-CELERY_WORKER_POOL = 'solo'
 
-# 🛡️ Настройки безопасности для HTTPS
+# Рекомендуется указать ту же таймзону, что и в Django
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_ENABLE_UTC = False  # если вы строго хотите использовать Asia/Almaty без UTC
+
+# Пример периодического расписания для celery beat:
+# Задача cleanup_stale_viewings будет запускаться каждые 10 секунд в очередь 'ping'.
+CELERY_BEAT_SCHEDULE = {
+    'cleanup-stale-viewings-every-5-seconds': {
+        'task': 'core.tasks.cleanup_stale_viewings',
+        'schedule': 5.0,
+        'options': {
+            'queue': 'ping'
+        }
+    },
+}
+# Если вы используете django-celery-beat и DatabaseScheduler:
+# CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
+
+
+# Настройки безопасности
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
-
-# Включаем HSTS (HTTP Strict Transport Security)
-SECURE_HSTS_SECONDS = 3600  # Вы можете изменить время по необходимости
+SECURE_HSTS_SECONDS = 3600
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
-
-# Перенаправление всех HTTP-запросов на HTTPS
 SECURE_SSL_REDIRECT = True
 
-# 🆕 Дополнительные настройки для загрузки файлов
-# 🆕 Устанавливаем максимальный размер загружаемого файла (например, 100 MB)
-FILE_UPLOAD_MAX_MEMORY_SIZE = 104857600  # 100 * 1024 * 1024 bytes
-
-# 🆕 Устанавливаем максимальный размер данных при загрузке (например, 100 MB)
-DATA_UPLOAD_MAX_MEMORY_SIZE = 104857600  # 100 * 1024 * 1024 bytes
-
-# Устанавливаем права доступа для загруженных файлов (чтобы только владелец мог читать)
+FILE_UPLOAD_MAX_MEMORY_SIZE = 104857600
+DATA_UPLOAD_MAX_MEMORY_SIZE = 104857600
 FILE_UPLOAD_PERMISSIONS = 0o755
-
-# 🆕 Дополнительные настройки для обработки больших объёмов файлов
-# Вы можете настроить кеширование для файловой системы, если это необходимо
-# Например, использовать django-storages с локальным хранилищем, если потребуется
 
 
 
@@ -296,6 +311,8 @@ FILE_UPLOAD_PERMISSIONS = 0o755
 #
 # CORS_ALLOW_ALL_ORIGINS = False
 #
+# os.environ['CUDA_VISIBLE_DEVICES'] = "0"
+#
 # # Определение приложений
 # INSTALLED_APPS = [
 #     # Приложения Django
@@ -314,6 +331,7 @@ FILE_UPLOAD_PERMISSIONS = 0o755
 #     'rest_framework',
 #     # Django Channels
 #     'channels',
+#     'aiortc',
 # ]
 #
 # # Настройки REST Framework
@@ -381,20 +399,8 @@ FILE_UPLOAD_PERMISSIONS = 0o755
 #     },
 # }
 #
-# # DATABASES = {
-# #     'default': {
-# #         'ENGINE': 'django.db.backends.postgresql',
-# #         'NAME': os.environ.get('DB_NAME', 'eaigaq_db'),
-# #         'USER': os.environ.get('DB_USER'),
-# #         'PASSWORD': os.environ.get('DB_PASSWORD'),
-# #         'HOST': os.environ.get('DB_HOST', 'db'),
-# #         'PORT': os.environ.get('DB_PORT', '5432'),
-# #     }
-# # }
-#
 # # Настройки базы данных
 # if DOCKER:
-#     # Настройки для Docker
 #     DATABASES = {
 #         'default': {
 #             'ENGINE': 'django.db.backends.postgresql',
@@ -406,7 +412,6 @@ FILE_UPLOAD_PERMISSIONS = 0o755
 #         }
 #     }
 # else:
-#     # Настройки для локальной разработки (SQLite)
 #     DATABASES = {
 #         'default': {
 #             'ENGINE': 'django.db.backends.sqlite3',
@@ -443,33 +448,52 @@ FILE_UPLOAD_PERMISSIONS = 0o755
 # ]
 #
 # # Интернационализация
-# LANGUAGE_CODE = 'ru-ru'  # Установите на 'ru-ru', если ваше приложение на русском
+# LANGUAGE_CODE = 'ru-ru'
 #
-# TIME_ZONE = 'UTC'  # Установите на ваш часовой пояс, если необходимо
+# TIME_ZONE = 'Asia/Almaty'
 #
 # USE_I18N = True
-#
-# USE_L10N = True  # Если вы используете Django версии ниже 4.0
-#
+# USE_L10N = True
 # USE_TZ = True
 #
-# # Статические файлы (CSS, JavaScript, изображения)
 # STATIC_URL = '/backend_static/'
-#
-# # Место для сбора статических файлов
 # STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 #
-# # Тип первичного ключа по умолчанию
+# MEDIA_URL = '/media/'
+# MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+#
 # DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 #
-# # Логирование (опционально, но полезно для отладки)
+# # Настройки логирования
 # LOGGING = {
 #     'version': 1,
 #     'disable_existing_loggers': False,
+#     'formatters': {
+#         'verbose': {
+#             'format': '[%(asctime)s] %(levelname)s [%(name)s:%(lineno)s] %(message)s',
+#             'datefmt': "%Y-%m-%d %H:%M:%S",
+#         },
+#         'simple': {
+#             'format': '%(levelname)s %(message)s'
+#         },
+#     },
 #     'handlers': {
 #         'console': {
 #             'class': 'logging.StreamHandler',
+#             'formatter': 'verbose',
 #         },
+#     },
+#     'loggers': {
+#         'django': {
+#             'handlers': ['console'],
+#             'level': 'INFO',
+#         },
+#         'core.services': {
+#             'handlers': ['console'],
+#             'level': 'DEBUG',
+#             'propagate': True,
+#         },
+#         # Если нужно, можно добавить другие логгеры
 #     },
 #     'root': {
 #         'handlers': ['console'],
@@ -477,24 +501,20 @@ FILE_UPLOAD_PERMISSIONS = 0o755
 #     },
 # }
 #
-# # Настройки Celery
 # CELERY_BROKER_URL = 'redis://redis:6379/0'
 # CELERY_RESULT_BACKEND = 'redis://redis:6379/0'
 # CELERY_ACCEPT_CONTENT = ['json']
 # CELERY_TASK_SERIALIZER = 'json'
 # CELERY_RESULT_SERIALIZER = 'json'
-# CELERY_WORKER_POOL = 'solo'
 #
-#
-# # 🛡️ Настройки безопасности для HTTPS
 # SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 # SESSION_COOKIE_SECURE = True
 # CSRF_COOKIE_SECURE = True
-#
-# # Включаем HSTS (HTTP Strict Transport Security)
-# SECURE_HSTS_SECONDS = 3600  # Вы можете изменить время по необходимости
+# SECURE_HSTS_SECONDS = 3600
 # SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 # SECURE_HSTS_PRELOAD = True
-#
-# # Перенаправление всех HTTP-запросов на HTTPS
 # SECURE_SSL_REDIRECT = True
+#
+# FILE_UPLOAD_MAX_MEMORY_SIZE = 104857600
+# DATA_UPLOAD_MAX_MEMORY_SIZE = 104857600
+# FILE_UPLOAD_PERMISSIONS = 0o755

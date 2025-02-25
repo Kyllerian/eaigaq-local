@@ -1,22 +1,27 @@
+// frontend\src\constants\getActionMessage.js
+
+import i18n from '../utils/i18n';
 // Получение сообщения действия
+
 export default function getActionMessage(log) {
-    console.log('adasd');
+    const t = i18n.t.bind(i18n);
+
     if (log.class_name === 'Case' && log.action === 'create') {
-        return 'Создание дела';
+        return t('common.action_message.create_case')+':';
     } else if (log.class_name === 'Case' && log.action === 'update') {
-        return 'Изменение данных дела';
+        return t('common.action_message.edit_data_case');
     } else if (
         log.class_name === 'MaterialEvidence' &&
         log.action === 'create'
     ) {
-        return `Добавлено вещественное доказательство ${/*log.object_name ||*/ ''}`;
+        return `${t('common.action_message.added_evidence')}: ${/*log.object_name ||*/ ''}`;
     } else if (
         log.class_name === 'MaterialEvidence' &&
         log.action === 'update'
     ) {
-        return `Изменение статуса вещественного доказательства: ${log.object_name || ''}`;
+        return `${t('common.action_message.edit_status_evidence')}: ${log.object_name || ''}`;
     } else if (log.class_name === 'Document' && log.action === 'create') {
-        return `Добавлен файл: ${log.object_name || ''}`;
+        return `${t('common.action_message.added_file')}: ${log.object_name || ''}`;
     } else {
         // Другие случаи
         return `${log.class_name_display} - ${log.action}`;

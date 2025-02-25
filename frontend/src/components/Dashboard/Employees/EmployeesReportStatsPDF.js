@@ -3,14 +3,16 @@
 import React from 'react';
 import LogoMVDKZ from "../../../assets/Logo_MVD_KZ.webp";
 import { formatDate } from '../../../constants/formatDate';
+import { useTranslation } from 'react-i18next';
 
 export default function EmployeesReportStatsPDF({
-                                               employeesReportRef,
-                                               currentUser,
-                                               employeeSearchQuery,
-                                               selectedEmployeeDepartment,
-                                               employeesExportData,
-                                           }) {
+    employeesReportRef,
+    currentUser,
+    employeeSearchQuery,
+    selectedEmployeeDepartment,
+    employeesExportData,
+}) {
+    const { t } = useTranslation();
 
     return (
         <>
@@ -104,79 +106,103 @@ export default function EmployeesReportStatsPDF({
                     <div className="header">
                         <img
                             src={LogoMVDKZ}
-                            alt="Логотип"
+                            alt={t('common.logo_alt')}
                         />
                         <div className="header-info">
-                            <p><strong>Отчет по сотрудникам</strong></p>
-                            <p>Сотрудник: {currentUser ? `${currentUser.last_name} ${currentUser.first_name}` : 'Неизвестно'}</p>
-                            <p>Дата формирования отчета: {formatDate(new Date().toISOString())}</p>
+                            <p><strong>{t('common.report.titles.report_employees')}</strong></p>
+                            <p>
+                                {t('common.report.employee_label')}{' '}
+                                {currentUser
+                                    ? `${currentUser.last_name} ${currentUser.first_name}`
+                                    : t('common.messages.unknown')}
+                            </p>
+                            <p>
+                                {t('common.report.report_date_label')}{' '}
+                                {formatDate(new Date().toISOString())}
+                            </p>
                             {/* Фильтры */}
                             {employeeSearchQuery && (
-                                <p>Поиск: {employeeSearchQuery}</p>
+                                <p>
+                                    {t('common.report.search_label')}{' '}
+                                    {employeeSearchQuery}
+                                </p>
                             )}
                             {selectedEmployeeDepartment && (
-                                <p>Отделение: {selectedEmployeeDepartment}</p>
+                                <p>
+                                    {t('common.standard.label_department')}{' '}
+                                    {selectedEmployeeDepartment}
+                                </p>
                             )}
                         </div>
                     </div>
 
                     {/* Контент */}
                     <div className="content">
-                        <table aria-label="Отчет по сотрудникам">
+                        <table aria-label={t('common.report.titles.report_employees')}>
                             <thead>
-                            <tr>
-                                <th>№</th>
-                                <th>ФИО и Звание</th>
-                                <th>Роль</th>
-                                <th>Эл. почта и телефон</th>
-                                <th>Отделение и регион</th>
-                                <th>Статус</th>
-                                <th>Дела</th>
-                            </tr>
+                                <tr>
+                                    <th>{t('common.table_headers.number')}</th>
+                                    <th>{t('common.table_headers.full_name_and_rank')}</th>
+                                    <th>{t('common.standard.label_role')}</th>
+                                    <th>{t('common.table_headers.email_and_phone')}</th>
+                                    <th>{t('common.table_headers.department_and_region')}</th>
+                                    <th>{t('common.table_headers.status')}</th>
+                                    <th>{t('common.table_headers.cases')}</th>
+                                </tr>
                             </thead>
                             <tbody>
-                            {employeesExportData.map((employee, index) => (
-                                <tr key={employee.id}>
-                                    <td>{index + 1}</td>
-                                    <td>
-                                        <div>
-                                            <strong>{employee.last_name} {employee.first_name}</strong>
-                                        </div>
-                                        <hr style={{ border: '0', borderTop: '1px solid #ccc', margin: '4px 0' }} />
-                                        <div>{employee.rank || 'Не указано'}</div>
-                                    </td>
-                                    <td>{employee.role_display || 'Не указано'}</td>
-                                    <td>
-                                        <div>{employee.email || 'Не указано'}</div>
-                                        <hr style={{ border: '0', borderTop: '1px solid #ccc', margin: '4px 0' }} />
-                                        <div>{employee.phone_number || 'Не указано'}</div>
-                                    </td>
-                                    <td>
-                                        <div>
-                                            <strong>{employee.department_name || 'Не указано'}</strong>
-                                        </div>
-                                        <hr style={{ border: '0', borderTop: '1px solid #ccc', margin: '4px 0' }} />
-                                        <div>{employee.region_display || 'Не указано'}</div>
-                                    </td>
-                                    <td>{employee.is_active ? 'Активен' : 'Неактивен'}</td>
-                                    <td>
-                                        <div>
-                                            <strong>Всего: {employee.cases?.length}</strong>
-                                        </div>
-                                        <hr style={{ border: '0', borderTop: '1px solid #ccc', margin: '4px 0' }} />
-                                        <div>Открыто: {employee.openedCasesCount}</div>
-                                        <hr style={{ border: '0', borderTop: '1px solid #ccc', margin: '4px 0' }} />
-                                        <div>Закрыто: {employee.closedCasesCount}</div>
-                                    </td>
-                                </tr>
-                            ))}
-                            {employeesExportData.length === 0 && (
-                                <tr>
-                                    <td colSpan={7} style={{ textAlign: 'center' }}>
-                                        Нет данных для отображения.
-                                    </td>
-                                </tr>
-                            )}
+                                {employeesExportData.map((employee, index) => (
+                                    <tr key={employee.id}>
+                                        <td>{index + 1}</td>
+                                        <td>
+                                            <div>
+                                                <strong>{employee.last_name} {employee.first_name}</strong>
+                                            </div>
+                                            <hr style={{ border: '0', borderTop: '1px solid #ccc', margin: '4px 0' }} />
+                                            <div>{employee.rank || t('common.messages.unknown')}</div>
+                                        </td>
+                                        <td>{employee.role_display || t('common.messages.unknown')}</td>
+                                        <td>
+                                            <div>{employee.email || t('common.messages.unknown')}</div>
+                                            <hr style={{ border: '0', borderTop: '1px solid #ccc', margin: '4px 0' }} />
+                                            <div>{employee.phone_number || t('common.messages.unknown')}</div>
+                                        </td>
+                                        <td>
+                                            <div>
+                                                <strong>{employee.department_name || t('common.messages.unknown')}</strong>
+                                            </div>
+                                            <hr style={{ border: '0', borderTop: '1px solid #ccc', margin: '4px 0' }} />
+                                            <div>{employee.region_display || t('common.messages.unknown')}</div>
+                                        </td>
+                                        <td>
+                                            {employee.is_active
+                                                ? t('common.status.active')
+                                                : t('common.status.inactive')}
+                                        </td>
+                                        <td>
+                                            <div>
+                                                <strong>{t('common.report.cases_total')}:{' '}{employee.cases?.length}</strong>
+                                            </div>
+                                            <hr style={{ border: '0', borderTop: '1px solid #ccc', margin: '4px 0' }} />
+                                            <div>
+                                                {t('common.report.cases_opened')}:{' '}
+                                                {employee.openedCasesCount}
+                                            </div>
+                                            <hr style={{ border: '0', borderTop: '1px solid #ccc', margin: '4px 0' }} />
+                                            <div>
+                                                {t('common.status.closed')}:{' '}
+                                                {employee.closedCasesCount}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                                {employeesExportData.length === 0 && (
+                                    <tr>
+                                        <td colSpan={7} style={{ textAlign: 'center' }}>
+                                            {t('common.messages.no_data_views')}
+                                        </td>
+                                    </tr>
+                                )}
                             </tbody>
                         </table>
                     </div>

@@ -1,5 +1,6 @@
 asgiref==3.8.1
-Django
+requests
+Django==5.1.2
 gunicorn
 django-cors-headers==4.4.0
 djangorestframework==3.15.2

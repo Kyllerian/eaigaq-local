@@ -9,6 +9,7 @@ import { StyledDataGridPro } from '../../ui/Tables';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
 import InfoIcon from '@mui/icons-material/Info';
+import { useTranslation } from 'react-i18next';
 
 // Устанавливаем лицензионный ключ (замените на ваш собственный ключ)
 LicenseInfo.setLicenseKey('d7a42a252b29f214a57d3d3f80b1e8caTz0xMjM0NSxFPTE3MzI1NzE1ODEwNTczLFM9cHJvLExNPXN1YnNjcmlwdGlvbixQVj1wZXJwZXR1YWwsS1Y9Mg==');
@@ -21,6 +22,7 @@ const EmployeesTableStats = ({
     handleEmployeeSelect,
     tableHeight,
 }) => {
+    const { t } = useTranslation();
     const theme = useTheme();
     const tableContainerRef = useRef(null);
     const [stripeStyle, setStripeStyle] = useState({
@@ -34,18 +36,21 @@ const EmployeesTableStats = ({
         () =>
             employees.map((employee) => ({
                 id: employee.id,
-                name: `${employee.last_name || 'Не указано'} ${employee.first_name || 'Не указано'}`,
-                email: employee.email || 'Не указано',
-                rank: employee.rank || 'Не указано',
-                role_display: employee.role_display || 'Не указано',
-                department_name: employee.department_name || 'Не указано',
+                name: `${employee.last_name || t('common.messages.not_specified')} 
+                ${employee.first_name || t('common.messages.not_specified')}`,
+                email: employee.email || t('common.messages.not_specified'),
+                rank: employee.rank || t('common.messages.not_specified'),
+                role_display: employee.role_display || t('common.messages.not_specified'),
+                department_name: employee.department_name || t('common.messages.not_specified'),
                 is_active: employee.is_active,
-                is_active_display: employee.is_active ? 'Активен' : 'Неактивен',
+                is_active_display: employee.is_active
+                    ? t('common.status.active')
+                    : t('common.status.inactive'),
                 count_cases: employee.cases?.length,
                 count_cases_opened: employee.openedCasesCount,
                 count_cases_closed: employee.closedCasesCount,
             })),
-        [employees]
+        [employees, t]
     );
 
     // Определение столбцов для DataGridPro с объединённой колонкой дел
@@ -53,7 +58,7 @@ const EmployeesTableStats = ({
         () => [
             {
                 field: 'name',
-                headerName: 'Сотрудник',
+                headerName: t('common.standard.label_employee'),
                 flex: 1,
                 minWidth: 200,
                 sortable: false,
@@ -80,7 +85,7 @@ const EmployeesTableStats = ({
             },
             {
                 field: 'rank_role',
-                headerName: 'Звание и Роль',
+                headerName: t('common.table_headers.role_rank'),
                 flex: 1,
                 minWidth: 150,
                 sortable: false,
@@ -91,7 +96,7 @@ const EmployeesTableStats = ({
                             noWrap
                             sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}
                         >
-                            {params.row.rank || 'Не указано'}
+                            {params.row.rank || t('common.messages.not_specified')}
                         </Typography>
                         <Typography
                             variant="body2"
@@ -99,14 +104,14 @@ const EmployeesTableStats = ({
                             noWrap
                             sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}
                         >
-                            {params.row.role_display || 'Не указано'}
+                            {params.row.role_display || t('common.messages.not_specified')}
                         </Typography>
                     </Box>
                 ),
             },
             {
                 field: 'department_name',
-                headerName: 'Отделение',
+                headerName: t('common.standard.label_department'),
                 flex: 1,
                 minWidth: 150,
                 sortable: false,
@@ -116,26 +121,26 @@ const EmployeesTableStats = ({
                         noWrap
                         sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}
                     >
-                        {params.value || 'Не указано'}
+                        {params.value || t('common.messages.not_specified')}
                     </Typography>
                 ),
             },
             {
                 field: 'is_active_display',
-                headerName: 'Статус',
+                headerName: t('common.table_headers.status'),
                 flex: 0.5,
                 minWidth: 100,
                 sortable: false,
                 renderCell: (params) => (
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        {params.value === 'Активен' ? (
+                        {params.value === t('common.status.active') ? (
                             <CheckCircleIcon color="success" sx={{ mr: 0.5 }} />
                         ) : (
                             <CancelIcon color="error" sx={{ mr: 0.5 }} />
                         )}
                         <Typography
                             variant="body2"
-                            color={params.value === 'Активен' ? 'success.main' : 'error.main'}
+                            color={params.value === t('common.status.active') ? 'success.main' : 'error.main'}
                             noWrap
                             sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}
                         >
@@ -146,40 +151,40 @@ const EmployeesTableStats = ({
             },
             {
                 field: 'cases',
-                headerName: 'Дела',
+                headerName: t('common.table_headers.cases'),
                 flex: 0.7,
                 minWidth: 200,
                 sortable: false,
                 renderCell: (params) => (
                     <Box sx={{ display: 'flex', flexDirection: 'column' }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
-                            <Tooltip title="Общее количество дел" arrow>
+                            <Tooltip title={t('common.report.tooltip_cases_total')} arrow>
                                 <InfoIcon fontSize="small" color="action" sx={{ mr: 0.5 }} />
                             </Tooltip>
                             <Chip
-                                label={`Всего: ${params.row.count_cases}`}
+                                label={`${t('common.report.cases_total')}: ${params.row.count_cases}`}
                                 color="primary"
                                 size="small"
                                 sx={{ fontWeight: 'bold' }}
                             />
                         </Box>
                         <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
-                            <Tooltip title="Количество открытых дел" arrow>
+                            <Tooltip title={t('common.report.tooltip_cases_opened')} arrow>
                                 <CheckCircleIcon fontSize="small" color="success" sx={{ mr: 0.5 }} />
                             </Tooltip>
                             <Chip
-                                label={`Открыто: ${params.row.count_cases_opened}`}
+                                label={`${t('common.report.cases_opened')}: ${params.row.count_cases_opened}`}
                                 color="success"
                                 size="small"
                                 sx={{ fontWeight: 'bold' }}
                             />
                         </Box>
                         <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                            <Tooltip title="Количество закрытых дел" arrow>
+                            <Tooltip title={t('common.report.tooltip_cases_closed')} arrow>
                                 <CancelIcon fontSize="small" color="error" sx={{ mr: 0.5 }} />
                             </Tooltip>
                             <Chip
-                                label={`Закрыто: ${params.row.count_cases_closed}`}
+                                label={`${t('common.status.closed')}: ${params.row.count_cases_closed}`}
                                 color="error"
                                 size="small"
                                 sx={{ fontWeight: 'bold' }}
@@ -189,7 +194,7 @@ const EmployeesTableStats = ({
                 ),
             },
         ],
-        []
+        [t]
     );
 
     console.log('я перезагрузился');
@@ -346,11 +351,11 @@ export default EmployeesTableStats;
 //         () =>
 //             employees.map((employee) => ({
 //                 id: employee.id,
-//                 name: `${employee.last_name || 'Не указано'} ${employee.first_name || 'Не указано'}`,
-//                 email: employee.email || 'Не указано',
-//                 rank: employee.rank || 'Не указано',
-//                 role_display: employee.role_display || 'Не указано',
-//                 department_name: employee.department_name || 'Не указано',
+//                 name: `${employee.last_name || t('common.messages.not_specified')} ${employee.first_name || t('common.messages.not_specified')}`,
+//                 email: employee.email || t('common.messages.not_specified'),
+//                 rank: employee.rank || t('common.messages.not_specified'),
+//                 role_display: employee.role_display || t('common.messages.not_specified'),
+//                 department_name: employee.department_name || t('common.messages.not_specified'),
 //                 is_active: employee.is_active,
 //                 is_active_display: employee.is_active ? 'Активен' : 'Неактивен',
 //                 count_cases: employee.cases?.length,
@@ -403,7 +408,7 @@ export default EmployeesTableStats;
 //                             noWrap
 //                             sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}
 //                         >
-//                             {params.row.rank || 'Не указано'}
+//                             {params.row.rank || t('common.messages.not_specified')}
 //                         </Typography>
 //                         <Typography
 //                             variant="body2"
@@ -411,7 +416,7 @@ export default EmployeesTableStats;
 //                             noWrap
 //                             sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}
 //                         >
-//                             {params.row.role_display || 'Не указано'}
+//                             {params.row.role_display || t('common.messages.not_specified')}
 //                         </Typography>
 //                     </Box>
 //                 ),
@@ -428,7 +433,7 @@ export default EmployeesTableStats;
 //                         noWrap
 //                         sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}
 //                     >
-//                         {params.value || 'Не указано'}
+//                         {params.value || t('common.messages.not_specified')}
 //                     </Typography>
 //                 ),
 //             },
@@ -673,11 +678,11 @@ export default EmployeesTableStats;
 //         () =>
 //             employees.map((employee) => ({
 //                 id: employee.id,
-//                 name: `${employee.last_name || 'Не указано'} ${employee.first_name || 'Не указано'}`,
-//                 email: employee.email || 'Не указано',
-//                 rank: employee.rank || 'Не указано',
-//                 role_display: employee.role_display || 'Не указано',
-//                 department_name: employee.department_name || 'Не указано',
+//                 name: `${employee.last_name || t('common.messages.not_specified')} ${employee.first_name || t('common.messages.not_specified')}`,
+//                 email: employee.email || t('common.messages.not_specified'),
+//                 rank: employee.rank || t('common.messages.not_specified'),
+//                 role_display: employee.role_display || t('common.messages.not_specified'),
+//                 department_name: employee.department_name || t('common.messages.not_specified'),
 //                 is_active: employee.is_active,
 //                 is_active_display: employee.is_active ? 'Активен' : 'Неактивен',
 //                 count_cases: employee.cases?.length,
@@ -730,7 +735,7 @@ export default EmployeesTableStats;
 //                             noWrap
 //                             sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}
 //                         >
-//                             {params.row.rank || 'Не указано'}
+//                             {params.row.rank || t('common.messages.not_specified')}
 //                         </Typography>
 //                         <Typography
 //                             variant="body2"
@@ -738,7 +743,7 @@ export default EmployeesTableStats;
 //                             noWrap
 //                             sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}
 //                         >
-//                             {params.row.role_display || 'Не указано'}
+//                             {params.row.role_display || t('common.messages.not_specified')}
 //                         </Typography>
 //                     </Box>
 //                 ),
@@ -755,7 +760,7 @@ export default EmployeesTableStats;
 //                         noWrap
 //                         sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}
 //                     >
-//                         {params.value || 'Не указано'}
+//                         {params.value || t('common.messages.not_specified')}
 //                     </Typography>
 //                 ),
 //             },
@@ -966,11 +971,11 @@ export default EmployeesTableStats;
 //         () =>
 //             employees.map((employee) => ({
 //                 id: employee.id,
-//                 name: `${employee.last_name || 'Не указано'} ${employee.first_name || 'Не указано'}`,
-//                 email: employee.email || 'Не указано',
-//                 rank: employee.rank || 'Не указано',
-//                 role_display: employee.role_display || 'Не указано',
-//                 department_name: employee.department_name || 'Не указано',
+//                 name: `${employee.last_name || t('common.messages.not_specified')} ${employee.first_name || t('common.messages.not_specified')}`,
+//                 email: employee.email || t('common.messages.not_specified'),
+//                 rank: employee.rank || t('common.messages.not_specified'),
+//                 role_display: employee.role_display || t('common.messages.not_specified'),
+//                 department_name: employee.department_name || t('common.messages.not_specified'),
 //                 is_active: employee.is_active,
 //                 is_active_display: employee.is_active ? 'Активен' : 'Неактивен',
 //                 last_login: employee.last_login
@@ -1023,7 +1028,7 @@ export default EmployeesTableStats;
 //                             noWrap
 //                             sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}
 //                         >
-//                             {params.row.rank || 'Не указано'}
+//                             {params.row.rank || t('common.messages.not_specified')}
 //                         </Typography>
 //                         <Typography
 //                             variant="body2"
@@ -1031,7 +1036,7 @@ export default EmployeesTableStats;
 //                             noWrap
 //                             sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}
 //                         >
-//                             {params.row.role_display || 'Не указано'}
+//                             {params.row.role_display || t('common.messages.not_specified')}
 //                         </Typography>
 //                     </Box>
 //                 ),
@@ -1048,7 +1053,7 @@ export default EmployeesTableStats;
 //                         noWrap
 //                         sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}
 //                     >
-//                         {params.value || 'Не указано'}
+//                         {params.value || t('common.messages.not_specified')}
 //                     </Typography>
 //                 ),
 //             },

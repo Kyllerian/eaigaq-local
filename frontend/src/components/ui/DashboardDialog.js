@@ -4,7 +4,7 @@ import { Dialog, DialogActions, DialogContent, DialogTitle } from '@mui/material
 export default function DashboardDialog({ open, setOpen, title, children, setState }) {
     const onClose = () => {
         setOpen(false);
-        if(setState != null) {
+        if (setState != null) {
             setState(prevState => {
                 const resetState = {};
                 Object.keys(prevState).forEach(key => {
@@ -15,12 +15,10 @@ export default function DashboardDialog({ open, setOpen, title, children, setSta
         }
     }
     return (
-        <>
-            <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-                <DialogTitle>{title}</DialogTitle>
-                <DialogContent>{children.content}</DialogContent>
-                <DialogActions>{children.actions}</DialogActions>
-            </Dialog>
-        </>
+        <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+            <DialogTitle>{title}</DialogTitle>
+            <DialogContent>{children.content}</DialogContent>
+            <DialogActions>{children.actions}</DialogActions>
+        </Dialog>
     );
 }

@@ -3,6 +3,7 @@
 import React from 'react';
 import LogoMVDKZ from "../../../assets/Logo_MVD_KZ.webp";
 import { formatDate } from '../../../constants/formatDate';
+import { useTranslation } from 'react-i18next';
 
 export default function EmployeesReportSessionsPDF({
     employeesReportRef,
@@ -11,6 +12,7 @@ export default function EmployeesReportSessionsPDF({
     selectedEmployeeDepartment,
     employeesExportData,
 }) {
+    const { t } = useTranslation();
 
     return (
         <>
@@ -104,18 +106,21 @@ export default function EmployeesReportSessionsPDF({
                     <div className="header">
                         <img
                             src={LogoMVDKZ}
-                            alt="Логотип"
+                            alt={t('common.logo_alt')}
                         />
                         <div className="header-info">
-                            <p><strong>Отчет по сотрудникам</strong></p>
-                            <p>Сотрудник: {currentUser ? `${currentUser.last_name} ${currentUser.first_name}` : 'Неизвестно'}</p>
-                            <p>Дата формирования отчета: {formatDate(new Date().toISOString())}</p>
+                            <p><strong>{t('common.report.titles.report_employees')}</strong></p>
+                            <p>{t('common.report.employee_label')}{' '}{currentUser
+                                ? `${currentUser.last_name} ${currentUser.first_name}`
+                                : t('common.messages.unknown')}
+                            </p>
+                            <p>{t('common.report.report_date_label')}{' '}{formatDate(new Date().toISOString())}</p>
                             {/* Фильтры */}
                             {employeeSearchQuery && (
-                                <p>Поиск: {employeeSearchQuery}</p>
+                                <p>{t('common.report.search_label')}{' '}{employeeSearchQuery}</p>
                             )}
                             {selectedEmployeeDepartment && (
-                                <p>Отделение: {selectedEmployeeDepartment}</p>
+                                <p>{t('common.standard.label_department')}{' '}{selectedEmployeeDepartment}</p>
                             )}
                         </div>
                     </div>
@@ -125,13 +130,13 @@ export default function EmployeesReportSessionsPDF({
                         <table aria-label="Отчет по сотрудникам">
                             <thead>
                                 <tr>
-                                    <th>№</th>
-                                    <th>ФИО и Звание</th>
-                                    <th>Роль</th>
-                                    <th>Эл. почта и телефон</th>
-                                    <th>Отделение и регион</th>
-                                    <th>Статус</th>
-                                    <th>Сессии</th>
+                                    <th>{t('common.table_headers.number')}</th>
+                                    <th>{t('common.table_headers.full_name_and_rank')}</th>
+                                    <th>{t('common.standard.label_role')}</th>
+                                    <th>{t('common.table_headers.email_and_phone')}</th>
+                                    <th>{t('common.table_headers.department_and_region')}</th>
+                                    <th>{t('common.table_headers.status')}</th>
+                                    <th>{t('common.table_headers.sessions')}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -143,33 +148,43 @@ export default function EmployeesReportSessionsPDF({
                                                 <strong>{employee.user.last_name} {employee.user.first_name}</strong>
                                             </div>
                                             <hr style={{ border: '0', borderTop: '1px solid #ccc', margin: '4px 0' }} />
-                                            <div>{employee.user.rank || 'Не указано'}</div>
+                                            <div>{employee.user.rank || t('common.messages.not_specified')}</div>
                                         </td>
-                                        <td>{employee.role_display || 'Не указано'}</td>
+                                        <td>{employee.role_display || t('common.messages.not_specified')}</td>
                                         <td>
-                                            <div>{employee.user.email || 'Не указано'}</div>
+                                            <div>{employee.user.email || t('common.messages.not_specified')}</div>
                                             <hr style={{ border: '0', borderTop: '1px solid #ccc', margin: '4px 0' }} />
-                                            <div>{employee.user.phone_number || 'Не указано'}</div>
+                                            <div>{employee.user.phone_number || t('common.messages.not_specified')}</div>
                                         </td>
                                         <td>
                                             <div>
-                                                <strong>{employee.department_name || 'Не указано'}</strong>
+                                                <strong>{employee.department_name || t('common.messages.not_specified')}</strong>
                                             </div>
                                             <hr style={{ border: '0', borderTop: '1px solid #ccc', margin: '4px 0' }} />
-                                            <div>{employee.region_name || 'Не указано'}</div>
+                                            <div>{employee.region_name || t('common.messages.not_specified')}</div>
                                         </td>
-                                        <td>{employee.active ? 'В сети' : 'Не в сети'}</td>
                                         <td>
-                                            <div><strong>Вход:</strong> {employee.login ? formatDate(employee.login) : 'Никогда'}</div>
+                                            {employee.active
+                                                ? t('common.status.online')
+                                                : t('common.status.offline')}
+                                        </td>
+                                        <td>
+                                            <div>
+                                                <strong>{t('dashboard.tabs.employees.employees_report_session_pdf.session_in')}</strong>
+                                                {employee.login ? formatDate(employee.login) : t('common.status.never')}
+                                            </div>
                                             <hr style={{ border: '0', borderTop: '1px solid #ccc', margin: '4px 0' }} />
-                                            <div><strong>Выход:</strong> {employee.logout ? formatDate(employee.logout) : 'Никогда'}</div>
+                                            <div>
+                                                <strong>{t('dashboard.tabs.employees.employees_report_session_pdf.session_out')}</strong>
+                                                {employee.logout ? formatDate(employee.logout) : t('common.status.never')}
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
                                 {employeesExportData.length === 0 && (
                                     <tr>
                                         <td colSpan={7} style={{ textAlign: 'center' }}>
-                                            Нет данных для отображения.
+                                            {t('common.messages.no_data_views')}
                                         </td>
                                     </tr>
                                 )}

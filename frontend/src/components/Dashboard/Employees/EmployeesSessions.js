@@ -1,6 +1,6 @@
 // frontend/src/components/Dashboard/Employees/EmployeesSessions.js
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
     Box,
     useMediaQuery,
@@ -11,6 +11,8 @@ import axios from '../../../axiosConfig.js';
 import EmployeesTableSessions from './TableSessions.js';
 import { useQuery } from 'react-query';
 import EmployeesToolbar from './Toolbar.js';
+import { useTranslation } from 'react-i18next';
+import dayjs from 'dayjs';
 
 // Хук для дебаунса
 function useDebounce(value, delay) {
@@ -30,11 +32,14 @@ function useDebounce(value, delay) {
 }
 
 const EmployeesSessions = ({ user, departments, setSnackbar }) => {
+    const { t } = useTranslation();
     const theme = useTheme();
     const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
 
     const [employeeSearchQuery, setEmployeeSearchQuery] = useState('');
     const [dateRange, setDateRange] = useState([null, null]);
+    const [isLoadingPage, setIsLoading] = useState(false);
+
     const [selectedEmployeeDepartment, setSelectedEmployeeDepartment] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(10); // Изначально ставим 10, но оно будет пересчитано
@@ -53,6 +58,14 @@ const EmployeesSessions = ({ user, departments, setSnackbar }) => {
 
     // Высота пагинации и отступов под таблицей
     const footerHeight = 100;
+
+    useEffect(() => {
+        if (!isLoadingPage) {
+            setIsLoading(true);
+            handleDateRangeChange([dayjs().subtract(2, 'week').startOf('day'),
+            dayjs().endOf('day'),])
+        }
+    })
 
     // Рассчитываем pageSize в зависимости от высоты окна
     const calculatePageSize = useCallback(() => {
@@ -117,14 +130,14 @@ const EmployeesSessions = ({ user, departments, setSnackbar }) => {
 
     useEffect(() => {
         if (isError) {
-            console.error('Ошибка при получении сотрудников:', error);
+            console.error(t('common.errors.error_load_employees'), error);
             setSnackbar({
                 open: true,
-                message: 'Ошибка при получении сотрудников.',
+                message: t('common.errors.error_load_employees'),
                 severity: 'error',
             });
         }
-    }, [isError, error, setSnackbar]);
+    }, [isError, error, setSnackbar, t]);
 
     // Обработчики для фильтров и поиска
     const handleEmployeeSearchChange = useCallback((event) => {
@@ -147,45 +160,6 @@ const EmployeesSessions = ({ user, departments, setSnackbar }) => {
         //setSelectedEmployee(null); // Сбрасываем выделение при смене страницы
     }, []);
 
-    // const handleEmployeeSelect = (employee) => {
-    //     if (selectedEmployee && selectedEmployee.id === employee.id) {
-    //         setSelectedEmployee(null);
-    //     } else {
-    //         setSelectedEmployee(employee);
-    //     }
-    // };
-
-    // const handleToggleActive = () => {
-    //     if (selectedEmployee.id === user.id) {
-    //         setSnackbar({
-    //             open: true,
-    //             message: 'Вы не можете деактивировать свой собственный аккаунт.',
-    //             severity: 'error',
-    //         });
-    //         return;
-    //     }
-
-    //     axios
-    //         .patch(`/api/users/${selectedEmployee.id}/`, {
-    //             is_active: !selectedEmployee.is_active,
-    //         })
-    //         .then(() => {
-    //             setSnackbar({
-    //                 open: true,
-    //                 message: 'Статус сотрудника изменен.',
-    //                 severity: 'success',
-    //             });
-    //             setSelectedEmployee(null);
-    //             refetch(); // Обновляем список сотрудников
-    //         })
-    //         .catch((error) => {
-    //             setSnackbar({
-    //                 open: true,
-    //                 message: 'Ошибка при изменении статуса сотрудника.',
-    //                 severity: 'error',
-    //             });
-    //         });
-    // };
     return (
         <Box sx={{ display: 'flex', width: '100%', flexDirection: 'column', }}>
             {/* Поля поиска и фильтров */}

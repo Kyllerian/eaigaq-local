@@ -20,6 +20,7 @@ import DialogScanBarcode from './Affairs/DialogScanBarcode';
 import CaseReport from './Affairs/CaseReport';
 import Loading from "../Loading";
 import AffairsToolbar from './Affairs/Toolbar';
+import { useTranslation } from 'react-i18next';
 
 
 // Debounce hook to prevent excessive API calls
@@ -48,7 +49,7 @@ const CasesTab = ({
     setSnackbar,
     setError
 }) => {
-
+    const { t } = useTranslation();
     const theme = useTheme();
     const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
     const navigate = useNavigate();
@@ -143,14 +144,14 @@ const CasesTab = ({
 
     useEffect(() => {
         if (isError) {
-            console.error('Ошибка при получении дел:', error);
+            console.error(t('common.errors.error_fetch_data'), error);
             setSnackbar({
                 open: true,
-                message: 'Ошибка при получении дел.',
+                message: t('common.errors.error_fetch_data'),
                 severity: 'error',
             });
         }
-    }, [isError, error, setSnackbar]);
+    }, [isError, error, setSnackbar, t]);
 
     // Handlers for filters and search
     const handleSearchChange = useCallback((event) => {
@@ -205,66 +206,6 @@ const CasesTab = ({
         }
     };
 
-    const handleCaseExport = useCallback(
-        (type) => {
-            setLoading(true);
-            handleExportMenuClose();
-            const exportParams = {
-                search: searchQuery || undefined,
-                created__gte: dateAddedFrom || undefined,
-                created__lte: dateAddedTo || undefined,
-                page_size: countAll || 1000, // Fetch all data or set a reasonable maximum
-                department: departmentFilter || undefined,
-                ordering: `${sortConfig.direction === 'desc' ? '-' : ''}${sortConfig.key}`,
-            };
-
-            axios
-                .get('/api/cases/', { params: exportParams })
-                .then((response) => {
-                    const exportData = response.data.results || [];
-                    setCasesExportData(exportData);
-                    if (type === 'pdf') {
-                        setCasesShouldPrint(true);
-                    } else {
-                        handleExportExcel(exportData);
-                    }
-                })
-                .catch((error) => {
-                    console.error('Ошибка при экспорте дел:', error);
-                    setSnackbar({
-                        open: true,
-                        message: 'Ошибка при экспорте дел.',
-                        severity: 'error',
-                    });
-                    setLoading(false);
-                });
-        },
-        [
-            searchQuery,
-            dateAddedFrom,
-            dateAddedTo,
-            departmentFilter,
-            countAll,
-            sortConfig,
-            setSnackbar,
-        ]
-    );
-
-    const handlePrintCaseReport = useReactToPrint({
-        contentRef: caseReportRef,
-        documentTitle: 'Отчет по делам',
-        onAfterPrint: () => {
-            setLoading(false);
-        },
-    });
-
-    useEffect(() => {
-        if (casesShouldPrint && casesExportData.length > 0) {
-            handlePrintCaseReport();
-            setCasesShouldPrint(false);
-        }
-    }, [casesExportData, casesShouldPrint, handlePrintCaseReport]);
-
     // Handle export to Excel
     const handleExportExcel = useCallback(
         async (exportData) => {
@@ -272,40 +213,34 @@ const CasesTab = ({
             if (exportData.length === 0) {
                 setSnackbar({
                     open: true,
-                    message: 'Нет данных для экспорта.',
+                    message: t('common.errors.error_no_data_for_export'),
                     severity: 'warning',
                 });
                 return;
             }
             try {
                 const workbook = new ExcelJS.Workbook();
-                const worksheet = workbook.addWorksheet('Отчет', {
+                const worksheet = workbook.addWorksheet(t('common.report.titles.report_cases'), {
                     pageSetup: { orientation: 'landscape' }
                 });
 
                 // Add headers
                 worksheet.columns = [
-                    { header: 'Название и описание', key: 'name_description', width: 61 },
-                    // { header: 'Описание дела', key: 'description', width: 30 },
-                    { header: 'Следователь, отделение и регион', key: 'investigator_department_region', width: 25 },
-                    // { header: 'Отделение', key: 'department_name', width: 30 },
-                    { header: 'Дата создания и обновления', key: 'created_and_updated', width: 28 },
-                    // { header: 'Дата обновления', key: 'updated', width: 20 },
+                    { header: t('common.table_headers.title_and_description'), key: 'name_description', width: 61 },
+                    { header: t('common.table_headers.investigator_dept_region'), key: 'investigator_department_region', width: 25 },
+                    { header: t('common.report.created_updated_date'), key: 'created_and_updated', width: 28 },
                 ];
 
                 // Add data
                 exportData.forEach((caseItem) => {
 
                     const nameDescription = `${caseItem.name}\n${caseItem.description}`;
-                    const investigatorDepartmentRegion = `${caseItem.investigator_name || 'Не указано'}\n${caseItem.department_name || 'Не указано'}\n${caseItem.region_name || 'Не указано'}`;
-                    const createdAndUpdated = `Создано: ${formatDate(caseItem.created)}\nОбновлено: ${formatDate(caseItem.updated)}`;
+                    const investigatorDepartmentRegion = `${caseItem.investigator_name || t('common.messages.not_specified')}\n${caseItem.department_name || t('common.messages.not_specified')}\n${caseItem.region_name || t('common.messages.not_specified')}`;
+                    const createdAndUpdated = `${t('common.report.created_date_label')}: ${formatDate(caseItem.created)}\n${t('common.report.updated_date_label')}: ${formatDate(caseItem.updated)}`;
                     worksheet.addRow({
                         name_description: nameDescription,
-                        // description: caseItem.description,
                         investigator_department_region: investigatorDepartmentRegion,
-                        // department_name: caseItem.department_name || 'Не указано',
                         created_and_updated: createdAndUpdated,
-                        // updated: formatDate(caseItem.updated),
                     });
 
                     // Применяем перенос текста для ячеек с несколькими строками
@@ -400,18 +335,70 @@ const CasesTab = ({
 
                 // Save file
                 const blob = new Blob([buffer], { type: 'application/octet-stream' });
-                saveAs(blob, 'Отчет_по_делам.xlsx');
+                saveAs(blob, `${t('common.report.titles.file_name_cases')}.xlsx`);
             } catch (error) {
-                console.error('Ошибка при экспорте в Excel:', error);
+                console.error(t('common.errors.error_export_excel'), error);
                 setSnackbar({
                     open: true,
-                    message: 'Ошибка при экспорте в Excel.',
+                    message: t('common.errors.error_export_excel'),
                     severity: 'error',
                 });
             }
         },
-        [setSnackbar]
+        [setSnackbar, t]
     );
+
+    const handleCaseExport = useCallback(
+        (type) => {
+            setLoading(true);
+            handleExportMenuClose();
+            const exportParams = {
+                search: searchQuery || undefined,
+                created__gte: dateAddedFrom || undefined,
+                created__lte: dateAddedTo || undefined,
+                page_size: countAll || 1000, // Fetch all data or set a reasonable maximum
+                department: departmentFilter || undefined,
+                ordering: `${sortConfig.direction === 'desc' ? '-' : ''}${sortConfig.key}`,
+            };
+
+            axios
+                .get('/api/cases/', { params: exportParams })
+                .then((response) => {
+                    const exportData = response.data.results || [];
+                    setCasesExportData(exportData);
+                    if (type === 'pdf') {
+                        setCasesShouldPrint(true);
+                    } else {
+                        handleExportExcel(exportData);
+                    }
+                })
+                .catch((error) => {
+                    console.error(t('common.errors.error_export_excel'), error);
+                    setSnackbar({
+                        open: true,
+                        message: t('common.errors.error_export_excel'),
+                        severity: 'error',
+                    });
+                    setLoading(false);
+                });
+        },
+        [searchQuery, dateAddedFrom, dateAddedTo, countAll, departmentFilter, sortConfig.direction, sortConfig.key, handleExportExcel, t, setSnackbar]
+    );
+
+    const handlePrintCaseReport = useReactToPrint({
+        contentRef: caseReportRef,
+        documentTitle: t('common.report.titles.report_cases'),
+        onAfterPrint: () => {
+            setLoading(false);
+        },
+    });
+
+    useEffect(() => {
+        if (casesShouldPrint && casesExportData.length > 0) {
+            handlePrintCaseReport();
+            setCasesShouldPrint(false);
+        }
+    }, [casesExportData, casesShouldPrint, handlePrintCaseReport]);
 
     // Handlers for barcode scanning
     const [openBarcodeDialog, setOpenBarcodeDialog] = useState(false);
@@ -448,7 +435,7 @@ const CasesTab = ({
         if (scannedBarcode.trim() === '') {
             setSnackbar({
                 open: true,
-                message: 'Пожалуйста, отсканируйте штрихкод.',
+                message: t('common.barcode.error_no_barcode'),
                 severity: 'warning',
             });
             return;
@@ -463,14 +450,14 @@ const CasesTab = ({
             navigate(`/cases/${caseData.id}/`);
         } catch (error) {
             console.error(
-                'Ошибка при поиске дела по штрихкоду:',
+                t('common.barcode.error_find_case'),
                 error.response?.data || error
             );
             setSnackbar({
                 open: true,
                 message:
                     error.response?.data?.detail ||
-                    'Ошибка при поиске дела по штрихкоду.',
+                    t('common.barcode.error_find_case'),
                 severity: 'error',
             });
         } finally {

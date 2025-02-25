@@ -1,6 +1,5 @@
 // frontend/src/components/Dashboard/Affairs/Table.js
 import React, { useMemo, useRef, useEffect, useState } from 'react';
-import { DataGridPro } from '@mui/x-data-grid-pro';
 import { Paper, Box, Typography } from '@mui/material';
 import Loading from '../../Loading';
 import { formatDate } from '../../../constants/formatDate';
@@ -8,6 +7,7 @@ import { LicenseInfo } from '@mui/x-license';
 import { useTheme } from '@emotion/react';
 import { ArrowUpward, ArrowDownward } from '@mui/icons-material';
 import { StyledDataGridPro } from '../../ui/Tables';
+import { useTranslation } from 'react-i18next';
 
 // Устанавливаем лицензионный ключ (замените на ваш собственный ключ)
 LicenseInfo.setLicenseKey('d7a42a252b29f214a57d3d3f80b1e8caTz0xMjM0NSxFPTE3MzI1NzE1ODEwNTczLFM9cHJvLExNPXN1YnNjcmlwdGlvbixQVj1wZXJwZXR1YWwsS1Y9Mg==');
@@ -22,9 +22,9 @@ export default function AffairsTable({
     setSortConfig,
     tableHeight
 }) {
+    const { t } = useTranslation();
     const theme = useTheme();
     const tableContainerRef = useRef(null);
-    const stripeRef = useRef(null);
     const [stripeStyle, setStripeStyle] = useState({
         top: 0,
         height: 0,
@@ -46,7 +46,7 @@ export default function AffairsTable({
         () => [
             {
                 field: 'name',
-                headerName: 'Дело',
+                headerName: t('cases.case_default'),
                 flex: 30,
                 minWidth: 200,
                 sortable: false,
@@ -73,7 +73,7 @@ export default function AffairsTable({
             },
             {
                 field: 'investigator_name',
-                headerName: 'Следователь и отделение',
+                headerName: t('common.report.investigator_and_department'),
                 flex: 15,
                 minWidth: 100,
                 sortable: false,
@@ -92,14 +92,14 @@ export default function AffairsTable({
                             noWrap
                             sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}
                         >
-                            {params.row.department_name || 'Не указано'}
+                            {params.row.department_name || t('common.messages.not_specified')}
                         </Typography>
                     </Box>
                 ),
             },
             {
                 field: 'created',
-                headerName: 'Дата создания и обновления',
+                headerName: t('common.report.created_updated_date'),
                 flex: 10,
                 minWidth: 100,
                 sortable: false,
@@ -109,7 +109,7 @@ export default function AffairsTable({
                             style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
                             onClick={() => handleSortClick('created')}
                         >
-                            Дата создания
+                            {t('common.report.date_created')}
                             {sortConfig.key === 'created' && (
                                 // Используем иконки MUI вместо символов
                                 sortConfig.direction === 'asc' ? (
@@ -123,7 +123,7 @@ export default function AffairsTable({
                             style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
                             onClick={() => handleSortClick('updated')}
                         >
-                            Дата обновления
+                            {t('common.report.date_updated')}
                             {sortConfig.key === 'updated' && (
                                 // Используем иконки MUI для сортировки по дате обновления
                                 sortConfig.direction === 'asc' ? (
@@ -135,28 +135,6 @@ export default function AffairsTable({
                         </div>
                     </div>
                 ),
-                // renderHeader: () => (
-                //     <div style={{display: 'flex', flexDirection: 'column', gap: '10px', margin: '10px 0'}}>
-                //         <div
-                //             style={{cursor: 'pointer', display: 'flex', alignItems: 'center'}}
-                //             onClick={() => handleSortClick('created')}
-                //         >
-                //             Дата создания
-                //             {sortConfig.key === 'created' && (
-                //                 <span>{sortConfig.direction === 'asc' ? ' ↑' : ' ↓'}</span>
-                //             )}
-                //         </div>
-                //         <div
-                //             style={{cursor: 'pointer', display: 'flex', alignItems: 'center'}}
-                //             onClick={() => handleSortClick('updated')}
-                //         >
-                //             Дата обновления
-                //             {sortConfig.key === 'updated' && (
-                //                 <span>{sortConfig.direction === 'asc' ? ' ↑' : ' ↓'}</span>
-                //             )}
-                //         </div>
-                //     </div>
-                // ),
                 renderCell: (params) => (
                     <Box sx={{ display: 'flex', flexDirection: 'column' }}>
                         <Typography
@@ -178,7 +156,7 @@ export default function AffairsTable({
                 ),
             },
         ],
-        [sortConfig]
+        [handleSortClick, sortConfig.direction, sortConfig.key]
     );
 
     // Преобразование данных в формат, подходящий для DataGrid
@@ -186,14 +164,14 @@ export default function AffairsTable({
         () =>
             cases.map((caseItem) => ({
                 id: caseItem.id,
-                name: caseItem.name || 'Без названия',
-                description: caseItem.description || 'Описание не указано',
-                investigator_name: caseItem.investigator_name || 'Не указано',
-                department_name: caseItem.department_name || 'Не указано',
+                name: caseItem.name || t('common.table_data.no_name'),
+                description: caseItem.description || t('common.table_data.description_not_specified'),
+                investigator_name: caseItem.investigator_name || t('common.messages.not_specified'),
+                department_name: caseItem.department_name || t('common.messages.not_specified'),
                 created: caseItem.created || '',
                 updated: caseItem.updated || '',
             })),
-        [cases]
+        [cases, t]
     );
 
     // Обработка клика по строке
@@ -293,79 +271,6 @@ export default function AffairsTable({
                         selected_column={selectedCase}
                         handleRowClick={handleRowClick}
                     />
-                    // <DataGridPro
-                    //     rows={rows}
-                    //     columns={columns.map((col) => ({
-                    //         ...col,
-                    //         flex: col.flex || 1,
-                    //         minWidth: col.minWidth || 150,
-                    //     }))}
-                    //     disableColumnMenu
-                    //     disableSelectionOnClick
-                    //     getRowHeight={() => 'auto'}
-                    //     hideFooter
-                    //     sortingMode="server"
-                    //     onRowClick={(params) => handleRowClick(params.row)}
-                    //     getRowClassName={(params) =>
-                    //         selectedCase && selectedCase.id === params.id ? 'selected-row' : ''
-                    //     }
-                    //     sx={{
-                    //         '& .MuiDataGrid-cell': {
-                    //             whiteSpace: 'nowrap',
-                    //             overflow: 'hidden',
-                    //             textOverflow: 'ellipsis',
-                    //             padding: theme.spacing(1),
-                    //             borderBottom: `1px solid ${theme.palette.divider}`,
-                    //         },
-                    //         '& .MuiDataGrid-columnHeaders': {
-                    //             backgroundColor: theme.palette.grey[100],
-                    //             borderBottom: `1px solid ${theme.palette.divider}`,
-                    //             fontWeight: 'bold',
-                    //             outline: 'none',
-                    //         },
-                    //         '& .MuiDataGrid-columnHeader:focus': {
-                    //             outline: 'none',
-                    //         },
-                    //         '& .MuiDataGrid-columnHeader:focus-within': {
-                    //             outline: 'none',
-                    //         },
-                    //         '& .MuiDataGrid-columnHeaderTitle': {
-                    //             fontWeight: 'bold',
-                    //         },
-                    //         '& .MuiDataGrid-row': {
-                    //             '&:nth-of-type(odd)': {
-                    //                 backgroundColor: theme.palette.action.hover,
-                    //             },
-                    //             cursor: 'pointer',
-                    //         },
-                    //         '& .MuiDataGrid-row:hover': {
-                    //             backgroundColor: theme.palette.action.selected,
-                    //         },
-                    //         '& .MuiDataGrid-cell:focus': {
-                    //             outline: 'none',
-                    //         },
-                    //         '& .MuiDataGrid-row:focus': {
-                    //             outline: 'none',
-                    //         },
-                    //         '& .MuiDataGrid-cell:focus-within': {
-                    //             outline: 'none',
-                    //         },
-                    //         '& .MuiDataGrid-row.Mui-selected': {
-                    //             backgroundColor: 'inherit'
-                    //         },
-                    //         '& .selected-row': {
-                    //             backgroundColor: "rgba(25, 118, 210, 0.08) !important",
-                    //             color: theme.palette.text.primary,
-                    //             fontWeight: '500',
-                    //             boxShadow: `
-                    //                 inset 0 0 10px rgba(0, 0, 0, 0.1), 
-                    //                 0 4px 6px rgba(0, 0, 0, 0.05)`,
-                    //             // borderRadius: '4px',
-                    //             transition: 'all 0.1s ease-in-out',
-                    //             // Убираем borderLeft, так как полоска отдельно
-                    //         },
-                    //     }}
-                    // />
                 )}
             </Paper>
         </Box>
@@ -548,7 +453,7 @@ export default function AffairsTable({
 //         () =>
 //             cases.map((caseItem) => ({
 //                 id: caseItem.id,
-//                 name: caseItem.name || 'Без названия', // Если имя отсутствует
+//                 name: caseItem.name || t('dashboard.affairs_table.col_case_default_name')'Без названия', // Если имя отсутствует
 //                 description: caseItem.description || 'Описание не указано', // Если описание отсутствует
 //                 investigator_name: caseItem.investigator_name || 'Не указано', // Если следователь не указан
 //                 department_name: caseItem.department_name || 'Не указано', // Если отделение не указано

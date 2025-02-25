@@ -9,9 +9,9 @@ import PropTypes from 'prop-types';
 import { StyledDataGridPro } from '../../ui/Tables';
 import EventAvailableIcon from '@mui/icons-material/EventAvailable';
 import EventBusyIcon from '@mui/icons-material/EventBusy';
-import InfoIcon from '@mui/icons-material/Info';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
+import { useTranslation } from 'react-i18next';
 
 // Устанавливаем лицензионный ключ (замените на ваш собственный ключ)
 LicenseInfo.setLicenseKey('d7a42a252b29f214a57d3d3f80b1e8caTz0xMjM0NSxFPTE3MzI1NzE1ODEwNTczLFM9cHJvLExNPXN1YnNjcmlwdGlvbixQVj1wZXJwZXR1YWwsS1Y9Mg==');
@@ -24,9 +24,9 @@ const EmployeesTableSessions = ({
     handleEmployeeSelect,
     tableHeight,
 }) => {
+    const { t } = useTranslation();
     const theme = useTheme();
     const tableContainerRef = useRef(null);
-    const stripeRef = useRef(null);
     const [stripeStyle, setStripeStyle] = useState({
         top: 0,
         height: 0,
@@ -38,24 +38,26 @@ const EmployeesTableSessions = ({
         () =>
             employees.map((employee) => ({
                 id: employee.id, // Уникальный идентификатор
-                name: `${employee.user.last_name || 'Не указано'} ${employee.user.first_name || 'Не указано'}`,
-                email: employee.user.email || 'Не указано',
-                rank: employee.user.rank || 'Не указано',
-                role_display: employee.role_display || 'Не указано',
-                department_name: employee.department_name || 'Не указано',
+                name: `${employee.user.last_name || t('common.messages.not_specified')} ${employee.user.first_name || t('common.messages.not_specified')}`,
+                email: employee.user.email || t('common.messages.not_specified'),
+                rank: employee.user.rank || t('common.messages.not_specified'),
+                role_display: employee.role_display || t('common.messages.not_specified'),
+                department_name: employee.department_name || t('common.messages.not_specified'),
                 active: employee.active,
-                active_display: employee.active ? 'В сети' : 'Не в сети',
+                active_display: employee.active
+                    ? t('common.status.online')
+                    : t('common.status.offline'),
                 // Создаём поле 'sessions' для объединения входа и выхода
                 sessions: {
                     login: employee.login
                         ? format(new Date(employee.login), 'dd.MM.yyyy HH:mm', { locale: ruLocale })
-                        : 'Никогда',
+                        : t('common.status.never'),
                     logout: employee.logout
                         ? format(new Date(employee.logout), 'dd.MM.yyyy HH:mm', { locale: ruLocale })
-                        : 'Никогда',
+                        : t('common.status.never'),
                 },
             })),
-        [employees]
+        [employees, t]
     );
 
     // Определение столбцов для DataGridPro с объединённой колонкой 'Сессии'
@@ -63,7 +65,7 @@ const EmployeesTableSessions = ({
         () => [
             {
                 field: 'name',
-                headerName: 'Сотрудник',
+                headerName: t('common.standard.label_employee'),
                 flex: 1,
                 minWidth: 230,
                 sortable: false,
@@ -90,7 +92,7 @@ const EmployeesTableSessions = ({
             },
             {
                 field: 'rank_role',
-                headerName: 'Звание и Роль',
+                headerName: t('common.table_headers.role_rank'),
                 flex: 1,
                 minWidth: 200,
                 sortable: false,
@@ -101,7 +103,7 @@ const EmployeesTableSessions = ({
                             noWrap
                             sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}
                         >
-                            {params.row.rank || 'Не указано'}
+                            {params.row.rank || t('common.messages.not_specified')}
                         </Typography>
                         <Typography
                             variant="body2"
@@ -109,14 +111,14 @@ const EmployeesTableSessions = ({
                             noWrap
                             sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}
                         >
-                            {params.row.role_display || 'Не указано'}
+                            {params.row.role_display || t('common.messages.not_specified')}
                         </Typography>
                     </Box>
                 ),
             },
             {
                 field: 'department_name',
-                headerName: 'Отделение',
+                headerName: t('common.standard.label_department'),
                 flex: 1,
                 minWidth: 200,
                 sortable: false,
@@ -126,26 +128,26 @@ const EmployeesTableSessions = ({
                         noWrap
                         sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}
                     >
-                        {params.value || 'Не указано'}
+                        {params.value || t('common.messages.not_specified')}
                     </Typography>
                 ),
             },
             {
                 field: 'active_display',
-                headerName: 'Статус',
+                headerName: t('common.table_headers.status'),
                 flex: 0.5,
                 minWidth: 100,
                 sortable: false,
                 renderCell: (params) => (
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        {params.value === 'В сети' ? (
+                        {params.value === t('common.status.online') ? (
                             <CheckCircleIcon color="success" sx={{ mr: 0.5 }} />
                         ) : (
                             <CancelIcon color="error" sx={{ mr: 0.5 }} />
                         )}
                         <Typography
                             variant="body2"
-                            color={params.value === 'В сети' ? 'success.main' : 'error.main'}
+                            color={params.value === t('common.status.online') ? 'success.main' : 'error.main'}
                             noWrap
                             sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}
                         >
@@ -156,7 +158,7 @@ const EmployeesTableSessions = ({
             },
             {
                 field: 'sessions',
-                headerName: 'Сессии',
+                headerName: t('common.table_headers.sessions'),
                 flex: 0.7,
                 minWidth: 200,
                 sortable: false,
@@ -164,24 +166,24 @@ const EmployeesTableSessions = ({
                     <Box sx={{ display: 'flex', flexDirection: 'column' }}>
                         {/* Дата последнего входа */}
                         <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
-                            <Tooltip title="Последний вход" arrow>
+                            <Tooltip title={t('dashboard.tabs.employees.employees_report_session_pdf.session_in')} arrow>
                                 <EventAvailableIcon fontSize="small" color="primary" sx={{ mr: 0.5 }} />
                             </Tooltip>
                             <Chip
                                 label={params.value.login}
-                                color={params.value.login !== 'Никогда' ? 'primary' : 'default'}
+                                color={params.value.login !== t('common.status.never') ? 'primary' : 'default'}
                                 size="small"
                                 sx={{ fontWeight: 'bold' }}
                             />
                         </Box>
                         {/* Дата последнего выхода */}
                         <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                            <Tooltip title="Последний выход" arrow>
+                            <Tooltip title={t('dashboard.tabs.employees.employees_report_session_pdf.session_out')} arrow>
                                 <EventBusyIcon fontSize="small" color="secondary" sx={{ mr: 0.5 }} />
                             </Tooltip>
                             <Chip
                                 label={params.value.logout}
-                                color={params.value.logout !== 'Никогда' ? 'secondary' : 'default'}
+                                color={params.value.logout !== t('common.status.never') ? 'secondary' : 'default'}
                                 size="small"
                                 sx={{ fontWeight: 'bold' }}
                             />
@@ -190,7 +192,7 @@ const EmployeesTableSessions = ({
                 ),
             },
         ],
-        []
+        [t]
     );
 
     // console.log('я перезагрузился');
@@ -336,11 +338,11 @@ export default EmployeesTableSessions;
 //         () =>
 //             employees.map((employee) => ({
 //                 id: employee.id,
-//                 name: `${employee.last_name || 'Не указано'} ${employee.first_name || 'Не указано'}`,
-//                 email: employee.email || 'Не указано',
-//                 rank: employee.rank || 'Не указано',
-//                 role_display: employee.role_display || 'Не указано',
-//                 department_name: employee.department_name || 'Не указано',
+//                 name: `${employee.last_name || t('common.messages.not_specified')} ${employee.first_name || t('common.messages.not_specified')}`,
+//                 email: employee.email || t('common.messages.not_specified'),
+//                 rank: employee.rank || t('common.messages.not_specified'),
+//                 role_display: employee.role_display || t('common.messages.not_specified'),
+//                 department_name: employee.department_name || t('common.messages.not_specified'),
 //                 is_active: employee.is_active,
 //                 is_active_display: employee.is_active ? 'Активен' : 'Неактивен',
 //                 last_login: employee.last_login
@@ -393,7 +395,7 @@ export default EmployeesTableSessions;
 //                             noWrap
 //                             sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}
 //                         >
-//                             {params.row.rank || 'Не указано'}
+//                             {params.row.rank || t('common.messages.not_specified')}
 //                         </Typography>
 //                         <Typography
 //                             variant="body2"
@@ -401,7 +403,7 @@ export default EmployeesTableSessions;
 //                             noWrap
 //                             sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}
 //                         >
-//                             {params.row.role_display || 'Не указано'}
+//                             {params.row.role_display || t('common.messages.not_specified')}
 //                         </Typography>
 //                     </Box>
 //                 ),
@@ -418,7 +420,7 @@ export default EmployeesTableSessions;
 //                         noWrap
 //                         sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}
 //                     >
-//                         {params.value || 'Не указано'}
+//                         {params.value || t('common.messages.not_specified')}
 //                     </Typography>
 //                 ),
 //             },

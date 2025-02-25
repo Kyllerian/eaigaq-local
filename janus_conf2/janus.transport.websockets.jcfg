@@ -1,0 +1,22 @@
+general: {
+    json = "indented"
+    ws = true            # Включаем WebSockets API
+    ws_port = 8188       # Порт для WS, соответствует вашему Nginx proxy_pass на /janus_ws/
+    wss = false          # WSS не нужен, SSL терминируется на уровне Nginx
+    # Остальное оставим по умолчанию
+}
+
+admin: {
+    admin_ws = false     # Админский WebSocket интерфейс не используем, у нас есть admin_http
+    admin_wss = false
+}
+
+cors: {
+    # По умолчанию Allow-Origin: *, если нужно более строго — можно настроить
+    #allow_origin = "https://your-frontend-domain.com"
+    #enforce_cors = true
+}
+
+certificates: {
+    # Не нужны, SSL/TLS уже обеспечивается Nginx
+}

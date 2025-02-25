@@ -1,6 +1,6 @@
 // frontend/src/components/Dashboard/Affairs/Toolbar.js
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     Box,
     FormControl,
@@ -16,7 +16,6 @@ import {
     ListItemIcon,
     ListItemText,
 } from '@mui/material';
-// import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import {
     Add as AddIcon,
     OpenInNew as OpenInNewIcon,
@@ -35,10 +34,14 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import 'dayjs/locale/ru';
 import { ruRU } from '@mui/x-date-pickers/locales';
 import { LicenseInfo } from '@mui/x-license';
+import { useTranslation } from 'react-i18next';
+import dayjs from 'dayjs';
 
 LicenseInfo.setLicenseKey('d7a42a252b29f214a57d3d3f80b1e8caTz0xMjM0NSxFPTE3MzI1NzE1ODEwNTczLFM9cHJvLExNPXN1YnNjcmlwdGlvbixQVj1wZXJwZXR1YWwsS1Y9Mg==');
 
 export default function AffairsToolbar(props) {
+    const { t } = useTranslation();
+
     const {
         user,
         departments,
@@ -61,6 +64,7 @@ export default function AffairsToolbar(props) {
     const theme = useTheme();
 
     const [dateRange, setDateRange] = useState([null, null]);
+    const [isLoading, setIsLoading] = useState(false);
 
     const handleDateRangeChange = (newRange) => {
         setDateRange(newRange); // Обновляем локальное состояние
@@ -69,6 +73,14 @@ export default function AffairsToolbar(props) {
         handleDateAddedToChange(endDate ? endDate.add(1, 'day').format('YYYY-MM-DD') : null);
     };
 
+    useEffect(() => {
+        if (!isLoading) {
+            setIsLoading(true);
+            handleDateRangeChange([dayjs().subtract(2, 'week').startOf('day'),
+            dayjs().endOf('day'),])
+        }
+    })
+    
     return (
         <>
             {/* Поля поиска и фильтрации */}
@@ -83,7 +95,7 @@ export default function AffairsToolbar(props) {
                     }}
                 >
                     <TextField
-                        label="Поиск по названию, описанию или имени следователя"
+                        label={t('dashboard.tabs.cases.toolbar.search_placeholder')}
                         variant="outlined"
                         value={searchQuery}
                         onChange={handleSearchChange}
@@ -100,18 +112,18 @@ export default function AffairsToolbar(props) {
                     <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="ru"
                         localeText={{
                             ...ruRU.components.MuiLocalizationProvider.defaultProps.localeText,
-                            clearButtonLabel: 'Очистить', // Изменяем текст кнопки "Clear"
+                            clearButtonLabel: t('common.buttons.clear_button'), // Изменяем текст кнопки "Clear"
                         }}
                     >
                         <DateRangePicker
                             value={dateRange}
                             onChange={handleDateRangeChange}
-                            label="Дата создания от - до"
+                            label={t('common.toolbar.label_date_range')}
                             slots={{ field: SingleInputDateRangeField }}
                             slotProps={{
                                 field: {
                                     size: 'small',
-                                    label: 'Дата создания от - до',
+                                    label: t('common.toolbar.label_date_range'),
                                     InputProps: {
                                         endAdornment: (
                                             <InputAdornment position="end">
@@ -129,15 +141,15 @@ export default function AffairsToolbar(props) {
                     </LocalizationProvider>
                     {user.role === 'REGION_HEAD' && (
                         <FormControl sx={{ minWidth: 200, maxWidth: 200 }} variant="outlined" size="small">
-                            <InputLabel id="department-filter-label">Отделение</InputLabel>
+                            <InputLabel id="department-filter-label">{t('common.standard.label_department')}</InputLabel>
                             <Select
                                 labelId="department-filter-label"
                                 value={selectedDepartment}
                                 onChange={handleDepartmentChange}
-                                label="Отделение"
+                                label={t('common.standard.label_department')}
                             >
                                 <MenuItem value="">
-                                    <em>Все отделения</em>
+                                    <em>{t('common.standard.option_all_departments')}</em>
                                 </MenuItem>
                                 {departments.map((dept) => (
                                     <MenuItem key={dept.id} value={dept.id}>
@@ -151,7 +163,7 @@ export default function AffairsToolbar(props) {
                         onClick={handleOpenBarcodeDialog}
                         sx={{ height: '40px' }}
                     >
-                        Сканировать штрихкод
+                        {t('common.buttons.scan_barcode')}
                     </StyledButton>
 
                     {/* Export button with menu */}
@@ -163,7 +175,7 @@ export default function AffairsToolbar(props) {
                             startIcon={<GetAppIcon />}
                             sx={{ height: '40px' }}
                         >
-                            Экспорт
+                            {t('common.buttons.export')}
                         </Button>
                         <Menu
                             anchorEl={exportMenuAnchorEl}
@@ -174,13 +186,13 @@ export default function AffairsToolbar(props) {
                                 <ListItemIcon>
                                     <PictureAsPdfIcon fontSize="small" />
                                 </ListItemIcon>
-                                <ListItemText>Экспорт PDF</ListItemText>
+                                <ListItemText>{t('common.buttons.export_pdf')}</ListItemText>
                             </MenuItem>
                             <MenuItem onClick={() => handleCaseExport('excel')}>
                                 <ListItemIcon>
                                     <DescriptionIcon fontSize="small" />
                                 </ListItemIcon>
-                                <ListItemText>Экспорт Excel</ListItemText>
+                                <ListItemText>{t('common.buttons.export_excel')}</ListItemText>
                             </MenuItem>
                         </Menu>
                     </Box>
@@ -200,7 +212,9 @@ export default function AffairsToolbar(props) {
                             startIcon={<AddIcon />}
                             sx={{ height: '40px' }}
                         >
-                            <span style={{ height: '1ex', lineHeight: '1ex', overflow: 'visible', verticalAlign: 'bottom' }}>Добавить дело</span>
+                            <span style={{ height: '1ex', lineHeight: '1ex', overflow: 'visible', verticalAlign: 'bottom' }}>
+                                {t('dashboard.tabs.cases.toolbar.button_add_case')}
+                            </span>
                         </StyledButton>
                     ) : (
                         <Box sx={{ width: 128 }} />
@@ -216,9 +230,9 @@ export default function AffairsToolbar(props) {
                             title={
                                 selectedCase
                                     ? selectedCase.active
-                                        ? 'Активно'
-                                        : 'Закрыто'
-                                    : 'Не выбрано'
+                                        ? t('common.status.active')
+                                        : t('common.status.closed')
+                                    : t('common.messages.not_selected')
                             }
                             placement="top"
                         >
@@ -241,7 +255,7 @@ export default function AffairsToolbar(props) {
                             sx={{ height: '40px' }}
                             disabled={!selectedCase}
                         >
-                            <span style={{ height: '1ex', lineHeight: '1ex', overflow: 'visible', verticalAlign: 'bottom' }}>Открыть дело</span>
+                            <span style={{ height: '1ex', lineHeight: '1ex', overflow: 'visible', verticalAlign: 'bottom' }}>{t('dashboard.tabs.cases.toolbar.button_open_case')}</span>
                         </StyledButton>
                     </Box>
                 </Box>

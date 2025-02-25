@@ -1,0 +1,48 @@
+# janus.transport.websockets.jcfg
+
+general: {
+    #events = true            # Отправлять ли события в event handlers (дефолт=true)
+    json = "indented"         # Вывод JSON: indented/plain/compact
+
+    # Включаем WebSockets API
+    ws = true
+    ws_port = 8188
+
+    # Без TLS
+    wss = false
+
+    # Пример: указать pingpong_trigger и pingpong_timeout,
+    # если нужно, чтобы Janus отправлял PING/PONG при простое:
+    #pingpong_trigger = 30
+    #pingpong_timeout = 10
+
+    # Можно указать interface/ip, если нужно привязаться к сети:
+    #ws_interface = "eth0"
+    #ws_ip = "192.168.0.1"
+    #wss_port = 8989
+    #wss_interface = "eth0"
+    #wss_ip = "192.168.0.1"
+}
+
+admin: {
+    # Отключаем Admin WebSockets
+    admin_ws = false
+    # admin_ws_port = 7188
+
+    # admin_wss = false
+    # admin_wss_port = 7989
+}
+
+cors: {
+    # Если нужна строгая политика CORS, раскомментируйте:
+    #allow_origin = "https://example.com"
+    #enforce_cors = true
+}
+
+certificates: {
+    # Если нужно wss (secure WebSockets), пропишите:
+    #cert_pem = "/path/to/cert.pem"
+    #cert_key = "/path/to/key.pem"
+    #cert_pwd = "secretpassphrase"
+    #ciphers = "ECDHE-RSA-AES256-GCM-SHA384:..."
+}

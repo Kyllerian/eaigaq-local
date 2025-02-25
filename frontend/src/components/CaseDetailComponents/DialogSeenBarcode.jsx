@@ -1,132 +1,3 @@
-// // frontend/src/components/CaseDetailComponents/DialogSeenBarcode.jsx
-//
-// import React, { useRef } from 'react';
-// import {
-//   Button,
-//   Dialog,
-//   DialogTitle,
-//   DialogContent,
-//   DialogActions,
-// } from '@mui/material';
-// import { useTheme } from '@mui/material/styles';
-// import Barcode from 'react-barcode';
-// import { useReactToPrint } from 'react-to-print';
-//
-// export default function DialogSeenBarcode({
-//                                             open,
-//                                             setOpenBarcodeDialog,
-//                                             barcodeValueToDisplay,
-//                                             groupName,
-//                                             setSnackbar,
-//                                           }) {
-//   const theme = useTheme();
-//   const barcodeRef = useRef();
-//
-//   // Extract group number from groupName (e.g., from "Группа3" extract "3")
-//   const groupNumber = groupName ? groupName.replace(/^\D+/g, '') : '';
-//
-//   const handlePrintBarcode = useReactToPrint({
-//     contentRef: barcodeRef,
-//     documentTitle: 'Штрихкод Вещдока',
-//     pageStyle: `
-//       @page {
-//         size: 58mm 40mm;
-//         margin: 0;
-//       }
-//       @media print {
-//         body {
-//           margin: 0;
-//         }
-//         #barcode-container {
-//           width: 58mm;
-//           height: 40mm;
-//           padding: 6.36mm;
-//           box-sizing: border-box;
-//           display: flex;
-//           justify-content: center;
-//           align-items: center;
-//         }
-//         #barcode svg {
-//           width: auto;
-//           height: 70%;
-//         }
-//       }
-//     `,
-//     onAfterPrint: () => {
-//       setOpenBarcodeDialog(false);
-//       setSnackbar({
-//         open: true,
-//         message: 'Печать завершена.',
-//         severity: 'success',
-//       });
-//     },
-//   });
-//
-//   return (
-//       <>
-//         <Dialog
-//             open={open}
-//             onClose={() => setOpenBarcodeDialog(false)}
-//             maxWidth="xs"
-//             fullWidth
-//         >
-//           <DialogTitle>Штрихкод</DialogTitle>
-//           <DialogContent
-//               sx={{
-//                 textAlign: 'center',
-//                 padding: theme.spacing(2),
-//               }}
-//           >
-//             {barcodeValueToDisplay && (
-//                 <div id="barcode-container" ref={barcodeRef}>
-//                   <div
-//                       id="barcode-wrapper"
-//                       style={{
-//                         position: 'relative',
-//                         display: 'inline-block',
-//                       }}
-//                   >
-//                     <Barcode
-//                         value={barcodeValueToDisplay}
-//                         format="EAN13"
-//                         displayValue={false}
-//                         margin={0}
-//                     />
-//                     {/* Hidden in dialog, shown when printing */}
-//                     <div
-//                         id="left-text"
-//                         style={{
-//                           position: 'absolute',
-//                           display: 'none',
-//                         }}
-//                     >
-//                       Группа
-//                     </div>
-//                     <div
-//                         id="right-text"
-//                         style={{
-//                           position: 'absolute',
-//                           display: 'none',
-//                         }}
-//                     >
-//                       {groupNumber}
-//                     </div>
-//                   </div>
-//                 </div>
-//             )}
-//           </DialogContent>
-//           <DialogActions>
-//             <Button onClick={() => setOpenBarcodeDialog(false)}>Закрыть</Button>
-//             <Button variant="contained" onClick={handlePrintBarcode}>
-//               Печать
-//             </Button>
-//           </DialogActions>
-//         </Dialog>
-//       </>
-//   );
-// }
-
-
 // frontend/src/components/CaseDetailComponents/DialogSeenBarcode.jsx
 
 import React, { useRef } from 'react';
@@ -141,15 +12,15 @@ import { useTheme } from '@mui/material/styles';
 import Barcode from 'react-barcode';
 import { StyledButton } from '../ui/StyledComponents';
 import { useReactToPrint } from 'react-to-print';
+import { useTranslation } from 'react-i18next';
 
 export default function DialogSeenBarcode({
   open,
   setOpenBarcodeDialog,
   barcodeValueToDisplay,
-  // barcodeRef,
-  // handlePrintBarcode,
   groupName,
 }) {
+  const { t } = useTranslation();
   const theme = useTheme();
 
   // Extract group number from groupName (e.g., from "Группа3" extract "3")
@@ -163,7 +34,7 @@ export default function DialogSeenBarcode({
   // ТУТ НИЧЕГО НЕ МЕНЯТЬ!
   const handlePrintBarcode = useReactToPrint({
     contentRef: barcodeRef,
-    documentTitle: 'Штрихкод',
+    documentTitle: t('common.barcode.label_barcode'),
     pageStyle: `
         @page {
           size: 58mm 40mm !important;
@@ -207,67 +78,65 @@ export default function DialogSeenBarcode({
       `,
   });
   return (
-    <>
-      <Dialog
-        open={open}
-        onClose={() => setOpenBarcodeDialog(false)}
-        maxWidth="xs"
-        fullWidth
+    <Dialog
+      open={open}
+      onClose={() => setOpenBarcodeDialog(false)}
+      maxWidth="xs"
+      fullWidth
+    >
+      <DialogTitle>{t('common.barcode.label_barcode')}</DialogTitle>
+      <DialogContent
+        sx={{
+          textAlign: 'center',
+          padding: theme.spacing(2),
+        }}
       >
-        <DialogTitle>Штрихкод</DialogTitle>
-        <DialogContent
-          sx={{
-            textAlign: 'center',
-            padding: theme.spacing(2),
-          }}
-        >
-          {barcodeValueToDisplay && (
-            <div id="barcode-container" ref={barcodeRef}>
-              <div
-                id="barcode-wrapper"
-                style={{
-                  position: 'relative',
-                  display: 'inline-block',
-                }}
-              >
-                <Barcode
-                  value={barcodeValueToDisplay}
-                  format="EAN13"
-                  displayValue={false}
-                  margin={0}
-                />
-                {/* Hidden in dialog, shown when printing */}
-                {groupName && (
-                  <>
-                    <div
-                      id="left-text"
-                      style={{
-                        position: 'absolute',
-                        display: 'none',
-                      }}
-                    >
-                      Группа
-                    </div>
-                    <div
-                      id="right-text"
-                      style={{
-                        position: 'absolute',
-                        display: 'none',
-                      }}
-                    >
-                      {groupNumber}
-                    </div>
-                  </>
-                )}
-              </div>
+        {barcodeValueToDisplay && (
+          <div id="barcode-container" ref={barcodeRef}>
+            <div
+              id="barcode-wrapper"
+              style={{
+                position: 'relative',
+                display: 'inline-block',
+              }}
+            >
+              <Barcode
+                value={barcodeValueToDisplay}
+                format="EAN13"
+                displayValue={false}
+                margin={0}
+              />
+              {/* Hidden in dialog, shown when printing */}
+              {groupName && (
+                <>
+                  <div
+                    id="left-text"
+                    style={{
+                      position: 'absolute',
+                      display: 'none',
+                    }}
+                  >
+                    {t('common.table_headers.group')}
+                  </div>
+                  <div
+                    id="right-text"
+                    style={{
+                      position: 'absolute',
+                      display: 'none',
+                    }}
+                  >
+                    {groupNumber}
+                  </div>
+                </>
+              )}
             </div>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenBarcodeDialog(false)}>Закрыть</Button>
-          <StyledButton onClick={handlePrintBarcode}>Печать</StyledButton>
-        </DialogActions>
-      </Dialog>
-    </>
+          </div>
+        )}
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={() => setOpenBarcodeDialog(false)}>{t('common.buttons.close')}</Button>
+        <StyledButton onClick={handlePrintBarcode}>{t('common.buttons.print')}</StyledButton>
+      </DialogActions>
+    </Dialog>
   );
 }

@@ -7,12 +7,10 @@ export default function StyledDialog({ open, setOpen, title, setState, children 
         setState({ name: '' })
     }
     return (
-        <>
-            <Dialog open={open} onClose={onClose}>
-                <DialogTitle>{title}</DialogTitle>
-                <DialogContent>{children.content}</DialogContent>
-                <DialogActions>{children.actions}</DialogActions>
-            </Dialog>
-        </>
+        <Dialog open={open} onClose={onClose}>
+            <DialogTitle>{title}</DialogTitle>
+            <DialogContent>{children.content}</DialogContent>
+            <DialogActions>{children.actions}</DialogActions>
+        </Dialog>
     );
 }
