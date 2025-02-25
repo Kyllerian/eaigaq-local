@@ -1,110 +1,8 @@
-// import React, { useState, useRef, useEffect } from 'react';
-// import {
-//     Button,
-//     TextField,
-// } from '@mui/material';
-//
-// import axios from '../axiosConfig';
-//
-// import { StyledButton } from '../ui/StyledComponents';
-// import DashboardDialog from '../ui/DashboardDialog';
-// import { useNavigate } from 'react-router-dom';
-// import { StyledTextField } from '../ui/StyledTextfield';
-//
-// export default function DialogSeenBarcode({ open, setOpenBarcodeDialog, setSnackbar }) {
-//     const navigate = useNavigate();
-//
-//     // Управляем состоянием scannedBarcode внутри компонента
-//     const [scannedBarcode, setScannedBarcode] = useState('');
-//     const barcodeInputRef = useRef();
-//
-//     useEffect(() => {
-//         if (open) {
-//             setScannedBarcode(''); // Сбрасываем штрихкод при открытии диалога
-//             setTimeout(() => {
-//                 barcodeInputRef.current?.focus(); // Устанавливаем фокус на поле ввода
-//             }, 100);
-//         }
-//     }, [open]);
-//
-//     const handleBarcodeInputChange = (event) => {
-//         setScannedBarcode(event.target.value);
-//     };
-//
-//     const handleBarcodeSubmit = async (event) => {
-//         event.preventDefault();
-//         if (!scannedBarcode) {
-//             setSnackbar({
-//                 open: true,
-//                 message: 'Пожалуйста, отсканируйте штрихкод.',
-//                 severity: 'error',
-//             });
-//             return;
-//         }
-//
-//         try {
-//             const response = await axios.get('/api/cases/get_by_barcode/', {
-//                 params: { barcode: scannedBarcode },
-//             });
-//             const caseData = response.data;
-//             // Перенаправляем на страницу деталей дела
-//             navigate(`/cases/${caseData.id}/`);
-//         } catch (error) {
-//             console.error(
-//                 'Ошибка при поиске дела по штрихкоду:',
-//                 error.response?.data || error
-//             );
-//             setSnackbar({
-//                 open: true,
-//                 message:
-//                     error.response?.data?.detail ||
-//                     'Ошибка при поиске дела по штрихкоду.',
-//                 severity: 'error',
-//             });
-//         } finally {
-//             setOpenBarcodeDialog(false);
-//         }
-//     };
-//
-//     return (
-//         <>
-//             {/* Диалоговое окно для сканирования штрихкода */}
-//             <DashboardDialog title={"Сканирование штрихкода"} open={open} setOpen={setOpenBarcodeDialog}>
-//                 {{
-//                     content: (
-//                         <>
-//                             <StyledTextField
-//                                 autoFocus
-//                                 inputRef={barcodeInputRef}
-//                                 label="Штрихкод"
-//                                 value={scannedBarcode}
-//                                 onChange={handleBarcodeInputChange}
-//                                 onKeyDown={(event) => {
-//                                     if (event.key === 'Enter') {
-//                                         handleBarcodeSubmit(event);
-//                                     }
-//                                 }}
-//                             />
-//                         </>
-//                     ),
-//                     actions: (
-//                         <>
-//                             <Button onClick={() => setOpenBarcodeDialog(false)}>Отмена</Button>
-//                             <StyledButton onClick={handleBarcodeSubmit}>
-//                                 Найти
-//                             </StyledButton>
-//                         </>
-//                     )
-//                 }}
-//             </DashboardDialog>
-//         </>
-//     );
-// }
+// src\components\Dashboard\ScanBarcode.js
 
-import React, { useState, useRef, useEffect } from 'react';
+import React from 'react';
 import {
     Button,
-    TextField,
 } from '@mui/material';
 
 import axios from '../axiosConfig';
@@ -113,9 +11,11 @@ import { StyledButton } from '../ui/StyledComponents';
 import DashboardDialog from '../ui/DashboardDialog';
 import { useNavigate } from 'react-router-dom';
 import { StyledTextField } from '../ui/StyledTextfield';
+import { useTranslation } from 'react-i18next';
 
 export default function DialogSeenBarcode({ open, setOpenBarcodeDialog, barcodeInputRef, scannedBarcode, setSnackbar, setScannedBarcode }) {
     const navigate = useNavigate();
+    const { t } = useTranslation();
 
     const handleBarcodeInputChange = (event) => {
         setScannedBarcode(event.target.value);
@@ -126,7 +26,7 @@ export default function DialogSeenBarcode({ open, setOpenBarcodeDialog, barcodeI
         if (!scannedBarcode) {
             setSnackbar({
                 open: true,
-                message: 'Пожалуйста, отсканируйте штрихкод.',
+                message: t('common.barcode.error_no_barcode'),
                 severity: 'error',
             });
             return;
@@ -141,14 +41,14 @@ export default function DialogSeenBarcode({ open, setOpenBarcodeDialog, barcodeI
             navigate(`/cases/${caseData.id}/`);
         } catch (error) {
             console.error(
-                'Ошибка при поиске дела по штрихкоду:',
+                t('common.barcode.error_find_case'),
                 error.response?.data || error
             );
             setSnackbar({
                 open: true,
                 message:
                     error.response?.data?.detail ||
-                    'Ошибка при поиске дела по штрихкоду.',
+                    t('common.barcode.error_find_case'),
                 severity: 'error',
             });
         } finally {
@@ -158,43 +58,27 @@ export default function DialogSeenBarcode({ open, setOpenBarcodeDialog, barcodeI
     return (
         <>
             {/* Диалоговое окно для сканирования штрихкода */}
-            <DashboardDialog title={"Сканирование штрихкода"} open={open} setOpen={setOpenBarcodeDialog}>
+            <DashboardDialog title={t('common.barcode.dialog_title')} open={open} setOpen={setOpenBarcodeDialog}>
                 {{
                     content: (
-                        <>
-                            <StyledTextField
-                                autoFocus
-                                inputRef={barcodeInputRef}
-                                label="Штрихкод"
-                                value={scannedBarcode}
-                                onChange={handleBarcodeInputChange}
-                                onKeyDown={(event) => {
-                                    if (event.key === 'Enter') {
-                                        handleBarcodeSubmit(event);
-                                    }
-                                }}
-                            />
-                            {/* <TextField
-                                autoFocus
-                                inputRef={barcodeInputRef}
-                                margin="dense"
-                                label="Штрихкод"
-                                value={scannedBarcode}
-                                onChange={handleBarcodeInputChange}
-                                fullWidth
-                                onKeyDown={(event) => {
-                                    if (event.key === 'Enter') {
-                                        handleBarcodeSubmit(event);
-                                    }
-                                }}
-                            /> */}
-                        </>
+                        <StyledTextField
+                            autoFocus
+                            inputRef={barcodeInputRef}
+                            label={t('common.barcode.label_barcode')}
+                            value={scannedBarcode}
+                            onChange={handleBarcodeInputChange}
+                            onKeyDown={(event) => {
+                                if (event.key === 'Enter') {
+                                    handleBarcodeSubmit(event);
+                                }
+                            }}
+                        />
                     ),
                     actions: (
                         <>
-                            <Button onClick={() => setOpenBarcodeDialog(false)}>Отмена</Button>
+                            <Button onClick={() => setOpenBarcodeDialog(false)}>{t('common.buttons.cancel')}</Button>
                             <StyledButton onClick={handleBarcodeSubmit}>
-                                Найти
+                                {t('common.buttons.find_button')}
                             </StyledButton>
                         </>
                     )

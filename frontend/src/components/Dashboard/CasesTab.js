@@ -20,6 +20,7 @@ import DialogScanBarcode from './Affairs/DialogScanBarcode';
 import CaseReport from './Affairs/CaseReport';
 import Loading from "../Loading";
 import AffairsToolbar from './Affairs/Toolbar';
+import { useTranslation } from 'react-i18next';
 
 
 // Debounce hook to prevent excessive API calls
@@ -48,7 +49,7 @@ const CasesTab = ({
     setSnackbar,
     setError
 }) => {
-
+    const { t } = useTranslation();
     const theme = useTheme();
     const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
     const navigate = useNavigate();
@@ -140,17 +141,17 @@ const CasesTab = ({
     useEffect(() => {
         setSelectedCase(null);
     }, [sortConfig])
-    
+
     useEffect(() => {
         if (isError) {
-            console.error('Ошибка при получении дел:', error);
+            console.error(t('common.errors.error_fetch_data'), error);
             setSnackbar({
                 open: true,
-                message: 'Ошибка при получении дел.',
+                message: t('common.errors.error_fetch_data'),
                 severity: 'error',
             });
         }
-    }, [isError, error, setSnackbar]);
+    }, [isError, error, setSnackbar, t]);
 
     // Handlers for filters and search
     const handleSearchChange = useCallback((event) => {
@@ -205,6 +206,148 @@ const CasesTab = ({
         }
     };
 
+    // Handle export to Excel
+    const handleExportExcel = useCallback(
+        async (exportData) => {
+            setLoading(false);
+            if (exportData.length === 0) {
+                setSnackbar({
+                    open: true,
+                    message: t('common.errors.error_no_data_for_export'),
+                    severity: 'warning',
+                });
+                return;
+            }
+            try {
+                const workbook = new ExcelJS.Workbook();
+                const worksheet = workbook.addWorksheet(t('common.report.titles.report_cases'), {
+                    pageSetup: { orientation: 'landscape' }
+                });
+
+                // Add headers
+                worksheet.columns = [
+                    { header: t('common.table_headers.title_and_description'), key: 'name_description', width: 61 },
+                    { header: t('common.table_headers.investigator_dept_region'), key: 'investigator_department_region', width: 25 },
+                    { header: t('common.report.created_updated_date'), key: 'created_and_updated', width: 28 },
+                ];
+
+                // Add data
+                exportData.forEach((caseItem) => {
+
+                    const nameDescription = `${caseItem.name}\n${caseItem.description}`;
+                    const investigatorDepartmentRegion = `${caseItem.investigator_name || t('common.messages.not_specified')}\n${caseItem.department_name || t('common.messages.not_specified')}\n${caseItem.region_name || t('common.messages.not_specified')}`;
+                    const createdAndUpdated = `${t('common.report.created_date_label')}: ${formatDate(caseItem.created)}\n${t('common.report.updated_date_label')}: ${formatDate(caseItem.updated)}`;
+                    worksheet.addRow({
+                        name_description: nameDescription,
+                        investigator_department_region: investigatorDepartmentRegion,
+                        created_and_updated: createdAndUpdated,
+                    });
+
+                    // Применяем перенос текста для ячеек с несколькими строками
+                    const lastRow = worksheet.lastRow;
+                    lastRow.getCell('name_description').alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+                    lastRow.getCell('investigator_department_region').alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+                    lastRow.getCell('created_and_updated').alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+
+                    // Рассчитываем высоту строки на основе количества символов
+                    const calculateRowHeight = (text, charPerLine) => {
+                        const lines = text.split('\n').reduce((acc, line) => {
+                            return acc + Math.ceil(line.length / charPerLine);
+                        }, 0);
+                        return lines + 1;
+                    };
+
+                    const maxLines = Math.max(
+                        calculateRowHeight(nameDescription, 50), // Предполагаем, что в одну строку помещается 50 символов
+                        calculateRowHeight(investigatorDepartmentRegion, 50),
+                        calculateRowHeight(createdAndUpdated, 50)
+                    );
+
+                    lastRow.height = maxLines * 20; // 15 - высота одной строки
+                });
+
+                // Применяем стили к заголовкам
+                const headerRow = worksheet.getRow(1);
+                headerRow.font = { bold: true };
+                headerRow.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+                headerRow.eachCell((cell) => {
+                    cell.border = {
+                        top: { style: 'thin' },
+                        left: { style: 'thin' },
+                        bottom: { style: 'thin' },
+                        right: { style: 'thin' },
+                    };
+                    cell.fill = {
+                        type: 'pattern',
+                        pattern: 'solid',
+                        fgColor: { argb: 'FFD3D3D3' }, // Светло-серый цвет заливки для заголовков
+                    };
+                    cell.alignment = { wrapText: true };
+                });
+
+                // Применяем стили к остальным ячейкам
+                worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+                    if (rowNumber === 1) return; // Заголовки уже обработаны
+                    row.alignment = { wrapText: true };
+
+                    row.eachCell({ includeEmpty: true }, (cell) => {
+                        // Устанавливаем границы для каждой ячейки
+                        cell.border = {
+                            top: { style: 'thin' },
+                            left: { style: 'thin' },
+                            bottom: { style: 'thin' },
+                            right: { style: 'thin' },
+                        };
+
+                        // Чередующаяся заливка для строк (зебра-полосы)
+                        if (rowNumber % 2 === 0) {
+                            cell.fill = {
+                                type: 'pattern',
+                                pattern: 'solid',
+                                fgColor: { argb: 'FFEFEFEF' }, // Светло-серый цвет заливки для четных строк
+                            };
+                        } else {
+                            cell.fill = {
+                                type: 'pattern',
+                                pattern: 'solid',
+                                fgColor: { argb: 'FFFFFFFF' }, // Белый цвет заливки для нечетных строк
+                            };
+                        }
+
+                        // Устанавливаем перенос текста, если еще не установлен
+                        if (cell.alignment && !cell.alignment.wrapText) {
+                            cell.alignment = { wrapText: true };
+                        }
+                    });
+
+                    // Опционально: Устанавливаем высоту строки, если не установлена
+                    if (!row.height) {
+                        row.height = 20; // Настройте по необходимости
+                    }
+                });
+
+                worksheet.eachRow({ includeEmpty: true }, (row) => {
+                    row.alignment = { wrapText: true };
+                });
+
+                // Generate buffer
+                const buffer = await workbook.xlsx.writeBuffer();
+
+                // Save file
+                const blob = new Blob([buffer], { type: 'application/octet-stream' });
+                saveAs(blob, `${t('common.report.titles.file_name_cases')}.xlsx`);
+            } catch (error) {
+                console.error(t('common.errors.error_export_excel'), error);
+                setSnackbar({
+                    open: true,
+                    message: t('common.errors.error_export_excel'),
+                    severity: 'error',
+                });
+            }
+        },
+        [setSnackbar, t]
+    );
+
     const handleCaseExport = useCallback(
         (type) => {
             setLoading(true);
@@ -230,29 +373,21 @@ const CasesTab = ({
                     }
                 })
                 .catch((error) => {
-                    console.error('Ошибка при экспорте дел:', error);
+                    console.error(t('common.errors.error_export_excel'), error);
                     setSnackbar({
                         open: true,
-                        message: 'Ошибка при экспорте дел.',
+                        message: t('common.errors.error_export_excel'),
                         severity: 'error',
                     });
                     setLoading(false);
                 });
         },
-        [
-            searchQuery,
-            dateAddedFrom,
-            dateAddedTo,
-            departmentFilter,
-            countAll,
-            sortConfig,
-            setSnackbar,
-        ]
+        [searchQuery, dateAddedFrom, dateAddedTo, countAll, departmentFilter, sortConfig.direction, sortConfig.key, handleExportExcel, t, setSnackbar]
     );
 
     const handlePrintCaseReport = useReactToPrint({
         contentRef: caseReportRef,
-        documentTitle: 'Отчет по делам',
+        documentTitle: t('common.report.titles.report_cases'),
         onAfterPrint: () => {
             setLoading(false);
         },
@@ -265,73 +400,17 @@ const CasesTab = ({
         }
     }, [casesExportData, casesShouldPrint, handlePrintCaseReport]);
 
-    // Handle export to Excel
-    const handleExportExcel = useCallback(
-        async (exportData) => {
-            setLoading(false);
-            if (exportData.length === 0) {
-                setSnackbar({
-                    open: true,
-                    message: 'Нет данных для экспорта.',
-                    severity: 'warning',
-                });
-                return;
-            }
-            try {
-                const workbook = new ExcelJS.Workbook();
-                const worksheet = workbook.addWorksheet('Отчет');
-
-                // Add headers
-                worksheet.columns = [
-                    { header: 'Название дела', key: 'name', width: 30 },
-                    { header: 'Описание дела', key: 'description', width: 30 },
-                    { header: 'Следователь', key: 'investigator_name', width: 25 },
-                    { header: 'Отделение', key: 'department_name', width: 30 },
-                    { header: 'Дата создания', key: 'created', width: 20 },
-                    { header: 'Дата обновления', key: 'updated', width: 20 },
-                ];
-
-                // Add data
-                exportData.forEach((caseItem) => {
-                    worksheet.addRow({
-                        name: caseItem.name,
-                        description: caseItem.description,
-                        investigator_name: caseItem.investigator_name || 'Не указано',
-                        department_name: caseItem.department_name || 'Не указано',
-                        created: formatDate(caseItem.created),
-                        updated: formatDate(caseItem.updated),
-                    });
-                });
-
-                // Apply styles to headers
-                worksheet.getRow(1).font = { bold: true };
-
-                worksheet.eachRow({ includeEmpty: true }, (row) => {
-                    row.alignment = { wrapText: true };
-                });
-
-                // Generate buffer
-                const buffer = await workbook.xlsx.writeBuffer();
-
-                // Save file
-                const blob = new Blob([buffer], { type: 'application/octet-stream' });
-                saveAs(blob, 'Отчет_по_делам.xlsx');
-            } catch (error) {
-                console.error('Ошибка при экспорте в Excel:', error);
-                setSnackbar({
-                    open: true,
-                    message: 'Ошибка при экспорте в Excel.',
-                    severity: 'error',
-                });
-            }
-        },
-        [setSnackbar]
-    );
-
     // Handlers for barcode scanning
     const [openBarcodeDialog, setOpenBarcodeDialog] = useState(false);
     const [scannedBarcode, setScannedBarcode] = useState('');
     const barcodeInputRef = useRef();
+
+    // Фиксированные высоты строк и заголовков
+    const rowHeight = 52; // Стандартная высота строки
+    const headerHeight = 56; // Высота заголовка таблицы
+    // Устанавливаем высоту таблицы
+    const tableHeight = (cases.length > 0 ? Math.min(cases.length, pageSize) : 7) * rowHeight + headerHeight;
+
 
     const handleOpenBarcodeDialog = () => {
         setOpenBarcodeDialog(true);
@@ -356,7 +435,7 @@ const CasesTab = ({
         if (scannedBarcode.trim() === '') {
             setSnackbar({
                 open: true,
-                message: 'Пожалуйста, отсканируйте штрихкод.',
+                message: t('common.barcode.error_no_barcode'),
                 severity: 'warning',
             });
             return;
@@ -364,21 +443,21 @@ const CasesTab = ({
 
         try {
             const response = await axios.get('/api/cases/get_by_barcode/', {
-                params: { barcode: scannedBarcode },
+                params: { barcode: scannedBarcode.length === 13 ? scannedBarcode : "0" + scannedBarcode },
             });
             const caseData = response.data;
             // Redirect to case detail page
             navigate(`/cases/${caseData.id}/`);
         } catch (error) {
             console.error(
-                'Ошибка при поиске дела по штрихкоду:',
+                t('common.barcode.error_find_case'),
                 error.response?.data || error
             );
             setSnackbar({
                 open: true,
                 message:
                     error.response?.data?.detail ||
-                    'Ошибка при поиске дела по штрихкоду.',
+                    t('common.barcode.error_find_case'),
                 severity: 'error',
             });
         } finally {
@@ -416,7 +495,7 @@ const CasesTab = ({
                     selectedCase={selectedCase}
                     sortConfig={sortConfig}
                     setSortConfig={setSortConfig}
-
+                    tableHeight={tableHeight}
                 />
 
                 {/* Pagination */}

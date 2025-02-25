@@ -14,6 +14,7 @@ import {
 } from '@mui/material';
 import { useState, useEffect } from 'react';
 import axios from '../../axiosConfig';
+import { useTranslation } from 'react-i18next';
 
 export default function DialogAlertNewStatus({
   open,
@@ -24,6 +25,7 @@ export default function DialogAlertNewStatus({
   setSnackbar,
   id, // ID дела
 }) {
+  const { t } = useTranslation();
   const [documents, setDocuments] = useState([]);
   const [selectedDocumentId, setSelectedDocumentId] = useState('');
   const [loading, setLoading] = useState(true);
@@ -38,16 +40,16 @@ export default function DialogAlertNewStatus({
           setLoading(false);
         })
         .catch((error) => {
-          console.error('Ошибка при получении документов:', error);
+          console.error(t('common.errors.error_load_documents'), error);
           setSnackbar({
             open: true,
-            message: 'Ошибка при загрузке документов.',
+            message: t('common.errors.error_load_documents'),
             severity: 'error',
           });
           setLoading(false);
         });
     }
-  }, [open, id, setSnackbar]);
+  }, [open, id, setSnackbar, t]);
 
   const handleCloseDialog = () => {
     setOpenAlertNewStatusDialog(false);
@@ -59,7 +61,7 @@ export default function DialogAlertNewStatus({
     if (!selectedDocumentId) {
       setSnackbar({
         open: true,
-        message: 'Пожалуйста, выберите документ.',
+        message: t('common.errors.error_select_document'),
         severity: 'error',
       });
       return;
@@ -71,22 +73,21 @@ export default function DialogAlertNewStatus({
 
   return (
     <Dialog open={open} onClose={handleCloseDialog} fullWidth maxWidth="sm">
-      <DialogTitle>Изменение статуса вещественного доказателства</DialogTitle>
+      <DialogTitle>{t('case_detail.components.dialog_alert_new_status.title')}</DialogTitle>
       <DialogContent>
         {loading ? (
           <CircularProgress />
         ) : (
           <>
             <p>
-              Пожалуйста, выберите документ, на основании которого производится
-              действие.
+              {t('case_detail.components.dialog_alert_new_status.description')}
             </p>
             <FormControl fullWidth>
-              <InputLabel id="document-select-label">Документ</InputLabel>
+              <InputLabel id="document-select-label">{t('documents.document')}</InputLabel>
               <Select
                 labelId="document-select-label"
                 value={selectedDocumentId}
-                label="Документ"
+                label={t('documents.document')}
                 onChange={(e) => setSelectedDocumentId(e.target.value)}
               >
                 {documents.map((doc) => (
@@ -100,63 +101,11 @@ export default function DialogAlertNewStatus({
         )}
       </DialogContent>
       <DialogActions>
-        <Button onClick={handleCloseDialog}>Отмена</Button>
+        <Button onClick={handleCloseDialog}>{t('common.buttons.cancel')}</Button>
         <Button onClick={handleFormSubmit} color="primary" disabled={loading}>
-          Подтвердить
+          {t('common.buttons.confirm')}
         </Button>
       </DialogActions>
     </Dialog>
   );
 }
-
-
-// // frontend/src/components/CaseDetailComponents/DialogAlertNewStatus.jsx
-// import {
-//     Button,
-//     TextField,
-//     FormControl,
-//     InputLabel,
-//     Select,
-//     MenuItem,
-// } from '@mui/material';
-//
-// import { StyledButton } from '../ui/StyledComponents';
-// import { useState } from 'react';
-// import axios from '../../axiosConfig';
-// import { EVIDENCE_TYPES } from '../../constants/evidenceTypes';
-// import StyledDialog from '../ui/StyledDialog';
-// import { StyledTextField } from '../ui/StyledTextfield';
-//
-// export default function DialogAlertNewStatus({ open, setOpenAlertNewStatusDialog, SubmitChangeEvidenceStatus,evidenceId, newStatus, setSnackbar, id }) {
-//
-//     const handleCloseDialog = () => {
-//         setOpenAlertNewStatusDialog(false);
-//     };
-//
-//     const handleFormSubmit = (event) => {
-//         event.preventDefault();
-//         SubmitChangeEvidenceStatus(evidenceId, newStatus);
-//         handleCloseDialog();
-//     };
-//     return (
-//         <>
-//             <StyledDialog title={"Изменить статус вещдока"} open={open} setOpen={setOpenAlertNewStatusDialog} >
-//                 {{
-//                     content: (
-//                         <>
-//                             <p>Уверены, что хотите изменить статус?
-//                                 Это действие нельзя отменить
-//                             </p>
-//                         </>
-//                     ),
-//                     actions: (
-//                         <>
-//                             <Button onClick={handleCloseDialog}>Отмена</Button>
-//                             <StyledButton onClick={handleFormSubmit}>Подтвердить</StyledButton>
-//                         </>
-//                     )
-//                 }}
-//             </StyledDialog>
-//         </>
-//     );
-// }

@@ -1,0 +1,15 @@
+# docker/Dockerfile.coturn
+FROM coturn/coturn:edge-debian-amd64
+
+# При желании можно скопировать свой конфигурационный файл:
+# COPY turnserver.conf /etc/coturn/turnserver.conf
+# Тогда CMD может быть короче, например:
+# CMD ["turnserver", "-c", "/etc/coturn/turnserver.conf", "--log-file=stdout"]
+
+# По умолчанию entrypoint (docker-entrypoint.sh) уже есть в образе coturn.
+# Если хотим, переопределяем CMD, ENV и т.д.
+# Здесь задаём запуск с нужными параметрами:
+
+
+
+CMD ["--log-file=stdout","--external-ip=80.254.125.77","--min-port=49160","--max-port=49200","--realm=myrealm.example","--user=turnuser:apshubersh","--lt-cred-mech","--no-multicast-peers","--no-cli"]

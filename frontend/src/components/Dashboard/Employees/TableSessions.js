@@ -1,18 +1,22 @@
-// frontend/src/components/Dashboard/Employees/Table.js
+// frontend/src/components/Dashboard/Employees/TableSessions.js
 import React, { useMemo, useRef, useEffect, useState } from 'react';
-import { DataGridPro } from '@mui/x-data-grid-pro';
-import { Paper, Typography, Box, useTheme } from '@mui/material';
+import { Paper, Typography, Box, Chip, Tooltip, useTheme } from '@mui/material';
 import Loading from '../../Loading';
 import { format } from 'date-fns';
 import ruLocale from 'date-fns/locale/ru';
 import { LicenseInfo } from '@mui/x-license';
 import PropTypes from 'prop-types';
 import { StyledDataGridPro } from '../../ui/Tables';
+import EventAvailableIcon from '@mui/icons-material/EventAvailable';
+import EventBusyIcon from '@mui/icons-material/EventBusy';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import CancelIcon from '@mui/icons-material/Cancel';
+import { useTranslation } from 'react-i18next';
 
 // Устанавливаем лицензионный ключ (замените на ваш собственный ключ)
 LicenseInfo.setLicenseKey('d7a42a252b29f214a57d3d3f80b1e8caTz0xMjM0NSxFPTE3MzI1NzE1ODEwNTczLFM9cHJvLExNPXN1YnNjcmlwdGlvbixQVj1wZXJwZXR1YWwsS1Y9Mg==');
 
-const EmployeesTable = ({
+const EmployeesTableSessions = ({
     user,
     isLoading,
     employees,
@@ -20,41 +24,50 @@ const EmployeesTable = ({
     handleEmployeeSelect,
     tableHeight,
 }) => {
+    const { t } = useTranslation();
     const theme = useTheme();
     const tableContainerRef = useRef(null);
-    const stripeRef = useRef(null);
     const [stripeStyle, setStripeStyle] = useState({
         top: 0,
         height: 0,
     });
+    console.log(employees, "EmployeesSessions");
 
     // Преобразование данных сотрудников для DataGridPro
     const rows = useMemo(
         () =>
             employees.map((employee) => ({
-                id: employee.id,
-                name: `${employee.last_name || 'Не указано'} ${employee.first_name || 'Не указано'}`,
-                email: employee.email || 'Не указано',
-                rank: employee.rank || 'Не указано',
-                role_display: employee.role_display || 'Не указано',
-                department_name: employee.department_name || 'Не указано',
-                is_active: employee.is_active,
-                is_active_display: employee.is_active ? 'Активен' : 'Неактивен',
-                last_login: employee.last_login
-                    ? format(new Date(employee.last_login), 'dd.MM.yyyy HH:mm', { locale: ruLocale })
-                    : 'Никогда',
+                id: employee.id, // Уникальный идентификатор
+                name: `${employee.user.last_name || t('common.messages.not_specified')} ${employee.user.first_name || t('common.messages.not_specified')}`,
+                email: employee.user.email || t('common.messages.not_specified'),
+                rank: employee.user.rank || t('common.messages.not_specified'),
+                role_display: employee.role_display || t('common.messages.not_specified'),
+                department_name: employee.department_name || t('common.messages.not_specified'),
+                active: employee.active,
+                active_display: employee.active
+                    ? t('common.status.online')
+                    : t('common.status.offline'),
+                // Создаём поле 'sessions' для объединения входа и выхода
+                sessions: {
+                    login: employee.login
+                        ? format(new Date(employee.login), 'dd.MM.yyyy HH:mm', { locale: ruLocale })
+                        : t('common.status.never'),
+                    logout: employee.logout
+                        ? format(new Date(employee.logout), 'dd.MM.yyyy HH:mm', { locale: ruLocale })
+                        : t('common.status.never'),
+                },
             })),
-        [employees]
+        [employees, t]
     );
 
-    // Определение столбцов для DataGridPro
+    // Определение столбцов для DataGridPro с объединённой колонкой 'Сессии'
     const columns = useMemo(
         () => [
             {
                 field: 'name',
-                headerName: 'Сотрудник',
+                headerName: t('common.standard.label_employee'),
                 flex: 1,
-                minWidth: 200,
+                minWidth: 230,
                 sortable: false,
                 renderCell: (params) => (
                     <Box sx={{ display: 'flex', flexDirection: 'column' }}>
@@ -79,9 +92,9 @@ const EmployeesTable = ({
             },
             {
                 field: 'rank_role',
-                headerName: 'Звание и Роль',
+                headerName: t('common.table_headers.role_rank'),
                 flex: 1,
-                minWidth: 150,
+                minWidth: 200,
                 sortable: false,
                 renderCell: (params) => (
                     <Box sx={{ display: 'flex', flexDirection: 'column' }}>
@@ -90,7 +103,7 @@ const EmployeesTable = ({
                             noWrap
                             sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}
                         >
-                            {params.row.rank || 'Не указано'}
+                            {params.row.rank || t('common.messages.not_specified')}
                         </Typography>
                         <Typography
                             variant="body2"
@@ -98,16 +111,16 @@ const EmployeesTable = ({
                             noWrap
                             sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}
                         >
-                            {params.row.role_display || 'Не указано'}
+                            {params.row.role_display || t('common.messages.not_specified')}
                         </Typography>
                     </Box>
                 ),
             },
             {
                 field: 'department_name',
-                headerName: 'Отделение',
+                headerName: t('common.standard.label_department'),
                 flex: 1,
-                minWidth: 150,
+                minWidth: 200,
                 sortable: false,
                 renderCell: (params) => (
                     <Typography
@@ -115,48 +128,74 @@ const EmployeesTable = ({
                         noWrap
                         sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}
                     >
-                        {params.value || 'Не указано'}
+                        {params.value || t('common.messages.not_specified')}
                     </Typography>
                 ),
             },
             {
-                field: 'is_active_display',
-                headerName: 'Статус',
+                field: 'active_display',
+                headerName: t('common.table_headers.status'),
                 flex: 0.5,
                 minWidth: 100,
                 sortable: false,
                 renderCell: (params) => (
-                    <Typography
-                        variant="body2"
-                        color={params.value === 'Активен' ? 'success.main' : 'error.main'}
-                        noWrap
-                        sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}
-                    >
-                        {params.value}
-                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        {params.value === t('common.status.online') ? (
+                            <CheckCircleIcon color="success" sx={{ mr: 0.5 }} />
+                        ) : (
+                            <CancelIcon color="error" sx={{ mr: 0.5 }} />
+                        )}
+                        <Typography
+                            variant="body2"
+                            color={params.value === t('common.status.online') ? 'success.main' : 'error.main'}
+                            noWrap
+                            sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}
+                        >
+                            {params.value}
+                        </Typography>
+                    </Box>
                 ),
             },
             {
-                field: 'last_login',
-                headerName: 'Дата последнего входа',
-                flex: 1,
-                minWidth: 160,
+                field: 'sessions',
+                headerName: t('common.table_headers.sessions'),
+                flex: 0.7,
+                minWidth: 200,
                 sortable: false,
                 renderCell: (params) => (
-                    <Typography
-                        variant="body2"
-                        noWrap
-                        sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}
-                    >
-                        {params.value}
-                    </Typography>
+                    <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                        {/* Дата последнего входа */}
+                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
+                            <Tooltip title={t('dashboard.tabs.employees.employees_report_session_pdf.session_in')} arrow>
+                                <EventAvailableIcon fontSize="small" color="primary" sx={{ mr: 0.5 }} />
+                            </Tooltip>
+                            <Chip
+                                label={params.value.login}
+                                color={params.value.login !== t('common.status.never') ? 'primary' : 'default'}
+                                size="small"
+                                sx={{ fontWeight: 'bold' }}
+                            />
+                        </Box>
+                        {/* Дата последнего выхода */}
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                            <Tooltip title={t('dashboard.tabs.employees.employees_report_session_pdf.session_out')} arrow>
+                                <EventBusyIcon fontSize="small" color="secondary" sx={{ mr: 0.5 }} />
+                            </Tooltip>
+                            <Chip
+                                label={params.value.logout}
+                                color={params.value.logout !== t('common.status.never') ? 'secondary' : 'default'}
+                                size="small"
+                                sx={{ fontWeight: 'bold' }}
+                            />
+                        </Box>
+                    </Box>
                 ),
             },
         ],
-        []
+        [t]
     );
 
-    console.log('я перезагрузился');
+    // console.log('я перезагрузился');
 
     // Обновление позиции полоски при изменении выбранной строки
     useEffect(() => {
@@ -248,86 +287,19 @@ const EmployeesTable = ({
                         selected={true}
                         selected_column={selectedEmployee}
                         handleRowClick={handleEmployeeSelect}
+                        sx={{
+                            '& .MuiDataGrid-cell': {
+                                py: 1, // Уменьшаем вертикальные отступы для более компактного вида
+                            },
+                        }}
                     />
-                    // <DataGridPro
-                    //     rows={rows}
-                    //     columns={columns.map((col) => ({
-                    //         ...col,
-                    //         flex: col.flex || 1,
-                    //         minWidth: col.minWidth || 150,
-                    //     }))}
-                    //     disableColumnMenu
-                    //     disableSelectionOnClick
-                    //     getRowHeight={() => 'auto'}
-                    //     hideFooter
-                    //     onRowClick={(params) => handleEmployeeSelect(params.row)}
-                    //     getRowClassName={(params) =>
-                    //         selectedEmployee && selectedEmployee.id === params.row.id ? 'selected-row' : ''
-                    //     }
-                    //     sx={{
-                    //         '& .MuiDataGrid-cell': {
-                    //             whiteSpace: 'nowrap',
-                    //             overflow: 'hidden',
-                    //             textOverflow: 'ellipsis',
-                    //             padding: theme.spacing(1),
-                    //             borderBottom: `1px solid ${theme.palette.divider}`,
-                    //         },
-                    //         '& .MuiDataGrid-columnHeaders': {
-                    //             backgroundColor: theme.palette.grey[100],
-                    //             borderBottom: `1px solid ${theme.palette.divider}`,
-                    //             fontWeight: 'bold',
-                    //             outline: 'none',
-                    //         },
-                    //         '& .MuiDataGrid-columnHeader:focus': {
-                    //             outline: 'none',
-                    //         },
-                    //         '& .MuiDataGrid-columnHeader:focus-within': {
-                    //             outline: 'none',
-                    //         },
-                    //         '& .MuiDataGrid-columnHeaderTitle': {
-                    //             fontWeight: 'bold',
-                    //         },
-                    //         '& .MuiDataGrid-row': {
-                    //             '&:nth-of-type(odd)': {
-                    //                 backgroundColor: theme.palette.action.hover,
-                    //             },
-                    //             cursor: 'pointer',
-                    //         },
-                    //         '& .MuiDataGrid-row:hover': {
-                    //             backgroundColor: theme.palette.action.selected,
-                    //         },
-                    //         '& .MuiDataGrid-cell:focus': {
-                    //             outline: 'none',
-                    //         },
-                    //         '& .MuiDataGrid-row:focus': {
-                    //             outline: 'none',
-                    //         },
-                    //         '& .MuiDataGrid-cell:focus-within': {
-                    //             outline: 'none',
-                    //         },
-                    //         '& .MuiDataGrid-row.Mui-selected': {
-                    //             backgroundColor: 'inherit'
-                    //         },
-                    //         '& .selected-row': {
-                    //             backgroundColor: "rgba(25, 118, 210, 0.08) !important",
-                    //             color: theme.palette.text.primary,
-                    //             fontWeight: '500',
-                    //             boxShadow: `
-                    //                 inset 0 0 10px rgba(0, 0, 0, 0.1), 
-                    //                 0 4px 6px rgba(0, 0, 0, 0.05)`,
-                    //             // borderRadius: '4px',
-                    //             transition: 'all 0.1s ease-in-out',
-                    //             // Убираем borderLeft, так как полоска отдельно
-                    //         },
-                    //     }}
-                    // />
                 )}
             </Paper>
         </Box>
     );
 };
 
-EmployeesTable.propTypes = {
+EmployeesTableSessions.propTypes = {
     user: PropTypes.object.isRequired,
     isLoading: PropTypes.bool.isRequired,
     employees: PropTypes.array.isRequired,
@@ -336,7 +308,7 @@ EmployeesTable.propTypes = {
     tableHeight: PropTypes.number.isRequired,
 };
 
-export default EmployeesTable;
+export default EmployeesTableSessions;
 
 // // frontend/src/components/Dashboard/Employees/Table.js
 // import React, { useMemo } from 'react';
@@ -366,11 +338,11 @@ export default EmployeesTable;
 //         () =>
 //             employees.map((employee) => ({
 //                 id: employee.id,
-//                 name: `${employee.last_name || 'Не указано'} ${employee.first_name || 'Не указано'}`,
-//                 email: employee.email || 'Не указано',
-//                 rank: employee.rank || 'Не указано',
-//                 role_display: employee.role_display || 'Не указано',
-//                 department_name: employee.department_name || 'Не указано',
+//                 name: `${employee.last_name || t('common.messages.not_specified')} ${employee.first_name || t('common.messages.not_specified')}`,
+//                 email: employee.email || t('common.messages.not_specified'),
+//                 rank: employee.rank || t('common.messages.not_specified'),
+//                 role_display: employee.role_display || t('common.messages.not_specified'),
+//                 department_name: employee.department_name || t('common.messages.not_specified'),
 //                 is_active: employee.is_active,
 //                 is_active_display: employee.is_active ? 'Активен' : 'Неактивен',
 //                 last_login: employee.last_login
@@ -423,7 +395,7 @@ export default EmployeesTable;
 //                             noWrap
 //                             sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}
 //                         >
-//                             {params.row.rank || 'Не указано'}
+//                             {params.row.rank || t('common.messages.not_specified')}
 //                         </Typography>
 //                         <Typography
 //                             variant="body2"
@@ -431,7 +403,7 @@ export default EmployeesTable;
 //                             noWrap
 //                             sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}
 //                         >
-//                             {params.row.role_display || 'Не указано'}
+//                             {params.row.role_display || t('common.messages.not_specified')}
 //                         </Typography>
 //                     </Box>
 //                 ),
@@ -448,7 +420,7 @@ export default EmployeesTable;
 //                         noWrap
 //                         sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}
 //                     >
-//                         {params.value || 'Не указано'}
+//                         {params.value || t('common.messages.not_specified')}
 //                     </Typography>
 //                 ),
 //             },

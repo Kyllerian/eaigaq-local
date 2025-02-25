@@ -1,0 +1,55 @@
+# janus.transport.http.jcfg
+
+general: {
+    # Логирование JSON: indented/plain/compact
+    json = "indented"
+
+    # Базовый путь, по которому Janus API будет доступен (и WebSocket тоже)
+    base_path = "/janus"
+
+    # Включаем plain HTTP
+    http = true
+    port = 8088
+
+    # Выключаем HTTPS
+    https = false
+
+    # Если нужно привязать к конкретному IP/интерфейсу, раскомментируйте:
+    #interface = "eth0"
+    #ip = "192.168.0.1"
+    #secure_port = 8089
+    #secure_interface = "eth0"
+    #secure_ip = "192.168.0.1"
+}
+
+admin: {
+    # Включаем админ/монитор интерфейс (HTTP) на порту 7088
+    admin_base_path = "/admin"
+    admin_http = true
+    admin_port = 7088
+
+    # Если HTTPS для admin нужно — раскомментируйте и настройте:
+    #admin_https = true
+    #admin_secure_port = 7889
+
+    # Аналогично, можно задать interface/IP
+    #admin_interface = "eth0"
+    #admin_ip = "192.168.0.1"
+
+    # Или ограничить доступ по IP (ACL)
+    #admin_acl = "127.,192.168.0."
+}
+
+cors: {
+    # Если нужно, укажите разрешённый Origin
+    #allow_origin = "https://example.com"
+    #enforce_cors = true
+}
+
+certificates: {
+    # Если HTTPS/secure admin нужен, пропишите пути к сертификатам
+    #cert_pem = "/path/to/cert.pem"
+    #cert_key = "/path/to/key.pem"
+    #cert_pwd = "secretpassphrase"
+    #ciphers = "..."
+}

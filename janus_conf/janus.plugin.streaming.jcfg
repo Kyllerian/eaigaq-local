@@ -1,0 +1,4 @@
+general: {
+    # Устанавливаем admin_key, чтобы управление mountpoint'ами (create/destroy) через API требовало этот ключ
+    admin_key = "apshubersh"
+}

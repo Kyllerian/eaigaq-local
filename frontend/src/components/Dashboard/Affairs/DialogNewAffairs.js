@@ -10,8 +10,10 @@ import DashboardDialog from '../../ui/DashboardDialog';
 import { useState } from 'react';
 import { StyledTextField } from '../../ui/StyledTextfield';
 import { useMutation, useQueryClient } from 'react-query';
+import { useTranslation } from 'react-i18next';
 
 export default function DialogNewAffairs({ openCaseDialog, setOpenCaseDialog, setSnackbar }) {
+    const { t } = useTranslation();
     const [newCase, setNewCase] = useState({ name: '', description: '' });
 
     const queryClient = useQueryClient();
@@ -36,17 +38,17 @@ export default function DialogNewAffairs({ openCaseDialog, setOpenCaseDialog, se
                 handleCloseCaseDialog();
                 setSnackbar({
                     open: true,
-                    message: 'Дело успешно создано.',
+                    message: t('dashboard.tabs.cases.dialog_new_affairs.success_case_created'),
                     severity: 'success',
                 });
             },
             onError: (error) => {
-                console.error('Ошибка при создании дела:', error.response?.data || error);
+                console.error(t('dashboard.tabs.cases.dialog_new_affairs.error_create_case'), error.response?.data || error);
                 setSnackbar({
                     open: true,
                     message:
                         error.response?.data?.detail ||
-                        'Ошибка при создании дела.',
+                        t('dashboard.tabs.cases.dialog_new_affairs.error_create_case'),
                     severity: 'error',
                 });
             },
@@ -60,7 +62,7 @@ export default function DialogNewAffairs({ openCaseDialog, setOpenCaseDialog, se
         if (!newCase.name.trim() || !newCase.description.trim()) {
             setSnackbar({
                 open: true,
-                message: 'Пожалуйста, заполните все обязательные поля.',
+                message: t('common.errors.error_fill_required_fields'),
                 severity: 'warning',
             });
             return;
@@ -71,142 +73,50 @@ export default function DialogNewAffairs({ openCaseDialog, setOpenCaseDialog, se
     };
 
     return (
-        <>
-            <DashboardDialog
-                open={openCaseDialog}
-                title={"Добавить новое дело"}
-                setState={setNewCase}
-                setOpen={setOpenCaseDialog}
-            >
-                {{
-                    content: (
-                        <>
-                            <StyledTextField
-                                autoFocus
-                                label="Название дела"
-                                name="name"
-                                value={newCase.name}
-                                onChange={handleCaseInputChange}
-                                required
-                                inputProps={{ maxLength: 255 }}
-                            />
+        <DashboardDialog
+            open={openCaseDialog}
+            title={t('dashboard.tabs.cases.dialog_new_affairs.dialog_title')}
+            setState={setNewCase}
+            setOpen={setOpenCaseDialog}
+        >
+            {{
+                content: (
+                    <>
+                        <StyledTextField
+                            autoFocus
+                            label={t('cases.case_name_label')}
+                            name="name"
+                            value={newCase.name}
+                            onChange={handleCaseInputChange}
+                            required
+                            inputProps={{ maxLength: 255 }}
+                        />
 
-                            <StyledTextField
-                                label="Описание дела"
-                                name="description"
-                                value={newCase.description}
-                                onChange={handleCaseInputChange}
-                                required
-                                multiline
-                                rows={4}
-                                inputProps={{ maxLength: 1000 }}
-                            />
-                        </>
-                    ),
-                    actions: (
-                        <>
-                            <Button onClick={handleCloseCaseDialog}>Отмена</Button>
-                            <StyledButton
-                                onClick={handleCaseFormSubmit}
-                                disabled={createCaseMutation.isLoading}
-                            >
-                                {createCaseMutation.isLoading ? 'Создание...' : 'Создать'}
-                            </StyledButton>
-                        </>
-                    )
-                }}
-            </DashboardDialog>
-        </>
+                        <StyledTextField
+                            label={t('cases.case_description_label')}
+                            name="description"
+                            value={newCase.description}
+                            onChange={handleCaseInputChange}
+                            required
+                            multiline
+                            rows={4}
+                            inputProps={{ maxLength: 1000 }}
+                        />
+                    </>
+                ),
+                actions: (
+                    <>
+                        <Button onClick={handleCloseCaseDialog}>{t('common.buttons.cancel')}</Button>
+                        <StyledButton
+                            onClick={handleCaseFormSubmit}
+                            disabled={createCaseMutation.isLoading}
+                        >
+                            {createCaseMutation.isLoading ? t('common.buttons.creating')
+                                : t('common.buttons.create')}
+                        </StyledButton>
+                    </>
+                )
+            }}
+        </DashboardDialog>
     );
 }
-
-// // frontend/src/components/Dashboard/Affairs/DialogNewAffairs.js
-// import {
-//     Button,
-//     TextField,
-// } from '@mui/material';
-//
-// import axios from '../../../axiosConfig';
-// import { StyledButton } from '../../ui/StyledComponents';
-// import DashboardDialog from '../../ui/DashboardDialog';
-// import { useState } from 'react';
-// import { StyledTextField } from '../../ui/StyledTextfield';
-//
-//
-// export default function DialogNewAffairs({ openCaseDialog, setOpenCaseDialog, setSnackbar, setCases, cases }) {
-//     const [newCase, setNewCase] = useState({ name: '', description: '' });
-//
-//     const handleCloseCaseDialog = () => {
-//         setOpenCaseDialog(false);
-//         setNewCase({ name: '', description: '' });
-//     };
-//
-//
-//   const handleCaseInputChange = (event) => {
-//     const { name, value } = event.target;
-//     setNewCase({ ...newCase, [name]: value });
-//   };
-//
-//   const handleCaseFormSubmit = (event) => {
-//     event.preventDefault();
-//
-//     axios
-//       .post('/api/cases/', newCase)
-//       .then((response) => {
-//         const updatedCases = [...cases, response.data];
-//         setCases(updatedCases);
-//         handleCloseCaseDialog();
-//         setSnackbar({
-//           open: true,
-//           message: 'Дело успешно создано.',
-//           severity: 'success',
-//         });
-//       })
-//       .catch((error) => {
-//         setSnackbar({
-//           open: true,
-//           message: 'Ошибка при создании дела.',
-//           severity: 'error',
-//         });
-//       });
-//   };
-//     return (
-//         <>
-//             <DashboardDialog open={openCaseDialog} title={"Добавить новое дело"} setState={setNewCase} setOpen={setOpenCaseDialog} >
-//                 {{
-//                     content: (
-//                         <>
-//                             <StyledTextField autoFocus
-//                                 label="Название дела"
-//                                 name="name"
-//                                 value={newCase.name}
-//                                 onChange={handleCaseInputChange}
-//                                 required
-//                                 inputProps={{ maxLength: 255 }}
-//                             />
-//
-//                             <StyledTextField
-//                                 label="Описание дела"
-//                                 name="description"
-//                                 value={newCase.description}
-//                                 onChange={handleCaseInputChange}
-//                                 required
-//                                 multiline
-//                                 rows={4}
-//                                 inputProps={{ maxLength: 1000 }}
-//                             />
-//                         </>
-//                     ),
-//                     actions: (
-//                         <>
-//                             <Button onClick={handleCloseCaseDialog}>Отмена</Button>
-//                             <StyledButton onClick={handleCaseFormSubmit}>
-//                                 Создать
-//                             </StyledButton>
-//                         </>
-//                     )
-//                 }}
-//             </DashboardDialog>
-//         </>
-//     );
-// }

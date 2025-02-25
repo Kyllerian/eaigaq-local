@@ -20,6 +20,7 @@ import { StyledTextFieldWithoutMargin } from '../ui/StyledTextfield';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import { useDropzone } from 'react-dropzone';
 import { getFileTypeIcon } from '../../utils/fileTypeIcons';
+import { useTranslation } from 'react-i18next';
 
 export default function CaseDetailInformation({
   id,
@@ -29,6 +30,7 @@ export default function CaseDetailInformation({
   setSnackbar,
   InvestigatorName,
 }) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [documents, setDocuments] = useState([]);
@@ -50,15 +52,15 @@ export default function CaseDetailInformation({
         setCaseItem(response.data);
         setSnackbar({
           open: true,
-          message: 'Дело успешно обновлено.',
+          message: t('common.success.success_case_updated'),
           severity: 'success',
         });
       })
       .catch((error) => {
-        console.error('Ошибка при обновлении дела:', error);
+        console.error(t('common.errors.error_case_updated'), error);
         setSnackbar({
           open: true,
-          message: 'Ошибка при обновлении дела.',
+          message: t('common.errors.error_case_updated'),
           severity: 'error',
         });
       });
@@ -108,7 +110,7 @@ export default function CaseDetailInformation({
     if (selectedFiles.length === 0) {
       setSnackbar({
         open: true,
-        message: 'Пожалуйста, выберите файлы для загрузки.',
+        message: t('common.errors.error_select_files'),
         severity: 'warning',
       });
       return;
@@ -132,10 +134,10 @@ export default function CaseDetailInformation({
           setDocuments((prev) => [...prev, response.data]);
         })
         .catch((error) => {
-          console.error('Ошибка при загрузке документа:', error);
+          console.error(t('common.errors.error_file_upload'), error);
           setSnackbar({
             open: true,
-            message: `Ошибка при загрузке документа ${file.name}.`,
+            message: `${t('common.errors.error_file_upload')} ${file.name}.`,
             severity: 'error',
           });
         });
@@ -146,7 +148,7 @@ export default function CaseDetailInformation({
         setSelectedFiles([]);
         setSnackbar({
           open: true,
-          message: 'Документы успешно загружены.',
+          message: t('common.success.success_files_uploaded'),
           severity: 'success',
         });
       })
@@ -169,12 +171,12 @@ export default function CaseDetailInformation({
         <Grid container spacing={2}>
           <Grid item xs={12}>
             <Typography variant="body2">
-              <strong>Следователь по делу:</strong> {InvestigatorName}
+              <strong>{t('cases.investigator_label')}</strong> {InvestigatorName}
             </Typography>
           </Grid>
           <Grid item xs={12}>
             <StyledTextFieldWithoutMargin
-              label="Название дела"
+              label={t('cases.case_name_label')}
               name="name"
               value={caseItem.name}
               onChange={handleInfoChange}
@@ -184,7 +186,7 @@ export default function CaseDetailInformation({
           </Grid>
           <Grid item xs={12}>
             <StyledTextFieldWithoutMargin
-              label="Описание дела"
+              label={t('cases.case_description_label')}
               name="description"
               value={caseItem.description}
               onChange={handleInfoChange}
@@ -197,7 +199,7 @@ export default function CaseDetailInformation({
           {canEdit && (
             <Grid item xs={12} sx={{ textAlign: 'right' }}>
               <StyledButton onClick={handleInfoSave}>
-                Сохранить изменения
+                {t('common.buttons.save_changes')}
               </StyledButton>
             </Grid>
           )}
@@ -206,7 +208,7 @@ export default function CaseDetailInformation({
 
       <Paper elevation={1} sx={{ padding: theme.spacing(3) }}>
         <Typography variant="h6" gutterBottom>
-          Документы
+          {t('documents.documents_title')}
         </Typography>
         <Box
           {...getRootProps()}
@@ -223,15 +225,15 @@ export default function CaseDetailInformation({
           <CloudUploadIcon sx={{ fontSize: 48, color: theme.palette.grey[600] }} />
           <Typography variant="body1">
             {isDragActive
-              ? 'Отпустите файлы для загрузки'
-              : 'Перетащите файлы сюда или нажмите для выбора'}
+              ? t('documents.dropzone_hint_active')
+              : t('documents.dropzone_hint_inactive')}
           </Typography>
         </Box>
 
         {selectedFiles.length > 0 && (
           <>
             <Typography variant="subtitle1" sx={{ marginTop: theme.spacing(2) }}>
-              Файлы для загрузки:
+              {t('documents.files_to_upload')}
             </Typography>
             <List>
               {selectedFiles.map((fileObj, index) => (
@@ -243,7 +245,7 @@ export default function CaseDetailInformation({
                     primary={fileObj.file.name}
                     secondary={
                       <TextField
-                        label="Описание файла"
+                        label={t('documents.file_description_label')}
                         value={fileObj.description}
                         onChange={(e) => handleDescriptionChange(index, e.target.value)}
                         fullWidth
@@ -258,7 +260,7 @@ export default function CaseDetailInformation({
             </List>
             <Box sx={{ textAlign: 'right' }}>
               <StyledButton onClick={handleFileUpload} disabled={uploading}>
-                {uploading ? <CircularProgress size={24} /> : 'Загрузить файлы'}
+                {uploading ? <CircularProgress size={24} /> : t('documents.button_upload_files')}
               </StyledButton>
             </Box>
           </>
@@ -267,7 +269,7 @@ export default function CaseDetailInformation({
         <Divider sx={{ marginY: theme.spacing(2) }} />
 
         <Typography variant="subtitle1" gutterBottom>
-          Прикрепленные документы:
+          {t('documents.attached_documents_label')}
         </Typography>
         {documents.length > 0 ? (
           <List>
@@ -279,16 +281,16 @@ export default function CaseDetailInformation({
                 <ListItemText
                   primary={
                     <a href={doc.file} target="_blank" rel="noopener noreferrer">
-                      {doc.description || `Документ ${doc.id}`}
+                      {doc.description || `${t('documents.document')} ${doc.id}`}
                     </a>
                   }
-                  secondary={`Дата загрузки: ${new Date(doc.uploaded_at).toLocaleString()}`}
+                  secondary={`${t('documents.uploaded_date')}: ${new Date(doc.uploaded_at).toLocaleString()}`}
                 />
               </ListItem>
             ))}
           </List>
         ) : (
-          <Typography>Нет прикрепленных документов.</Typography>
+          <Typography>{t('documents.no_attached_documents')}</Typography>
         )}
       </Paper>
     </>

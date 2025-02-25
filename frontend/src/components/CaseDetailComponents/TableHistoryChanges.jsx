@@ -1,20 +1,27 @@
 // frontend/src/components/CaseDetailComponents/TableHistoryChanges.jsx
 
 import React, { forwardRef, useMemo } from 'react';
-import { DataGridPro } from '@mui/x-data-grid-pro';
-import { Typography, Box, useTheme } from '@mui/material';
+import { Typography, Box } from '@mui/material';
 import { formatDate } from '../../constants/formatDate';
 import getActionMessage_html from '../../constants/getActionMessageHTML';
-import getStatusLabel from '../../constants/getStatusLabel';
-import { fieldLabels } from '../../constants/fieldsLabels';
+import { useFieldLabels } from '../../constants/fieldsLabels';
 import { LicenseInfo } from '@mui/x-license';
-import {StyledDataGridPro} from "../ui/Tables";
+import { StyledDataGridPro } from "../ui/Tables";
+import { useTranslation } from 'react-i18next';
+import { useEvidenceStatuses } from '../../constants/evidenceStatuses';
 
 // Установите ваш лицензионный ключ для DataGridPro
 LicenseInfo.setLicenseKey('d7a42a252b29f214a57d3d3f80b1e8caTz0xMjM0NSxFPTE3MzI1NzE1ODEwNTczLFM9cHJvLExNPXN1YnNjcmlwdGlvbixQVj1wZXJwZXR1YWwsS1Y9Mg==');
 
+function getStatusLabel(value, statuses) {
+    const status = statuses.find((item) => item.value === value);
+    return status ? status.label : value;
+}
+
 const TableHistoryChanges = forwardRef(({ changeLogs, ...props }, ref) => {
-    const theme = useTheme();
+    const { t } = useTranslation();
+    const fieldLabels = useFieldLabels();
+    const statuses = useEvidenceStatuses();
 
     // Преобразование данных в строки для DataGridPro
     const rows = useMemo(() => {
@@ -36,7 +43,7 @@ const TableHistoryChanges = forwardRef(({ changeLogs, ...props }, ref) => {
                             .filter(([field]) => displayFields.includes(field))
                             .map(([field, values]) => (
                                 <div key={field}>
-                                    <strong>{fieldLabels[field] || field}</strong>: {field === 'status' ? getStatusLabel(values.old) : values.old} → {field === 'status' ? getStatusLabel(values.new) : values.new}
+                                    <strong>{fieldLabels[field] || field}</strong>: {field === 'status' ? getStatusLabel(values.old, statuses) : values.old} → {field === 'status' ? getStatusLabel(values.new, statuses) : values.new}
                                 </div>
                             ));
                     } else if (log.action === 'create') {
@@ -45,36 +52,36 @@ const TableHistoryChanges = forwardRef(({ changeLogs, ...props }, ref) => {
                             .filter(([field]) => displayFields.includes(field))
                             .map(([field, value]) => (
                                 <div key={field}>
-                                    <strong>{fieldLabels[field] || field}</strong>: {field === 'status' ? getStatusLabel(value) : value}
+                                    <strong>{fieldLabels[field] || field}</strong>: {field === 'status' ? getStatusLabel(value, statuses) : value}
                                 </div>
                             ));
                     } else if (log.action === 'delete') {
-                        changes = 'Объект был удален.';
+                        changes = t('common.messages.object_deleted');
                     } else {
-                        changes = 'Нет данных об изменениях.';
+                        changes = t('common.messages.no_change_data');
                     }
                 } catch (error) {
                     console.error('Ошибка парсинга данных лога:', error);
-                    changes = 'Нет данных об изменениях.';
+                    changes = t('common.messages.no_change_data');
                 }
             } else {
-                changes = 'Нет данных об изменениях.';
+                changes = t('common.messages.no_change_data');
             }
 
             return {
                 id: index,
                 dateTime: formatDate(log.created),
-                user: log.user ? log.user.full_name : 'Система',
+                user: log.user ? log.user.full_name : t('common.table_data.system_user'),
                 action: getActionMessage_html(log),
                 changes: changes,
             };
         });
-    }, [changeLogs]);
+    }, [changeLogs, t, statuses]);
 
     const columns = [
         {
             field: 'dateTime',
-            headerName: 'Дата и время',
+            headerName: t('common.table_headers.change_date_user'),
             sortable: false,
             width: 150,
             renderCell: (params) => (
@@ -83,7 +90,7 @@ const TableHistoryChanges = forwardRef(({ changeLogs, ...props }, ref) => {
         },
         {
             field: 'user',
-            headerName: 'Пользователь',
+            headerName: t('common.table_headers.change_user'),
             sortable: false,
             width: 200,
             renderCell: (params) => (
@@ -92,7 +99,7 @@ const TableHistoryChanges = forwardRef(({ changeLogs, ...props }, ref) => {
         },
         {
             field: 'action',
-            headerName: 'Действие',
+            headerName: t('common.table_headers.actions'),
             sortable: false,
             flex: 1,
             minWidth: 200,
@@ -102,7 +109,7 @@ const TableHistoryChanges = forwardRef(({ changeLogs, ...props }, ref) => {
         },
         {
             field: 'changes',
-            headerName: 'Изменения',
+            headerName: t('common.table_headers.change_data'),
             sortable: false,
             flex: 1,
             minWidth: 200,
@@ -115,274 +122,13 @@ const TableHistoryChanges = forwardRef(({ changeLogs, ...props }, ref) => {
     ];
 
     return (
-        <>
-            <StyledDataGridPro rows={rows}
-                columns={columns}
-                autoHeight
-                ref={ref} {...props}
-            />
-        </>
+        <StyledDataGridPro rows={rows}
+            columns={columns}
+            autoHeight
+            ref={ref} {...props}
+        />
     );
 });
 
 TableHistoryChanges.displayName = "TableHistoryChanges";
 export { TableHistoryChanges };
-
-// import {forwardRef} from 'react';
-// import {
-//     Table,
-//     TableCell,
-//     TableRow,
-//     TableHead,
-//     TableBody,
-// } from '@mui/material';
-// import {TableCellWrap} from '../ui/TableCell';
-// import {formatDate} from '../../constants/formatDate';
-// import getActionMessage from '../../constants/getActionMessage';
-// import getStatusLabel from '../../constants/getStatusLabel';
-// import {StyledTableCell} from '../ui/StyledComponents';
-// import {fieldLabels} from '../../constants/fieldsLabels';
-//
-//
-// const TableHistoryChanges = forwardRef(({changeLogs, ...props}, ref) => {
-//     return (
-//         <Table ref={ref} aria-label="Таблица истории изменений" {...props} >
-//             <TableHead>
-//                 <TableRow>
-//                     <StyledTableCell sx={{width: '15%'}}>Дата и время</StyledTableCell>
-//                     <StyledTableCell sx={{width: '25%'}}>Пользователь</StyledTableCell>
-//                     <StyledTableCell sx={{width: '30%'}}>Действие</StyledTableCell>
-//                     <StyledTableCell sx={{width: '30%'}}>Изменения</StyledTableCell>
-//                 </TableRow>
-//             </TableHead>
-//             <TableBody>
-//                 {changeLogs.map((log) => (
-//                     <TableRow key={log.id}>
-//                         <TableCell>{formatDate(log.created)}</TableCell>
-//                         <TableCell>
-//                             {log.user ? log.user.full_name : 'Система'}
-//                         </TableCell>
-//                         <TableCellWrap>{getActionMessage(log)}</TableCellWrap>
-//                         <TableCell style={{overflowWrap: 'anywhere', position: 'relative', paddingLeft: '1rem'}}>
-//                             {(() => {
-//                                 if (log.data && log.data.trim() !== '') {
-//                                     try {
-//                                         const data = JSON.parse(log.data);
-//                                         if (log.action === 'update') {
-//                                             if (log.fields.includes("investigator")) {
-//                                                 const displayFields = ['investigator', 'department'];
-//                                                 return Object.entries(data).map(([field, values]) => {
-//                                                     if (displayFields.includes(field)) {
-//                                                         return (
-//                                                             <div
-//                                                                 key={field}
-//                                                                 style={{
-//                                                                     borderLeft: '4px solid #ccc', // Полоска слева
-//                                                                     paddingLeft: '1rem', // Отступ после полоски
-//                                                                     marginBottom: '0.5rem', // Расстояние между элементами
-//                                                                 }}
-//                                                             >
-//                                                                 <strong>
-//                                                                     {fieldLabels[field] || field}
-//                                                                 </strong>
-//                                                                 : {values.old} → {values.new}
-//                                                             </div>
-//                                                         );
-//                                                     } else {
-//                                                         return null;
-//                                                     }
-//                                                 });
-//                                             } else {
-//                                                 const displayFields = ['name', 'description', 'status'];
-//                                                 return Object.entries(data).map(([field, values]) => {
-//                                                     if (displayFields.includes(field)) {
-//                                                         return (
-//                                                             <div
-//                                                                 key={field}
-//                                                                 style={{
-//                                                                     borderLeft: '4px solid #ccc', // Полоска слева
-//                                                                     paddingLeft: '1rem', // Отступ после полоски
-//                                                                     marginBottom: '0.5rem', // Расстояние между элементами
-//                                                                 }}
-//                                                             >
-//                                                                 <strong>
-//                                                                     {fieldLabels[field] || field}
-//                                                                 </strong>
-//                                                                 :{' '}
-//                                                                 {field === 'status'
-//                                                                     ? getStatusLabel(values.old)
-//                                                                     : values.old}{' '}
-//                                                                 →{' '}
-//                                                                 {field === 'status'
-//                                                                     ? getStatusLabel(values.new)
-//                                                                     : values.new}
-//                                                             </div>
-//                                                         );
-//                                                     } else {
-//                                                         return null;
-//                                                     }
-//                                                 });
-//                                             }
-//                                         } else if (log.action === 'create') {
-//                                             const displayFields = ['name', 'description', 'status'];
-//                                             return (
-//                                                 <div>
-//                                                     {Object.entries(data).map(([field, value]) => {
-//                                                         if (displayFields.includes(field)) {
-//                                                             return (
-//                                                                 <div
-//                                                                     key={field}
-//                                                                     style={{
-//                                                                         borderLeft: '4px solid #ccc', // Полоска слева
-//                                                                         paddingLeft: '1rem', // Отступ после полоски
-//                                                                         marginBottom: '0.5rem', // Расстояние между элементами
-//                                                                     }}
-//                                                                 >
-//                                                                     <strong>
-//                                                                         {fieldLabels[field] || field}
-//                                                                     </strong>
-//                                                                     :{' '}
-//                                                                     {field === 'status'
-//                                                                         ? getStatusLabel(value)
-//                                                                         : value}
-//                                                                 </div>
-//                                                             );
-//                                                         } else {
-//                                                             return null;
-//                                                         }
-//                                                     })}
-//                                                 </div>
-//                                             );
-//                                         } else if (log.action === 'delete') {
-//                                             return <div>Объект был удален.</div>;
-//                                         } else {
-//                                             return 'Нет данных об изменениях.';
-//                                         }
-//                                     } catch (error) {
-//                                         console.error('Ошибка парсинга данных лога:', error);
-//                                         return 'Нет данных об изменениях.';
-//                                     }
-//                                 } else {
-//                                     return 'Нет данных об изменениях.';
-//                                 }
-//                             })()}
-//                         </TableCell>
-//
-//                         {/*<TableCell style={{overflowWrap: 'anywhere', textIndent: '-1em'}}>*/}
-//                         {/*    {(() => {*/}
-//                         {/*        if (log.data && log.data.trim() !== '') {*/}
-//                         {/*            try {*/}
-//                         {/*                const data = JSON.parse(log.data);*/}
-//                         {/*                if (log.action === 'update') {*/}
-//                         {/*                    console.log(data, 'data1')*/}
-//                         {/*                    if ((log.fields).includes("investigator")) {*/}
-//                         {/*                        const displayFields = [*/}
-//                         {/*                            'investigator',*/}
-//                         {/*                            'department',*/}
-//                         {/*                        ];*/}
-//                         {/*                        console.log(data, 'data2')*/}
-//                         {/*                        return Object.entries(data).map(*/}
-//                         {/*                            ([field, values]) => {*/}
-//                         {/*                                console.log(displayFields.includes(field), 'field', field)*/}
-//                         {/*                                if (displayFields.includes(field)) {*/}
-//                         {/*                                    return (*/}
-//                         {/*                                        <div key={field}>*/}
-//                         {/*                                            <strong>*/}
-//                         {/*                                                {fieldLabels[field] || field}*/}
-//                         {/*                                            </strong>*/}
-//                         {/*                                            :{' '}*/}
-//                         {/*                                            {values.old}{' '}*/}
-//                         {/*                                            →{' '}*/}
-//                         {/*                                            {values.new}*/}
-//                         {/*                                        </div>*/}
-//                         {/*                                    );*/}
-//                         {/*                                } else {*/}
-//                         {/*                                    return null;*/}
-//                         {/*                                }*/}
-//                         {/*                            }*/}
-//                         {/*                        );*/}
-//                         {/*                    } else {*/}
-//                         {/*                        const displayFields = [*/}
-//                         {/*                            'name',*/}
-//                         {/*                            'description',*/}
-//                         {/*                            'status',*/}
-//                         {/*                        ];*/}
-//                         {/*                        return Object.entries(data).map(*/}
-//                         {/*                            ([field, values]) => {*/}
-//                         {/*                                if (displayFields.includes(field)) {*/}
-//                         {/*                                    return (*/}
-//                         {/*                                        <div key={field}>*/}
-//                         {/*                                            <strong>*/}
-//                         {/*                                                {fieldLabels[field] || field}*/}
-//                         {/*                                            </strong>*/}
-//                         {/*                                            :{' '}*/}
-//                         {/*                                            {field === 'status'*/}
-//                         {/*                                                ? getStatusLabel(values.old)*/}
-//                         {/*                                                : values.old}{' '}*/}
-//                         {/*                                            →{' '}*/}
-//                         {/*                                            {field === 'status'*/}
-//                         {/*                                                ? getStatusLabel(values.new)*/}
-//                         {/*                                                : values.new}*/}
-//                         {/*                                        </div>*/}
-//                         {/*                                    );*/}
-//                         {/*                                } else {*/}
-//                         {/*                                    return null;*/}
-//                         {/*                                }*/}
-//                         {/*                            }*/}
-//                         {/*                        );*/}
-//                         {/*                    }*/}
-//                         {/*                } else if (log.action === 'create') {*/}
-//                         {/*                    const displayFields = [*/}
-//                         {/*                        'name',*/}
-//                         {/*                        'description',*/}
-//                         {/*                        'status',*/}
-//                         {/*                    ];*/}
-//                         {/*                    return (*/}
-//                         {/*                        <div>*/}
-//                         {/*                            {Object.entries(data).map(*/}
-//                         {/*                                ([field, value]) => {*/}
-//                         {/*                                    if (displayFields.includes(field)) {*/}
-//                         {/*                                        return (*/}
-//                         {/*                                            <div key={field}>*/}
-//                         {/*                                                <strong>*/}
-//                         {/*                                                    {fieldLabels[field] || field}*/}
-//                         {/*                                                </strong>*/}
-//                         {/*                                                :{' '}*/}
-//                         {/*                                                {field === 'status'*/}
-//                         {/*                                                    ? getStatusLabel(value)*/}
-//                         {/*                                                    : value}*/}
-//                         {/*                                            </div>*/}
-//                         {/*                                        );*/}
-//                         {/*                                    } else {*/}
-//                         {/*                                        return null;*/}
-//                         {/*                                    }*/}
-//                         {/*                                }*/}
-//                         {/*                            )}*/}
-//                         {/*                        </div>*/}
-//                         {/*                    );*/}
-//                         {/*                } else if (log.action === 'delete') {*/}
-//                         {/*                    return <div>Объект был удален.</div>;*/}
-//                         {/*                } else {*/}
-//                         {/*                    return 'Нет данных об изменениях.';*/}
-//                         {/*                }*/}
-//                         {/*            } catch (error) {*/}
-//                         {/*                console.error(*/}
-//                         {/*                    'Ошибка парсинга данных лога:',*/}
-//                         {/*                    error*/}
-//                         {/*                );*/}
-//                         {/*                return 'Нет данных об изменениях.';*/}
-//                         {/*            }*/}
-//                         {/*        } else {*/}
-//                         {/*            return 'Нет данных об изменениях.';*/}
-//                         {/*        }*/}
-//                         {/*    })()}*/}
-//                         {/*</TableCell>*/}
-//                     </TableRow>
-//                 ))}
-//             </TableBody>
-//         </Table>
-//     )
-// })
-//
-// TableHistoryChanges.displayName = "TableHistoryChanges";
-// export {TableHistoryChanges}

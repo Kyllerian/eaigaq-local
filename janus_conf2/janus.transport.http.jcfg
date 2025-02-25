@@ -1,0 +1,30 @@
+general: {
+	# Whether to notify event handlers about transport events:
+	# events = true
+	json = "indented"
+	base_path = "/janus"   # Основной путь для публичного HTTP API
+	http = true            # Включаем HTTP интерфейс
+	port = 8088            # Порт для публичного HTTP API
+	https = false          # HTTPS не нужен, т.к. завершаем TLS в Nginx
+	# Можно добавить acl или ip при необходимости
+}
+
+admin: {
+	admin_base_path = "/admin" # Путь для админского интерфейса
+	admin_http = true          # Включаем админский HTTP интерфейс
+	admin_port = 7088          # Порт админского интерфейса
+	admin_https = false        # TLS завершение также не нужно здесь
+	# При необходимости можно настроить acl или ip
+}
+
+cors: {
+	#allow_origin = "http://foo.example"
+	#enforce_cors = true
+}
+
+certificates: {
+	#cert_pem = "/path/to/cert.pem"
+	#cert_key = "/path/to/key.pem"
+	#cert_pwd = "secretpassphrase"
+	#ciphers = "PFS:-VERS-TLS1.0:-VERS-TLS1.1:-3DES-CBC:-ARCFOUR-128"
+}

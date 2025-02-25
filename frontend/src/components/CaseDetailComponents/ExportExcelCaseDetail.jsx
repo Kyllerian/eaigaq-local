@@ -1,18 +1,37 @@
-// Новый обработчик для экспорта в Excel
-import { fieldLabels } from '../../constants/fieldsLabels';
-import { EVIDENCE_TYPES } from '../../constants/evidenceTypes';
-import { evidenceStatuses } from '../../constants/evidenceStatuses';
+// src\components\CaseDetailComponents\ExportExcelCaseDetail.jsx
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
-import { formatDate } from '../../constants/formatDate'; // Убедитесь, что путь корректен
-import getStatusLabel from '../../constants/getStatusLabel';
-import getActionMessage from '../../constants/getActionMessage';
 
-export default async function handleExportExcel(caseItem, setSnackbar, changeLogs, InvestigatorName, canViewHistory, groups) {
+import { formatDate } from '../../constants/formatDate';
+import getActionMessage from '../../constants/getActionMessage';
+import i18n from '../../utils/i18n';
+
+export default async function HandleExportExcel(
+    caseItem,
+    setSnackbar,
+    changeLogs,
+    InvestigatorName,
+    canViewHistory,
+    groups,
+    setIsLoading,
+    fieldLabels,
+    evidenceTypes,
+    evidenceStatuses
+) {
+    const t = i18n.t.bind(i18n);
+    function GetStatusLabel(value) {
+        const status = evidenceStatuses.find((s) => s.value === value);
+        return status ? status.label : value;
+    }
+    function GetTypeLabel(value) {
+        const typeObj = evidenceTypes.find((type) => type.value === value);
+        return typeObj ? typeObj.label : value;
+    }
+
     if (!caseItem) {
         setSnackbar({
             open: true,
-            message: 'Нет данных для экспорта.',
+            message: t('common.errors.error_no_data_for_export'),
             severity: 'warning',
         });
         return;
@@ -21,80 +40,125 @@ export default async function handleExportExcel(caseItem, setSnackbar, changeLog
     try {
         const workbook = new ExcelJS.Workbook();
 
-        // Лист 1: Информация о деле
-        const sheetCaseInfo = workbook.addWorksheet('Информация о деле');
+        // -----------------------------------------------------------------------------
+        // ЛИСТ 1: "Информация о деле"
+        // -----------------------------------------------------------------------------
 
-        // Заголовки
+        const sheetCaseInfo = workbook.addWorksheet(t('common.report.titles.case_info'), {
+            pageSetup: { orientation: 'landscape' },
+        });
+
+        // Определяем колонки
         sheetCaseInfo.columns = [
-            { header: 'Поле', key: 'field', width: 30 },
-            { header: 'Значение', key: 'value', width: 50 },
+            { header: t('common.table_headers.case_name_investigator'), key: 'name_and_investigator', width: 33, },
+            { header: t('common.table_headers.description'), key: 'description', width: 50, },
+            { header: t('common.table_headers.region_department'), key: 'region_and_department', width: 30, },
         ];
 
         // Добавляем данные
-        const caseInfoData = [
-            { field: 'Название дела', value: caseItem.name || 'Неизвестно' },
-            { field: 'Описание', value: caseItem.description || 'Неизвестно' },
-            { field: 'Следователь', value: InvestigatorName || 'Неизвестно' },
-            { field: 'Регион', value: caseItem.department?.region_display || 'Неизвестно' },
-            { field: 'Отделение', value: caseItem.department?.name || 'Неизвестно' },
-        ];
-
-        caseInfoData.forEach((item) => {
-            sheetCaseInfo.addRow(item);
+        sheetCaseInfo.addRow({
+            name_and_investigator: `${caseItem
+                .name || t('common.messages.unknown')}\n${InvestigatorName || t('common.messages.unknown')
+                }`,
+            description: caseItem.description || t('common.messages.unknown'),
+            region_and_department: `${caseItem.department
+                ?.region_display || t('common.messages.unknown')}\n${caseItem.department?.name || t('common.messages.unknown')
+                }`,
         });
 
-        // Применяем стили к заголовкам
-        const headerRow = sheetCaseInfo.getRow(1);
-        headerRow.font = { bold: true };
+        // ---------------------- СТИЛИЗАЦИЯ ЗАГОЛОВКА ----------------------
+        const headerRowCaseInfo = sheetCaseInfo.getRow(1);
+        headerRowCaseInfo.font = { bold: true };
+        headerRowCaseInfo.alignment = {
+            vertical: 'middle',
+            horizontal: 'center',
+            wrapText: true,
+        };
+        headerRowCaseInfo.eachCell((cell) => {
+            cell.border = {
+                top: { style: 'thin' },
+                left: { style: 'thin' },
+                bottom: { style: 'thin' },
+                right: { style: 'thin' },
+            };
+            cell.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'FFD3D3D3' }, // светло-серый для заголовка
+            };
+        });
 
-        // Автоматическая подстройка ширины колонок
-        sheetCaseInfo.columns.forEach((column) => {
-            let maxLength = 0;
-            column.eachCell({ includeEmpty: true }, (cell) => {
-                const cellValue = cell.value ? cell.value.toString() : '';
-                if (cellValue.length > maxLength) {
-                    maxLength = cellValue.length;
+        // ---------------------- СТИЛИЗАЦИЯ ДАННЫХ ------------------------
+        sheetCaseInfo.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+            // Пропускаем строку заголовка
+            if (rowNumber === 1) return;
+
+            row.eachCell({ includeEmpty: true }, (cell) => {
+                // Границы
+                cell.border = {
+                    top: { style: 'thin' },
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    right: { style: 'thin' },
+                };
+                // Зебра (чет/нечет)
+                if (rowNumber % 2 === 0) {
+                    cell.fill = {
+                        type: 'pattern',
+                        pattern: 'solid',
+                        fgColor: { argb: 'FFEFEFEF' },
+                    };
+                } else {
+                    cell.fill = {
+                        type: 'pattern',
+                        pattern: 'solid',
+                        fgColor: { argb: 'FFFFFFFF' },
+                    };
+                }
+                // Перенос текста
+                if (!cell.alignment || !cell.alignment.wrapText) {
+                    cell.alignment = {
+                        wrapText: true,
+                        vertical: 'middle',
+                        horizontal: 'left',
+                    };
                 }
             });
-            // Устанавливаем ширину колонки, добавляя небольшой буфер
-            column.width = maxLength < 10 ? 10 : Math.min(maxLength + 2, 50); // Максимальная ширина 50
         });
 
-        sheetCaseInfo.eachRow({ includeEmpty: true }, (row) => {
-            row.alignment = { wrapText: true };
-        });
-        // Лист 2: Вещественные доказательства
-        const sheetEvidences = workbook.addWorksheet('Вещественные доказательства');
+        // -----------------------------------------------------------------------------
+        // ЛИСТ 2: "Вещественные доказательства"
+        // -----------------------------------------------------------------------------
 
-        // Заголовки
+        const sheetEvidences = workbook.addWorksheet(t('common.report.titles.evidence_table'), {
+            pageSetup: { orientation: 'landscape' },
+        });
+
+        // Определяем колонки
         sheetEvidences.columns = [
-            { header: 'Группа', key: 'group', width: 30 },
-            { header: 'Название ВД', key: 'name', width: 30 },
-            { header: 'Описание ВД', key: 'description', width: 50 },
-            { header: 'Тип ВД', key: 'type', width: 20 },
-            { header: 'Статус', key: 'status', width: 20 },
+            { header: t('common.table_headers.group'), key: 'group', width: 15 },
+            { header: t('common.table_headers.name_evidence'), key: 'name', width: 18 },
+            { header: t('common.table_headers.description_evidence'), key: 'description', width: 50 },
+            { header: t('common.standard.label_evidence_type'), key: 'type', width: 15 },
+            { header: t('common.table_headers.status'), key: 'status', width: 15 },
         ];
-
-        // Применяем стили к заголовкам
-        const headerRowEvidences = sheetEvidences.getRow(1);
-        headerRowEvidences.font = { bold: true };
 
         // Добавляем данные
         groups.forEach((group) => {
             if (group.material_evidences && group.material_evidences.length > 0) {
                 group.material_evidences.forEach((evidence) => {
                     sheetEvidences.addRow({
-                        group: group.name || 'Неизвестно',
-                        name: evidence.name || 'Неизвестно',
-                        description: evidence.description || 'Неизвестно',
-                        type: getTypeLabel(evidence.type),
-                        status: getStatusLabel(evidence.status),
+                        group: group.name || t('common.messages.unknown'),
+                        name: evidence.name || t('common.messages.unknown'),
+                        description: evidence.description || t('common.messages.unknown'),
+                        type: GetTypeLabel(evidence.type, t),
+                        status: GetStatusLabel(evidence.status),
                     });
                 });
             } else {
                 sheetEvidences.addRow({
-                    group: group.name || 'Неизвестно',
-                    name: 'Нет вещественных доказательств.',
+                    group: group.name || t('common.messages.unknown'),
+                    name: t('common.messages.no_evidences'),
                     description: '',
                     type: '',
                     status: '',
@@ -102,38 +166,79 @@ export default async function handleExportExcel(caseItem, setSnackbar, changeLog
             }
         });
 
-        // Автоматическая подстройка ширины колонок
-        sheetEvidences.columns.forEach((column) => {
-            let maxLength = 0;
-            column.eachCell({ includeEmpty: true }, (cell) => {
-                const cellValue = cell.value ? cell.value.toString() : '';
-                if (cellValue.length > maxLength) {
-                    maxLength = cellValue.length;
+        // ---------------------- СТИЛИЗАЦИЯ ЗАГОЛОВКА ----------------------
+        const headerRowEvidences = sheetEvidences.getRow(1);
+        headerRowEvidences.font = { bold: true };
+        headerRowEvidences.alignment = {
+            vertical: 'middle',
+            horizontal: 'center',
+            wrapText: true,
+        };
+        headerRowEvidences.eachCell((cell) => {
+            cell.border = {
+                top: { style: 'thin' },
+                left: { style: 'thin' },
+                bottom: { style: 'thin' },
+                right: { style: 'thin' },
+            };
+            cell.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'FFD3D3D3' },
+            };
+        });
+
+        // ---------------------- СТИЛИЗАЦИЯ ДАННЫХ ------------------------
+        sheetEvidences.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+            // Пропускаем строку заголовка
+            if (rowNumber === 1) return;
+
+            row.eachCell({ includeEmpty: true }, (cell) => {
+                cell.border = {
+                    top: { style: 'thin' },
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    right: { style: 'thin' },
+                };
+                if (rowNumber % 2 === 0) {
+                    cell.fill = {
+                        type: 'pattern',
+                        pattern: 'solid',
+                        fgColor: { argb: 'FFEFEFEF' },
+                    };
+                } else {
+                    cell.fill = {
+                        type: 'pattern',
+                        pattern: 'solid',
+                        fgColor: { argb: 'FFFFFFFF' },
+                    };
+                }
+                if (!cell.alignment || !cell.alignment.wrapText) {
+                    cell.alignment = {
+                        wrapText: true,
+                        vertical: 'middle',
+                        horizontal: 'left',
+                    };
                 }
             });
-            // Устанавливаем ширину колонки, добавляя небольшой буфер
-            column.width = maxLength < 10 ? 10 : Math.min(maxLength + 2, 50); // Максимальная ширина 50
         });
 
-        sheetEvidences.eachRow({ includeEmpty: true }, (row) => {
-            row.alignment = { wrapText: true };
-        });
+        // -----------------------------------------------------------------------------
+        // ЛИСТ 3: "История изменений" (если доступна)
+        // -----------------------------------------------------------------------------
 
-        // Лист 3: История изменений (если доступна)
         if (canViewHistory) {
-            const sheetChangeLogs = workbook.addWorksheet('История изменений');
+            const sheetChangeLogs = workbook.addWorksheet(t('common.report.titles.history_title'), {
+                pageSetup: { orientation: 'landscape' },
+            });
 
-            // Заголовки
+            // Определяем колонки
             sheetChangeLogs.columns = [
-                { header: 'Дата и время', key: 'created', width: 25 },
-                { header: 'Пользователь', key: 'user', width: 30 },
-                { header: 'Действие', key: 'action', width: 40 },
-                { header: 'Изменения', key: 'changes', width: 50 },
+                { header: t('common.table_headers.change_date_user'), key: 'created', width: 13 },
+                { header: t('common.table_headers.change_user'), key: 'user', width: 20 },
+                { header: t('common.table_headers.actions'), key: 'action', width: 25 },
+                { header: t('common.table_headers.change_data'), key: 'changes', width: 50 },
             ];
-
-            // Применяем стили к заголовкам
-            const headerRowLogs = sheetChangeLogs.getRow(1);
-            headerRowLogs.font = { bold: true };
 
             // Добавляем данные
             changeLogs.forEach((log) => {
@@ -143,112 +248,140 @@ export default async function handleExportExcel(caseItem, setSnackbar, changeLog
                     try {
                         const data = JSON.parse(log.data);
                         if (log.action === 'update') {
-                            const displayFields = [
-                                'name',
-                                'description',
-                                'status',
-                                'type', // Добавлено
-                            ];
+                            const displayFields = ['name', 'description', 'status', 'type'];
                             changesText = Object.entries(data)
-                                .filter(([field, _]) => displayFields.includes(field))
+                                .filter(([field]) => displayFields.includes(field))
                                 .map(([field, values]) => {
                                     const fieldLabel = fieldLabels[field] || field;
                                     const oldValue =
                                         field === 'status'
-                                            ? getStatusLabel(values.old)
+                                            ? GetStatusLabel(values.old)
                                             : field === 'type'
-                                                ? getTypeLabel(values.old)
+                                                ? GetTypeLabel(values.old)
                                                 : values.old;
                                     const newValue =
                                         field === 'status'
-                                            ? getStatusLabel(values.new)
+                                            ? GetStatusLabel(values.new)
                                             : field === 'type'
-                                                ? getTypeLabel(values.new)
+                                                ? GetTypeLabel(values.new)
                                                 : values.new;
-                                    return `${fieldLabel}: ${oldValue} → ${newValue}`;
+                                    return `${fieldLabel}: ${oldValue}${t('common.table_data.field_old_new_separator')}${newValue}`;
                                 })
                                 .join('; ');
                         } else if (log.action === 'create') {
-                            const displayFields = [
-                                'name',
-                                'description',
-                                'status',
-                                'type', // Добавлено
-                            ];
+                            const displayFields = ['name', 'description', 'status', 'type'];
                             changesText = Object.entries(data)
-                                .filter(([field, _]) => displayFields.includes(field))
+                                .filter(([field]) => displayFields.includes(field))
                                 .map(([field, value]) => {
                                     const fieldLabel = fieldLabels[field] || field;
                                     const displayValue =
                                         field === 'status'
-                                            ? getStatusLabel(value)
+                                            ? GetStatusLabel(value)
                                             : field === 'type'
-                                                ? getTypeLabel(value)
+                                                ? GetTypeLabel(value)
                                                 : value;
                                     return `${fieldLabel}: ${displayValue}`;
                                 })
                                 .join('; ');
                         } else if (log.action === 'delete') {
-                            changesText = 'Объект был удален.';
+                            changesText = t('common.messages.object_deleted');
                         } else {
-                            changesText = 'Нет данных об изменениях.';
+                            changesText = t('common.messages.no_change_data');
                         }
                     } catch (error) {
                         console.error('Ошибка парсинга данных лога:', error);
-                        changesText = 'Нет данных об изменениях.';
+                        changesText = t('common.messages.no_change_data');
                     }
                 } else {
-                    changesText = 'Нет данных об изменениях.';
+                    changesText = t('common.messages.no_change_data');
                 }
 
                 sheetChangeLogs.addRow({
                     created: formatDate(log.created),
-                    user: log.user ? log.user.full_name : 'Система',
+                    user: log.user ? log.user.full_name : t('common.table_data.system_user'),
                     action: getActionMessage(log),
                     changes: changesText,
                 });
             });
 
-            // Автоматическая подстройка ширины колонок
-            sheetChangeLogs.columns.forEach((column) => {
-                let maxLength = 0;
-                column.eachCell({ includeEmpty: true }, (cell) => {
-                    const cellValue = cell.value ? cell.value.toString() : '';
-                    if (cellValue.length > maxLength) {
-                        maxLength = cellValue.length;
-                    }
-                });
-                // Устанавливаем ширину колонки, добавляя небольшой буфер
-                column.width = maxLength < 10 ? 10 : Math.min(maxLength + 2, 50); // Максимальная ширина 50
+            // ---------------------- СТИЛИЗАЦИЯ ЗАГОЛОВКА ------------------
+            const headerRowLogs = sheetChangeLogs.getRow(1);
+            headerRowLogs.font = { bold: true };
+            headerRowLogs.alignment = {
+                vertical: 'middle',
+                horizontal: 'center',
+                wrapText: true,
+            };
+            headerRowLogs.eachCell((cell) => {
+                cell.border = {
+                    top: { style: 'thin' },
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    right: { style: 'thin' },
+                };
+                cell.fill = {
+                    type: 'pattern',
+                    pattern: 'solid',
+                    fgColor: { argb: 'FFD3D3D3' },
+                };
             });
 
-            sheetChangeLogs.eachRow({ includeEmpty: true }, (row) => {
-                row.alignment = { wrapText: true };
+            // ---------------------- СТИЛИЗАЦИЯ ДАННЫХ --------------------
+            sheetChangeLogs.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+                if (rowNumber === 1) return; // пропускаем заголовок
+
+                row.eachCell((cell) => {
+                    cell.border = {
+                        top: { style: 'thin' },
+                        left: { style: 'thin' },
+                        bottom: { style: 'thin' },
+                        right: { style: 'thin' },
+                    };
+                    if (rowNumber % 2 === 0) {
+                        cell.fill = {
+                            type: 'pattern',
+                            pattern: 'solid',
+                            fgColor: { argb: 'FFEFEFEF' },
+                        };
+                    } else {
+                        cell.fill = {
+                            type: 'pattern',
+                            pattern: 'solid',
+                            fgColor: { argb: 'FFFFFFFF' },
+                        };
+                    }
+                    if (!cell.alignment || !cell.alignment.wrapText) {
+                        cell.alignment = {
+                            wrapText: true,
+                            vertical: 'middle',
+                            horizontal: 'left',
+                        };
+                    }
+                });
             });
         }
 
-        // Генерация Excel-файла и его сохранение
+        // -----------------------------------------------------------------------------
+        // Генерация Excel-файла и сохранение
+        // -----------------------------------------------------------------------------
+
         const buffer = await workbook.xlsx.writeBuffer();
         const blob = new Blob([buffer], { type: 'application/octet-stream' });
-        saveAs(blob, `Отчет_по_делу_${caseItem.name || 'Номер'}.xlsx`);
+        saveAs(blob, `${t('common.report.titles.file_name_case')}${caseItem.name || 'Номер'}.xlsx`);
 
         setSnackbar({
             open: true,
-            message: 'Экспорт в Excel успешно выполнен.',
+            message: t('common.success.export_excel_success'),
             severity: 'success',
         });
     } catch (error) {
-        console.error('Ошибка при экспорте в Excel:', error);
+        console.error(t('common.errors.error_export_excel'), error);
         setSnackbar({
             open: true,
-            message: 'Ошибка при экспорте в Excel.',
+            message: t('common.errors.error_export_excel'),
             severity: 'error',
         });
+    } finally {
+        setIsLoading(false);
     }
-};
-
-// Получение отображаемого типа
-const getTypeLabel = (value) => {
-    const type = EVIDENCE_TYPES.find((type) => type.value === value);
-    return type ? type.label : value;
-};
+}

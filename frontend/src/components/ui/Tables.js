@@ -1,6 +1,6 @@
 // frontend/src/components/ui/Tables.js
 
-import React, { forwardRef, useRef, useState, useEffect, useCallback } from 'react';
+import React, { forwardRef } from 'react';
 import { DataGridPro } from '@mui/x-data-grid-pro';
 import { LicenseInfo } from '@mui/x-license';
 import { useTheme } from '@emotion/react';
@@ -8,7 +8,7 @@ import { useTheme } from '@emotion/react';
 // Устанавливаем лицензионный ключ (замените на ваш собственный ключ)
 LicenseInfo.setLicenseKey('d7a42a252b29f214a57d3d3f80b1e8caTz0xMjM0NSxFPTE3MzI1NzE1ODEwNTczLFM9cHJvLExNPXN1YnNjcmlwdGlvbixQVj1wZXJwZXR1YWwsS1Y9Mg==');
 
-const StyledDataGridPro = forwardRef(({ rows, columns, selected, selected_column, handleRowClick, ...props }, ref) => {
+const StyledDataGridPro = forwardRef(({ rows, columns, selected, selected_column, handleRowClick, sx, ...props }, ref) => {
     const theme = useTheme();
     return (
         <DataGridPro ref={ref}
@@ -89,7 +89,7 @@ const StyledDataGridPro = forwardRef(({ rows, columns, selected, selected_column
                         0 4px 6px rgba(0, 0, 0, 0.05)`,
                     transition: 'all 0.1s ease-in-out',
                 },
-
+                ...sx
             }}
             {...props}
         />

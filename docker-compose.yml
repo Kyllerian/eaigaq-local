@@ -1,4 +1,3 @@
-# docker-compose.yml
 services:
   db:
     image: postgres:13
@@ -8,14 +7,9 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data/
     ports:
-      - "5432:5432"  # Добавьте эту строку
+      - "5432:5432"
     networks:
       - webnet
-    # healthcheck:
-    #   test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER}"]
-    #   interval: 10s
-    #   timeout: 5s
-    #   retries: 5
 
   redis:
     image: redis:latest
@@ -24,11 +18,6 @@ services:
       - "6379"
     networks:
       - webnet
-    # healthcheck:
-    #   test: ["CMD", "redis-cli", "ping"]
-    #   interval: 10s
-    #   timeout: 5s
-    #   retries: 5
 
   backend:
     build:
@@ -42,7 +31,7 @@ services:
       - redis
     volumes:
       - static_volume:/app/staticfiles
-      - media_volume:/app/media  # 🆕 Добавляем том для медиа-файлов
+      - media_volume:/app/media
     networks:
       - webnet
     expose:
@@ -61,11 +50,11 @@ services:
     init: true
     command: ["daphne", "-b", "0.0.0.0", "-p", "8000", "eaigaq_project.asgi:application"]
 
-  celery:
+  celery_biometric:
     build:
       context: .
       dockerfile: docker/Dockerfile.backend
-    container_name: celery
+    container_name: celery_biometric
     env_file:
       - ./env/.env.backend
     depends_on:
@@ -73,14 +62,14 @@ services:
       - redis
     volumes:
       - static_volume:/app/staticfiles
-      - media_volume:/app/media  # 🆕 Добавляем том для медиа-файлов
+      - media_volume:/app/media
     networks:
       - webnet
     deploy:
       resources:
         limits:
-          cpus: '8'
-          memory: 8g
+          cpus: '2'
+          memory: 4g
         reservations:
           devices:
             - driver: nvidia
@@ -88,7 +77,161 @@ services:
               capabilities: [ gpu ]
     runtime: nvidia
     init: true
-    command: ["celery", "-A", "eaigaq_project", "worker", "--loglevel=info", "--pool=solo"]
+    command: ["celery", "-A", "eaigaq_project", "worker", "--loglevel=info", "--pool=solo", "--queues=biometric"]
+
+  celery_streaming:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.backend
+    container_name: celery_streaming
+    env_file:
+      - ./env/.env.backend
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
+    networks:
+      - webnet
+    deploy:
+      resources:
+        limits:
+          cpus: '8'
+          memory: 10g
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [ gpu ]
+    runtime: nvidia
+    init: true
+    command: [ "celery", "-A", "eaigaq_project", "worker", "--loglevel=info", "--concurrency=4", "--queues=streaming" ]
+
+
+#  celery_ping:
+#    build:
+#      context: .
+#      dockerfile: docker/Dockerfile.ping
+#    container_name: celery_ping
+#    env_file:
+#      - ./env/.env.backend
+#    depends_on:
+#      - db
+#      - redis
+#    volumes:
+#      - static_volume:/app/staticfiles
+#      - media_volume:/app/media
+#    networks:
+#      - webnet
+#    deploy:
+#      resources:
+#        limits:
+#          cpus: '2'
+#          memory: 2g
+#    init: true
+#    command: [ "celery", "-A", "eaigaq_project", "worker", "--loglevel=info", "--queues=ping", "--concurrency=4" ]
+
+  celery_ping:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.backend
+    container_name: celery_ping
+    env_file:
+      - ./env/.env.backend
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
+    networks:
+      - webnet
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2g
+    runtime: nvidia
+    init: true
+    command: [ "celery", "-A", "eaigaq_project", "worker", "--loglevel=info", "--queues=ping" ]
+
+
+  celery_beat:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.backend
+    container_name: celery_beat
+    env_file:
+      - ./env/.env.backend
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
+    networks:
+      - webnet
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2g
+    runtime: nvidia
+    init: true
+    command: [ "celery", "-A", "eaigaq_project", "beat", "--loglevel=info" ]
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '1'
+    #       memory: 1g
+
+  janus:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.janus
+    container_name: janus
+    depends_on:
+      - db
+      - redis
+    networks:
+      - webnet
+    expose:
+      - "8088"
+      - "7088"
+      - "8188"
+    volumes:
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
+    deploy:
+      resources:
+        limits:
+          cpus: '8'
+          memory: 10g
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [ gpu ]
+    runtime: nvidia
+    init: true
+
+  coturn:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.coturn
+    container_name: coturn
+    volumes:
+      - coturn_data:/var/lib/coturn
+    ports:
+      - "3478:3478"
+      - "3478:3478/udp"
+      - "5349:5349"
+      - "5349:5349/udp"
+      - "49160-49200:49160-49200/udp"
+    networks:
+      - webnet
+    restart: unless-stopped
 
   nginx:
     build:
@@ -99,56 +242,49 @@ services:
       backend:
         condition: service_started
     ports:
-#      - "80:80"
+      - "80:80"
       - "443:443"
     volumes:
       - static_volume:/staticfiles
-      - media_volume:/media  # 🆕 Добавляем том для медиа-файлов
+      - media_volume:/app/media
     networks:
       - webnet
 
 volumes:
   postgres_data:
   static_volume:
-  media_volume:  # 🆕 Объявляем том для медиа-файлов
+  media_volume:
+  coturn_data:
 
 networks:
   webnet:
 
-# -------------old stable-----------------
 #services:
 #  db:
 #    image: postgres:13
+#    container_name: db
 #    env_file:
 #      - ./env/.env.db
 #    volumes:
 #      - postgres_data:/var/lib/postgresql/data/
+#    ports:
+#      - "5432:5432"
 #    networks:
 #      - webnet
-#    # healthcheck:
-#    #   test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER}"]
-#    #   interval: 10s
-#    #   timeout: 5s
-#    #   retries: 5
 #
 #  redis:
 #    image: redis:latest
+#    container_name: redis
 #    expose:
 #      - "6379"
-##    ports:
-##      - "6379:6379"
 #    networks:
 #      - webnet
-##    healthcheck:
-##      test: ["CMD", "redis-cli", "ping"]
-##      interval: 10s
-##      timeout: 5s
-##      retries: 5
 #
 #  backend:
 #    build:
 #      context: .
 #      dockerfile: docker/Dockerfile.backend
+#    container_name: backend
 #    env_file:
 #      - ./env/.env.backend
 #    depends_on:
@@ -156,6 +292,7 @@ networks:
 #      - redis
 #    volumes:
 #      - static_volume:/app/staticfiles
+#      - media_volume:/app/media
 #    networks:
 #      - webnet
 #    expose:
@@ -174,22 +311,26 @@ networks:
 #    init: true
 #    command: ["daphne", "-b", "0.0.0.0", "-p", "8000", "eaigaq_project.asgi:application"]
 #
-#  celery:
+#  celery_biometric:
 #    build:
 #      context: .
 #      dockerfile: docker/Dockerfile.backend
+#    container_name: celery_biometric
 #    env_file:
 #      - ./env/.env.backend
 #    depends_on:
 #      - db
 #      - redis
+#    volumes:
+#      - static_volume:/app/staticfiles
+#      - media_volume:/app/media
 #    networks:
 #      - webnet
 #    deploy:
 #      resources:
 #        limits:
-#          cpus: '8'
-#          memory: 8g
+#          cpus: '2'
+#          memory: 4g
 #        reservations:
 #          devices:
 #            - driver: nvidia
@@ -197,26 +338,113 @@ networks:
 #              capabilities: [ gpu ]
 #    runtime: nvidia
 #    init: true
-#    command: ["celery", "-A", "eaigaq_project", "worker", "--loglevel=info","--pool=solo"]
+#    command: ["celery", "-A", "eaigaq_project", "worker", "--loglevel=info", "--pool=solo", "--queues=biometric"]
+#
+#  celery_streaming:
+#    build:
+#      context: .
+#      dockerfile: docker/Dockerfile.backend
+#    container_name: celery_streaming
+#    env_file:
+#      - ./env/.env.backend
+#    depends_on:
+#      - db
+#      - redis
+#    volumes:
+#      - static_volume:/app/staticfiles
+#      - media_volume:/app/media
+#    networks:
+#      - webnet
+#    deploy:
+#      resources:
+#        limits:
+#          cpus: '8'
+#          memory: 10g
+#        reservations:
+#          devices:
+#            - driver: nvidia
+#              count: 1
+#              capabilities: [ gpu ]
+#    runtime: nvidia
+#    init: true
+#    command: [ "celery", "-A", "eaigaq_project", "worker", "--loglevel=info", "--concurrency=4", "--queues=streaming" ]
+#
+#  janus:
+#    build:
+#      context: .
+#      dockerfile: docker/Dockerfile.janus
+#    container_name: janus
+#    depends_on:
+#      - db
+#      - redis
+#    networks:
+#      - webnet
+#    expose:
+#      - "8088"
+#      - "7088"
+#      - "8188"
+#    volumes:
+#      - static_volume:/app/staticfiles
+#      - media_volume:/app/media
+#    deploy:
+#      resources:
+#        limits:
+#          cpus: '8'
+#          memory: 10g
+#        reservations:
+#          devices:
+#            - driver: nvidia
+#              count: 1
+#              capabilities: [ gpu ]
+#    runtime: nvidia
+#    init: true
+#
+#  # -- Добавленный сервис coturn
+#  coturn:
+#    build:
+#      context: .
+#      dockerfile: docker/Dockerfile.coturn
+#    container_name: coturn
+#    # Если не нужно сборки, можно:
+#    #   image: coturn/coturn:latest
+#    volumes:
+#      - coturn_data:/var/lib/coturn
+#    # Пробрасываем нужные порты:
+#    #   3478 — STUN/TURN (tcp+udp)
+#    #   5349 — TLS TURN (tcp+udp) при необходимости
+#    #   49160-49200 — пример диапазона портов для потоков.
+#    ports:
+#      - "3478:3478"
+#      - "3478:3478/udp"
+#      - "5349:5349"
+#      - "5349:5349/udp"
+#      - "49160-49200:49160-49200/udp"
+#    networks:
+#      - webnet
+#    restart: unless-stopped
 #
 #  nginx:
 #    build:
 #      context: .
 #      dockerfile: docker/Dockerfile.frontend
+#    container_name: nginx
 #    depends_on:
 #      backend:
 #        condition: service_started
 #    ports:
 #      - "80:80"
 #      - "443:443"
-#    networks:
-#      - webnet
 #    volumes:
 #      - static_volume:/staticfiles
+#      - media_volume:/app/media
+#    networks:
+#      - webnet
 #
 #volumes:
 #  postgres_data:
 #  static_volume:
+#  media_volume:
+#  coturn_data:
 #
 #networks:
 #  webnet:

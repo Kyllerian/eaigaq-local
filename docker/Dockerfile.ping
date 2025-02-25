@@ -1,0 +1,26 @@
+# Dockerfile.ping
+FROM python:3.11-slim
+
+# 1) Установка системных пакетов (если нужны)
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        build-essential \
+        libpq-dev \
+
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# 2) Создадим директорию приложения
+WORKDIR /app
+
+# 3) Скопируем файлы requirements_ping.txt
+COPY docker/requirements_ping.txt ./
+
+# 4) Устанавливаем зависимости
+RUN pip install --no-cache-dir -r requirements_ping.txt
+
+# 5) Скопируем сам код
+COPY . /app
+
+# 6) Запускаем celery worker
+# (Команду ENTRYPOINT/CMD можно также указывать при docker-compose)
+CMD ["celery", "-A", "eaigaq_project", "worker", "--queue=ping", "--concurrency=4"]
